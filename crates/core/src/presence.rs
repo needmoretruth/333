@@ -150,20 +150,69 @@ where
 
 /// How many peers a node can see, in the shape the screen shows them.
 ///
-/// The founder is deliberately not in any of these numbers. Counting the founder
-/// would mean [`Census::is_ended`] could never become true, and the one question this
-/// protocol exists to answer would have no answer.
+/// FROZEN in meaning, and this is the most load-bearing definition in the crate.
+///
+/// **`active` counts only peers this node completed a heartbeat exchange with
+/// itself.** Never peers that somebody else attested were present. The two look
+/// interchangeable and are not: an attestation is cheap to manufacture for anyone
+/// holding both the verifier's key and the prover's, so an attestation-sourced count
+/// can be inflated without bound by one person. [`Census::is_ended`] is exactly
+/// `active == 0`, so an inflatable count means the end can never be declared — and
+/// whether it has ended is the one question this protocol exists to answer.
+///
+/// Attestations are still worth keeping. They decide standing, which is a claim
+/// about a peer's record. They do not decide whether anybody is here, which is a
+/// claim about right now, and only this node's own exchanges can support that.
+///
+/// The founder is deliberately in none of these numbers. Counting the founder would
+/// mean `active` never reaches zero.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Census {
-    /// Peers answering now.
-    pub active: u64,
+    /// Peers this node exchanged heartbeats with itself.
+    active: u64,
     /// Of those, how many also serve the client's own source. A mark, not a rank.
-    pub seeders: u64,
-    /// Peers that still hold standing but are not answering.
-    pub inactive: u64,
+    seeders: u64,
+    /// Peers that still hold standing but did not answer this node.
+    inactive: u64,
 }
 
 impl Census {
+    /// Count a census.
+    ///
+    /// The arguments are named for what may go in them rather than for what they are
+    /// called on screen, because the one mistake that matters here is putting an
+    /// attested count into the first one.
+    #[must_use]
+    pub const fn of(
+        peers_that_answered_us: u64,
+        of_those_bearing_the_source: u64,
+        standing_but_silent: u64,
+    ) -> Self {
+        Self {
+            active: peers_that_answered_us,
+            seeders: of_those_bearing_the_source,
+            inactive: standing_but_silent,
+        }
+    }
+
+    /// Peers answering now, by this node's own observation.
+    #[must_use]
+    pub const fn active(&self) -> u64 {
+        self.active
+    }
+
+    /// Of the active peers, how many also serve the client's source.
+    #[must_use]
+    pub const fn seeders(&self) -> u64 {
+        self.seeders
+    }
+
+    /// Peers that hold standing but did not answer this node.
+    #[must_use]
+    pub const fn inactive(&self) -> u64 {
+        self.inactive
+    }
+
     /// Everyone on the roll: answering or not.
     #[must_use]
     pub const fn roll(&self) -> u64 {
@@ -172,8 +221,9 @@ impl Census {
 
     /// Has it ended?
     ///
-    /// The count that decides this is how many are answering, not how many are on the
-    /// roll. A roll of a thousand names with nobody awake is over.
+    /// The count that decides this is how many answered this node, not how many are
+    /// on the roll and not what anyone else reported. A roll of a thousand names with
+    /// nobody awake is over.
     #[must_use]
     pub const fn is_ended(&self) -> bool {
         self.active == 0
@@ -337,30 +387,32 @@ mod tests {
 
     #[test]
     fn the_end_is_decided_by_who_is_answering_not_by_the_roll() {
-        let census = Census {
-            active: 0,
-            seeders: 0,
-            inactive: 1447,
-        };
+        let census = Census::of(0, 0, 1447);
         assert!(census.is_ended());
         assert_eq!(census.roll(), 1447);
-
-        let alive = Census {
-            active: 1,
-            seeders: 0,
-            inactive: 1446,
-        };
-        assert!(!alive.is_ended());
+        assert!(!Census::of(1, 0, 1446).is_ended());
     }
 
     #[test]
     fn a_census_reads_the_way_the_screen_shows_it() {
-        let census = Census {
-            active: 1203,
-            seeders: 89,
-            inactive: 244,
-        };
+        let census = Census::of(1203, 89, 244);
+        assert_eq!(census.active(), 1203);
+        assert_eq!(census.seeders(), 89);
+        assert_eq!(census.inactive(), 244);
         assert_eq!(census.roll(), 1447);
-        assert!(census.seeders <= census.active, "a seeder is an active peer");
+        assert!(
+            census.seeders() <= census.active(),
+            "a seeder is an active peer"
+        );
+    }
+
+    #[test]
+    fn an_empty_census_has_already_ended() {
+        // The default is not a neutral starting state: a node that has spoken to
+        // nobody yet is, by its own observation, looking at an ended network. That is
+        // correct and it is why the screen must show what was observed rather than a
+        // verdict a fresh node would announce on startup.
+        assert!(Census::default().is_ended());
+        assert_eq!(Census::default().roll(), 0);
     }
 }

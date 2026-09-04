@@ -97,8 +97,7 @@ pub struct Verified {
 /// unusable, or the signature does not match.
 pub fn open(frame: &[u8]) -> Result<Verified, wire::Error> {
     let (signature, body) = wire::split(frame)?;
-    let heartbeat: Heartbeat =
-        postcard::from_bytes(body).map_err(|e| wire::Error::Decode(e.to_string()))?;
+    let heartbeat: Heartbeat = wire::decode(body)?;
 
     if heartbeat.protocol != PROTOCOL_VERSION {
         return Err(wire::Error::Version {
@@ -128,6 +127,20 @@ mod tests {
 
     fn identity(seed: u8) -> Identity {
         Identity::from_seed(&[seed; 32])
+    }
+
+    #[test]
+    fn a_padded_frame_is_refused_even_though_its_signature_verifies() {
+        // The attack the refusal exists for: append anything to a valid frame. The
+        // signature covers the bytes as received, so it still verifies, and without
+        // this check the frame decodes to the same heartbeat. One statement would
+        // then have as many valid frames as there are paddings.
+        let me = identity(1);
+        let mut frame = Heartbeat::now(&me, None).seal(&me).expect("seals");
+        assert!(open(&frame).is_ok());
+
+        frame.extend_from_slice(b"junk");
+        assert_eq!(open(&frame), Err(wire::Error::TrailingBytes { extra: 4 }));
     }
 
     #[test]

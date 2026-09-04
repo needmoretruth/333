@@ -139,8 +139,7 @@ pub struct Signed {
 /// unusable, or the signature does not match.
 pub fn open(frame: &[u8], half: Half) -> Result<Signed, wire::Error> {
     let (signature, body) = wire::split(frame)?;
-    let record: Record =
-        postcard::from_bytes(body).map_err(|e| wire::Error::Decode(e.to_string()))?;
+    let record: Record = wire::decode(body)?;
 
     if record.protocol != crate::heartbeat::PROTOCOL_VERSION {
         return Err(wire::Error::Version {
@@ -386,6 +385,21 @@ mod tests {
         assert_eq!(
             Transfer::assemble(gave, open(&other_file, Half::Received).expect("opens")),
             Err(Mismatch::DifferentSubject)
+        );
+    }
+
+    #[test]
+    fn a_padded_half_is_refused() {
+        let (giver, receiver) = (identity(1), identity(2));
+        let mut frame = Record::new(&giver, receiver.public_key(), Epoch(7), DIGEST)
+            .seal(Half::Gave, &giver)
+            .expect("seals");
+        assert!(open(&frame, Half::Gave).is_ok());
+
+        frame.push(0);
+        assert_eq!(
+            open(&frame, Half::Gave),
+            Err(wire::Error::TrailingBytes { extra: 1 })
         );
     }
 

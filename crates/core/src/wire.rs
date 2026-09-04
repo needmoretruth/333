@@ -70,6 +70,18 @@ pub enum Error {
     /// The body is not a valid encoding of the expected message.
     #[error("body does not decode: {0}")]
     Decode(String),
+    /// The message decoded, and then there were bytes left over.
+    ///
+    /// Refused rather than ignored. The decoder stops at the end of the message and
+    /// says nothing about what follows, so padding a frame produces a different
+    /// frame that means the same thing and carries a signature that still verifies —
+    /// once for every possible padding. Anything that identifies a record by the
+    /// bytes it arrived as would then see one statement as unlimited different ones.
+    #[error("{extra} bytes after the end of the message")]
+    TrailingBytes {
+        /// How many bytes were left over.
+        extra: usize,
+    },
     /// The signature does not match the body under the sender's key.
     #[error("signature does not verify")]
     BadSignature,
@@ -139,6 +151,24 @@ pub fn split(frame: &[u8]) -> Result<(&[u8; SIGNATURE_LEN], &[u8]), Error> {
     Ok((signature, body))
 }
 
+/// Decode a message from a body, refusing anything left over.
+///
+/// The only decoder this protocol uses. `postcard::from_bytes` is deliberately not
+/// used anywhere: it stops at the end of the message and discards the rest without a
+/// word, which is the behaviour [`Error::TrailingBytes`] exists to refuse.
+///
+/// # Errors
+/// Fails if the bytes do not decode, or if any remain after the message ends.
+pub fn decode<T: serde::de::DeserializeOwned>(body: &[u8]) -> Result<T, Error> {
+    let (message, rest) =
+        postcard::take_from_bytes::<T>(body).map_err(|e| Error::Decode(e.to_string()))?;
+    if rest.is_empty() {
+        Ok(message)
+    } else {
+        Err(Error::TrailingBytes { extra: rest.len() })
+    }
+}
+
 /// Check a signature over `body` under `domain`, made by `public_key`.
 ///
 /// # Errors
@@ -169,6 +199,32 @@ mod tests {
         assert_eq!(MAX_FRAME_LEN, 4096);
         assert_eq!(DOMAIN_LEN, 16);
         assert_eq!(SIGNATURE_LEN, 64);
+    }
+
+    #[test]
+    fn padding_a_message_is_refused_rather_than_ignored() {
+        // The decoder underneath stops at the end of the message and discards the
+        // rest in silence. Verified here rather than assumed: this test constructs
+        // exactly the bytes an attacker would, and it is the one that fails if the
+        // decoder is ever swapped back.
+        #[derive(Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+        struct Small {
+            n: u32,
+        }
+        let body = postcard::to_stdvec(&Small { n: 333 }).expect("encodes");
+        assert_eq!(decode::<Small>(&body), Ok(Small { n: 333 }));
+
+        let mut padded = body.clone();
+        padded.extend_from_slice(b"nobody wrote this");
+        assert_eq!(
+            decode::<Small>(&padded),
+            Err(Error::TrailingBytes { extra: 17 })
+        );
+        // And the padding really would have been silently accepted otherwise.
+        assert_eq!(
+            postcard::from_bytes::<Small>(&padded).expect("the decoder underneath"),
+            Small { n: 333 }
+        );
     }
 
     #[test]
