@@ -28,6 +28,8 @@ pub mod identity;
 pub mod presence;
 pub mod ratio;
 pub mod signal;
+pub mod subject;
+pub mod transfer;
 pub mod wire;
 
 pub use epoch::{EPOCH_SECONDS, Epoch};
@@ -37,4 +39,6 @@ pub use identity::{Identity, KeyClass, NodeId};
 pub use presence::{Attendance, Census, Standing, WINDOW_EPOCHS};
 pub use ratio::{Fraction, PER_MILLE};
 pub use signal::{SIGNAL_COUNT, Signal, Tally};
+pub use subject::Subject;
+pub use transfer::Transfer;
 pub use wire::{Error as WireError, MAX_FRAME_LEN};
