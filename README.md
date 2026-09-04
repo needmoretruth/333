@@ -120,7 +120,7 @@ Version 0.0.1, which is to say: almost nothing, honestly labelled.
 - [x] Invitations, so a newcomer knows where to look
 - [ ] The gate, with the waiting that follows it
 - [ ] The three witnesses and the question they put
-- [ ] The record, kept as a chain of hashes
+- [x] The record, kept as a chain of hashes
 - [ ] The 333 words themselves
 
 What is written on the wire keeps moving until the release that freezes it. The parts

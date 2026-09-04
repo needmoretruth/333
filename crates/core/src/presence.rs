@@ -36,7 +36,14 @@ pub const REQUIRED: Fraction = Fraction {
 };
 
 /// What a record says about one epoch.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+///
+/// FROZEN, including the order of the variants. This goes on the wire inside a chain
+/// entry, and the encoding writes an enum as the index of its variant and nothing
+/// else — no name, no tag. Reordering them is a protocol break that compiles cleanly
+/// and turns every past presence into an absence.
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub enum Attendance {
     /// At least one of the three verifiers got a valid answer. One is enough: an
     /// answer carries a signature, and silence carries nothing.
@@ -240,6 +247,24 @@ mod tests {
             .enumerate()
             .map(|(i, a)| (Epoch(from + i as u64), *a))
             .collect()
+    }
+
+    #[test]
+    fn the_variants_keep_the_positions_they_are_written_down_as() {
+        // Written as literal bytes because the encoding identifies a variant by its
+        // position alone. Recomputing these from the enum would assert nothing.
+        for (attendance, expected) in [
+            (Attendance::Present, 0_u8),
+            (Attendance::Absent, 1),
+            (Attendance::Excluded, 2),
+        ] {
+            let encoded = postcard::to_stdvec(&attendance).expect("encodes");
+            assert_eq!(encoded, vec![expected], "{attendance:?}");
+            assert_eq!(
+                postcard::from_bytes::<Attendance>(&encoded).expect("decodes"),
+                attendance
+            );
+        }
     }
 
     #[test]

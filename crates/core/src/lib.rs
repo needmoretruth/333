@@ -22,6 +22,7 @@
 )]
 
 pub mod attestation;
+pub mod chain;
 pub mod challenge;
 pub mod draw;
 pub mod epoch;
@@ -36,6 +37,7 @@ pub mod transfer;
 pub mod wire;
 
 pub use attestation::{Attestation, Testimony, judge};
+pub use chain::{Entry, Head};
 pub use challenge::{Answer, Challenge, RESPONSE_WINDOW_SECONDS};
 pub use draw::{VERIFIERS_PER_EPOCH, verifiers_for};
 pub use epoch::{EPOCH_SECONDS, Epoch};
