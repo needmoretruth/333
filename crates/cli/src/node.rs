@@ -44,6 +44,31 @@ const ADMISSIONS_FILE: &str = "admissions.log";
 /// The directory holding one file per epoch of statements.
 const WINDOW_DIR: &str = "statements";
 
+/// How much of the past a node holds on to.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Keeping {
+    /// The window standing is measured over, and nothing older. The ordinary case.
+    TheWindow,
+    /// Everything, for ever.
+    ///
+    /// It buys the node no authority whatsoever. Every statement carries its own
+    /// signature, so a copy kept by a stranger verifies exactly as well as one kept
+    /// here, and there is no canonical archive to be. What it buys is that somebody,
+    /// somewhere, still has the bytes — which nothing in this protocol requires and
+    /// nobody can be made to do.
+    Everything,
+}
+
+impl Keeping {
+    /// How many epochs that is.
+    const fn epochs(self) -> u64 {
+        match self {
+            Self::TheWindow => n333_core::presence::WINDOW_EPOCHS,
+            Self::Everything => u64::MAX,
+        }
+    }
+}
+
 /// The file holding what nodes have said about where they are.
 const WHEREABOUTS_FILE: &str = "whereabouts.log";
 
@@ -100,6 +125,8 @@ pub(crate) struct Opened {
     pub(crate) addresses: usize,
     /// Whether it has the file.
     pub(crate) has_the_file: bool,
+    /// How much of the past this node holds on to.
+    pub(crate) keeping: Keeping,
     /// What reading the admissions produced.
     pub(crate) read: Read,
 }
@@ -110,7 +137,11 @@ impl Node {
     /// # Errors
     /// Fails if the identity cannot be read or written, a log cannot be opened, or
     /// this node's own chain does not verify.
-    pub(crate) fn open(mistrust: &Mistrust, home: &Path) -> anyhow::Result<(Self, Opened)> {
+    pub(crate) fn open(
+        mistrust: &Mistrust,
+        home: &Path,
+        keeping: Keeping,
+    ) -> anyhow::Result<(Self, Opened)> {
         let (identity, origin) = identity_file::load_or_create(mistrust, home)?;
 
         let (mut chain, chain_opened) =
@@ -122,7 +153,8 @@ impl Node {
             Log::open(&home.join(ADMISSIONS_FILE)).context("opening the admissions")?;
         let (roll, read) = Roll::from_halves(&admissions.read_all().context("reading them")?);
 
-        let window = Window::open(&home.join(WINDOW_DIR)).context("opening the statements")?;
+        let window = Window::keeping(&home.join(WINDOW_DIR), keeping.epochs())
+            .context("opening the statements")?;
 
         let (mut whereabouts, _) =
             Log::open(&home.join(WHEREABOUTS_FILE)).context("opening the addresses")?;
@@ -137,6 +169,7 @@ impl Node {
             members: roll.len(),
             addresses: directory.len(),
             has_the_file: subject.is_some(),
+            keeping,
             read,
         };
         Ok((

@@ -223,8 +223,17 @@ An onion address is the answer to being reachable from anywhere without saying w
 you are, and it needs no `--announce`: the node knows the address it raised, and tells
 people that one.
 
-Everything your node is lives in one directory: its name, and Tor's state if it uses
-Tor. Two nodes on one machine are two directories.
+By default a node keeps what others said for the last 333 epochs — the window standing
+is read over — and then deletes it, because after that nothing said about those epochs
+can change anybody's standing. If you would rather the bytes still existed somewhere,
+`--keep-everything` stops the deleting. It confers nothing at all: every statement
+carries its own signature and verifies the same wherever it was kept, so there is no
+archive of record and nobody becomes an archivist by keeping one. The files are plain
+files under `statements/` in your node's directory; copying them somewhere is a copy,
+and that is the whole of what an archive is here.
+
+Everything your node is lives in one directory: its name, what it has been told, and
+Tor's state if it uses Tor. Two nodes on one machine are two directories.
 
 ```sh
 ./target/release/333 --data-dir ./node-a serve --bind 127.0.0.1:3333

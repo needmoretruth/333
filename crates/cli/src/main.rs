@@ -71,6 +71,15 @@ struct Cli {
     #[arg(long, global = true)]
     dangerously_trust_directory_permissions: bool,
 
+    /// Keep every statement for ever, instead of the window standing is read over.
+    ///
+    /// It confers nothing. Every statement carries its own signature and verifies the
+    /// same wherever it was kept, so there is no archive of record and nobody becomes
+    /// an archivist by doing this. It is for people who would rather the bytes still
+    /// existed somewhere, which nothing here requires of anyone.
+    #[arg(long, global = true)]
+    keep_everything: bool,
+
     #[command(subcommand)]
     command: Command,
 }
@@ -147,10 +156,15 @@ async fn main() -> anyhow::Result<()> {
     let common = Common {
         paths: cli.data_dir.map_or_else(NodePaths::default_home, NodePaths::at),
         timeout: Duration::from_secs(cli.timeout),
+        keeping: if cli.keep_everything {
+            node::Keeping::Everything
+        } else {
+            node::Keeping::TheWindow
+        },
         trust_directory_permissions: cli.dangerously_trust_directory_permissions,
     };
 
-    match cli.command {
+    let done = match cli.command {
         Command::Id => commands::id::run(&common),
         Command::Serve {
             bind,
@@ -162,5 +176,20 @@ async fn main() -> anyhow::Result<()> {
         Command::Status => commands::status::run(&common).await,
         Command::Join { address } => commands::join::run(&common, &address).await,
         Command::Ping { address } => commands::ping::run(&common, &address).await,
+    };
+    match done {
+        // A reader that walked away — `333 status | head` — is not a failure and has
+        // nothing to be told about it. Anything else is reported as it is.
+        Err(e) if walked_away(&e) => Ok(()),
+        other => other,
     }
+}
+
+/// Did this end because whoever was reading the output closed the pipe?
+fn walked_away(error: &anyhow::Error) -> bool {
+    error.chain().any(|cause| {
+        cause
+            .downcast_ref::<std::io::Error>()
+            .is_some_and(|io| io.kind() == std::io::ErrorKind::BrokenPipe)
+    })
 }

@@ -23,7 +23,7 @@ use crate::node::Node;
 /// Fails if this node cannot be opened, the peer cannot be reached, it will not hand
 /// the file over, or what it hands over is not the file.
 pub(crate) async fn run(common: &Common, address: &n333_net::PeerAddress) -> anyhow::Result<()> {
-    let (node, opened) = Node::open(&common.mistrust(), common.paths.root())?;
+    let (node, opened) = Node::open(&common.mistrust(), common.paths.root(), common.keeping)?;
     println!("name     {}", node.identity().node_id());
     crate::commands::report_opening(&opened);
     println!("knocking {address}");

@@ -22,6 +22,8 @@ pub(crate) struct Common {
     pub(crate) paths: crate::paths::NodePaths,
     /// How long to wait for a step that talks to the Tor network.
     pub(crate) timeout: Duration,
+    /// How much of the past this node holds on to.
+    pub(crate) keeping: crate::node::Keeping,
     /// Whether to accept state directories other users can read.
     ///
     /// One bool, not two policies: arti and this client have to agree about whether a
@@ -104,6 +106,13 @@ pub(crate) fn report_opening(opened: &crate::node::Opened) {
     }
     if opened.has_the_file {
         println!("holding  the file, and able to pass it on");
+    }
+    if opened.keeping == crate::node::Keeping::Everything {
+        println!(
+            "keeping  everything, for ever. It buys this node nothing: every statement\n\
+             \x20        carries its own signature and verifies the same wherever it was\n\
+             \x20        kept. There is no archive of record and there is no archivist."
+        );
     }
     if opened.read.unreadable != 0 {
         println!(

@@ -57,7 +57,7 @@ pub(crate) async fn run(
     if bind.is_none() && !tor {
         bail!("nothing would be listening: --no-direct needs --tor");
     }
-    let (node, opened) = Node::open(&common.mistrust(), common.paths.root())?;
+    let (node, opened) = Node::open(&common.mistrust(), common.paths.root(), common.keeping)?;
     let node = Arc::new(node);
     println!("name     {}", node.identity().node_id());
     crate::commands::report_opening(&opened);

@@ -12,6 +12,7 @@
 //! everyone was dead would be the single most destructive thing this client could do.
 
 use std::collections::BTreeSet;
+use std::io::Write as _;
 
 use anyhow::Context as _;
 use n333_core::extinction::{Remaining, Verdict};
@@ -27,22 +28,27 @@ use crate::node::Node;
 /// # Errors
 /// Fails if the node's directory cannot be opened or its own record does not verify.
 pub(crate) async fn run(common: &Common) -> anyhow::Result<()> {
-    let (node, opened) = Node::open(&common.mistrust(), common.paths.root())?;
+    // Written through one locked handle rather than with `println!`, so that a reader
+    // that walks away — `333 status | head` — ends this quietly instead of panicking
+    // inside the print macro, where nothing can catch it.
+    let mut stdout = std::io::stdout().lock();
+    let out = &mut stdout;
+    let (node, opened) = Node::open(&common.mistrust(), common.paths.root(), common.keeping)?;
     let now = Epoch::now();
 
-    println!("name     {}", node.identity().node_id());
-    println!("epoch    {}", now.0);
+    writeln!(out, "name     {}", node.identity().node_id())?;
+    writeln!(out, "epoch    {}", now.0)?;
     crate::commands::report_opening(&opened);
-    println!();
+    writeln!(out)?;
 
     let answering = node.answering(now).await?;
-    the_count(&node, &answering, now).await?;
-    println!();
-    this_node(&node, now).await?;
-    println!();
-    what_was_said(&node, &answering, now).await?;
-    println!();
-    the_silence(&node, now).await
+    the_count(out, &node, &answering, now).await?;
+    writeln!(out)?;
+    this_node(out, &node, now).await?;
+    writeln!(out)?;
+    what_was_said(out, &node, &answering, now).await?;
+    writeln!(out)?;
+    the_silence(out, &node, now).await
 }
 
 /// How many of us are answering, first and largest.
@@ -50,6 +56,7 @@ pub(crate) async fn run(common: &Common) -> anyhow::Result<()> {
 /// The count that decides everything is the number answering, never the number of
 /// names on the roll. A roll can only grow; only the first number can reach zero.
 async fn the_count(
+    out: &mut impl std::io::Write,
     node: &Node,
     answering: &BTreeSet<[u8; 32]>,
     now: Epoch,
@@ -59,42 +66,42 @@ async fn the_count(
     let active = u64::try_from(answering.len()).unwrap_or(u64::MAX);
     let census = Census::of(active, 0, members.saturating_sub(active));
 
-    println!("ANSWERING  {}", census.active());
-    println!("silent     {}", census.inactive());
-    println!("           ─────");
-    println!("roll       {}", census.roll());
-    println!();
-    println!(
+    writeln!(out, "ANSWERING  {}", census.active())?;
+    writeln!(out, "silent     {}", census.inactive())?;
+    writeln!(out, "           ─────")?;
+    writeln!(out, "roll       {}", census.roll())?;
+    writeln!(out)?;
+    writeln!(out, 
         "That first number is everyone this node holds a signature for in epoch {} or\n\
          {}. It is what this node saw. Somebody else saw something else.",
         now.0.saturating_sub(1),
         now.0
-    );
+    )?;
     Ok(())
 }
 
 /// What this node's own record says about this node.
-async fn this_node(node: &Node, now: Epoch) -> anyhow::Result<()> {
+async fn this_node(out: &mut impl std::io::Write, node: &Node, now: Epoch) -> anyhow::Result<()> {
     let Some(joined) = node.joined_in().await else {
-        println!("You are on nobody's roll. Nobody has handed you the file, so there is\n\
-                  nothing yet for anyone to witness. `333 join` is the whole of it.");
+        writeln!(out, "You are on nobody's roll. Nobody has handed you the file, so there is\n\
+                  nothing yet for anyone to witness. `333 join` is the whole of it.")?;
         return Ok(());
     };
     let counted_from = n333_core::enrollment::active_from(joined);
     if now.0 < counted_from.0 {
-        println!(
+        writeln!(out, 
             "Given the file in epoch {}, and counted from epoch {} — {} to go.\n\
              Answer everything asked of you until then. None of it is banked, and all\n\
              of it is watched.",
             joined.0,
             counted_from.0,
             epochs(counted_from.0 - now.0)
-        );
+        )?;
         return Ok(());
     }
 
     let standing = presence::standing_at(now, node.own_record().await?);
-    println!("{}", read_standing(&standing));
+    writeln!(out, "{}", read_standing(&standing))?;
     Ok(())
 }
 
@@ -104,6 +111,7 @@ async fn this_node(node: &Node, now: Epoch) -> anyhow::Result<()> {
 /// is a thing a node did, and a share read against speakers alone would climb as fewer
 /// of us said anything.
 async fn what_was_said(
+    out: &mut impl std::io::Write,
     node: &Node,
     answering: &BTreeSet<[u8; 32]>,
     now: Epoch,
@@ -117,22 +125,22 @@ async fn what_was_said(
     let tally = Tally::of(heard.against(everyone.iter()));
 
     if tally.spoken() == 0 {
-        println!(
+        writeln!(out, 
             "Nobody has said anything in epoch {}. There are {} things that can be\n\
              said and no words for any of them yet.",
             now.0,
             SIGNAL_COUNT
-        );
+        )?;
         return Ok(());
     }
 
-    println!(
+    writeln!(out, 
         "SAID in epoch {} — {} of the {} of us this node can see spoke, {} did not.",
         now.0,
         tally.spoken(),
         tally.observed(),
         tally.silent()
-    );
+    )?;
     // Every signal anybody said, in index order, and a count of the ones nobody did.
     // A row of zero carries nothing that the total does not already carry, and three
     // hundred of them would bury the handful that do. Nothing is chosen here: the
@@ -149,13 +157,13 @@ async fn what_was_said(
         } else {
             ""
         };
-        println!("  #{:<4} {count:>5}  {share:>6}{mark}", signal.index());
+        writeln!(out, "  #{:<4} {count:>5}  {share:>6}{mark}", signal.index())?;
     }
-    println!("  the other {} of the {SIGNAL_COUNT} were not said.", SIGNAL_COUNT - said);
-    println!(
+    writeln!(out, "  the other {} of the {SIGNAL_COUNT} were not said.", SIGNAL_COUNT - said)?;
+    writeln!(out, 
         "\nNo winner is picked and none of this decides anything. It is what reached\n\
          this node. The node beside you heard something else and is not wrong."
-    );
+    )?;
     Ok(())
 }
 
@@ -187,32 +195,46 @@ fn read_standing(standing: &Standing) -> String {
 }
 
 /// Whether anybody is here, and what is left if nobody is.
-async fn the_silence(node: &Node, now: Epoch) -> anyhow::Result<()> {
+async fn the_silence(
+    out: &mut impl std::io::Write,
+    node: &Node,
+    now: Epoch,
+) -> anyhow::Result<()> {
     let vigil = node.watched(now).await.context("reading the watch")?;
     match vigil.verdict() {
-        Verdict::NothingToSay => println!(
+        Verdict::NothingToSay => writeln!(
+            out,
             "No one has ever answered this node. That is not evidence of anything: it\n\
              is what a node looks like before it has been anywhere."
-        ),
-        Verdict::Alive => println!("Somebody is here. Nothing further is owed to the arithmetic."),
-        Verdict::Waiting { silent, needed } => println!(
+        )?,
+        Verdict::Alive => writeln!(
+            out,
+            "Somebody is here. Nothing further is owed to the arithmetic."
+        )?,
+        Verdict::Waiting { silent, needed } => writeln!(
+            out,
             "Nobody has answered for {}. This node has said nothing about it and will\n\
              not until {}, and only then if it is running for every one of them.",
             epochs(silent),
             epochs(needed)
-        ),
+        )?,
         Verdict::Ended { since } => {
-            println!(
+            writeln!(
+                out,
                 "Nobody has answered through {} of unbroken watching. The last of us\n\
                  stopped in epoch {}.",
                 epochs(n333_core::extinction::SILENT_EPOCHS_BEFORE_THE_END),
                 since.0
-            );
+            )?;
             match vigil.remaining_at(epoch::unix_now_seconds()) {
-                Some(Remaining { years, days }) => println!(
+                Some(Remaining { years, days }) => writeln!(
+                    out,
                     "\nNobody left. {years} years and {days} days until it is gone."
-                ),
-                None => println!("\nNobody left, and the last of the years has run out."),
+                )?,
+                None => writeln!(
+                    out,
+                    "\nNobody left, and the last of the years has run out."
+                )?,
             }
         }
     }

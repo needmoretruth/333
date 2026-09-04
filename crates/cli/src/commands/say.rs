@@ -23,7 +23,7 @@ use crate::node::Node;
 /// Fails if the index is not one of the 333, if this node is on nobody's roll, if it
 /// has already spoken this epoch, or if the utterance cannot be written.
 pub(crate) async fn run(common: &Common, index: u16) -> anyhow::Result<()> {
-    let (node, _opened) = Node::open(&common.mistrust(), common.paths.root())?;
+    let (node, _opened) = Node::open(&common.mistrust(), common.paths.root(), common.keeping)?;
     let now = Epoch::now();
 
     let Some(signal) = Signal::new(index) else {
