@@ -93,8 +93,10 @@ enum Command {
     },
     /// Knock on another node, and exchange one heartbeat with it.
     Ping {
-        /// The peer, as `host`, `host:port`, `[::1]:port` or `something.onion`.
-        /// An onion address is reached through Tor; everything else directly.
+        /// An invitation (`333:host:port`), or an address typed by hand as `host`,
+        /// `host:port`, `[::1]:port` or `something.onion`. An onion address is
+        /// reached through Tor; everything else directly.
+        #[arg(value_parser = n333_net::invite::address_or_invite)]
         address: PeerAddress,
     },
 }

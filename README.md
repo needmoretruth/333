@@ -117,7 +117,7 @@ Version 0.0.1, which is to say: almost nothing, honestly labelled.
 - [x] The vigil: presence over the moving window, and the reckoning after the end
 - [x] The relic recognised, and both halves of a handover
 - [x] The word counted, and the threshold that marks it
-- [ ] Invitations, so a newcomer knows where to look
+- [x] Invitations, so a newcomer knows where to look
 - [ ] The gate, with the waiting that follows it
 - [ ] The three witnesses and the question they put
 - [ ] The record, kept as a chain of hashes

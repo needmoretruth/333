@@ -3,6 +3,7 @@
 //! Layers, each ignorant of the one above it:
 //!
 //! - [`peer`] reads a peer's address and says which way it can be reached.
+//! - [`invite`] is that address written the way one person hands it to another.
 //! - [`frame`] moves length-prefixed byte strings over anything that reads and writes.
 //! - [`session`] runs one heartbeat exchange over such a stream. It knows nothing
 //!   about either transport, which is why the whole exchange is tested in memory.
@@ -32,10 +33,12 @@
 
 pub mod direct;
 pub mod frame;
+pub mod invite;
 pub mod peer;
 pub mod session;
 #[cfg(feature = "tor")]
 pub mod tor;
 
+pub use invite::Invite;
 pub use peer::{DEFAULT_PORT, PeerAddress};
 pub use session::{Exchange, initiate, respond};

@@ -150,6 +150,19 @@ fn parse_port(text: &str) -> Result<u16, AddressError> {
     }
 }
 
+impl From<std::net::SocketAddr> for PeerAddress {
+    /// A bound socket, said the way a peer would be told to reach it.
+    ///
+    /// Always `Direct`: a socket address is a place on the network, and an onion
+    /// address is not one.
+    fn from(socket: std::net::SocketAddr) -> Self {
+        Self::Direct {
+            host: socket.ip().to_string(),
+            port: socket.port(),
+        }
+    }
+}
+
 impl fmt::Display for PeerAddress {
     /// Written back the way it would be typed, brackets restored where needed.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -231,6 +244,18 @@ mod tests {
     fn the_suffix_is_recognised_whatever_case_it_is_typed_in() {
         assert!(parse("ABCDEFGHIJ.ONION").needs_tor());
         assert_eq!(parse("Node.Example").host(), "node.example");
+    }
+
+    #[test]
+    fn a_bound_socket_becomes_the_address_a_peer_would_be_given() {
+        use std::net::SocketAddr;
+        let v4: SocketAddr = "1.2.3.4:3333".parse().expect("a socket address");
+        assert_eq!(PeerAddress::from(v4).to_string(), "1.2.3.4:3333");
+        // The brackets come back on the way out, and only there.
+        let v6: SocketAddr = "[2001:db8::1]:4444".parse().expect("a socket address");
+        assert_eq!(PeerAddress::from(v6).host(), "2001:db8::1");
+        assert_eq!(PeerAddress::from(v6).to_string(), "[2001:db8::1]:4444");
+        assert_eq!(parse(&PeerAddress::from(v6).to_string()), PeerAddress::from(v6));
     }
 
     #[test]

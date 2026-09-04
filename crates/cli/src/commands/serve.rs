@@ -11,7 +11,7 @@ use std::time::Duration;
 use anyhow::{Context as _, bail};
 use futures::{AsyncRead, AsyncWrite};
 use n333_core::Identity;
-use n333_net::{direct, respond, session};
+use n333_net::{Invite, PeerAddress, direct, respond, session};
 use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 
 use crate::commands::{Common, describe};
@@ -62,7 +62,9 @@ pub(crate) async fn run(
             .await
             .with_context(|| format!("listening on {bind}"))?;
         // True the instant the socket is bound, which is why it is printed here.
-        println!("answer   {}", listener.address()?);
+        let bound = listener.address()?;
+        println!("answer   {bound}");
+        announce(bound);
         let (identity, gate) = (Arc::clone(&identity), Arc::clone(&gate));
         listening.spawn(async move { answer_direct(listener, identity, gate).await });
     }
@@ -78,6 +80,24 @@ pub(crate) async fn run(
         finished.context("a listener stopped unexpectedly")??;
     }
     Ok(())
+}
+
+/// Say what to hand somebody so they can find this node.
+///
+/// A wildcard bind is the ordinary case and it is the one where this node genuinely
+/// does not know the answer: it is listening on every interface and has no idea which
+/// address of the machine, if any, a stranger can reach. Printing `333:0.0.0.0:3333`
+/// would look like an invitation and work for nobody, so it says what is missing
+/// instead.
+fn announce(bound: SocketAddr) {
+    if bound.ip().is_unspecified() {
+        println!(
+            "invite   333:<an address others can reach>:{}",
+            bound.port()
+        );
+    } else {
+        println!("invite   {}", Invite::to(PeerAddress::from(bound)));
+    }
 }
 
 /// Answer every peer that opens a socket to this node.
@@ -139,6 +159,7 @@ mod onion {
     use n333_core::Identity;
     use n333_net::peer::ONION_PORT;
     use n333_net::tor::SERVICE_NICKNAME;
+    use n333_net::{Invite, PeerAddress};
     use n333_net::tor::host::OnionHost;
     use tokio::sync::Semaphore;
 
@@ -162,7 +183,14 @@ mod onion {
             .await
             .with_context(|| format!("not reachable after {} s", common.timeout.as_secs()))?
             .context("waiting for the service to be reachable")?;
-        println!("unseen   {}:{ONION_PORT}", host.address()?);
+        let address = PeerAddress::Onion {
+            host: host.address()?,
+            port: ONION_PORT,
+        };
+        println!("unseen   {address}");
+        // Unlike a socket, this one is complete: an onion address is reachable from
+        // anywhere or from nowhere, and it is now known to be reachable.
+        println!("invite   {}", Invite::to(address));
 
         loop {
             let stream = host.accept().await.context("accepting a peer")?;
