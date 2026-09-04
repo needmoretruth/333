@@ -45,7 +45,7 @@ pub const DIGEST: [u8; 32] = [
 ///
 /// Holding one of these is a claim this program can only make about bytes that came
 /// from outside it.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Subject {
     /// The content, exactly as received.
     content: [u8; LENGTH],

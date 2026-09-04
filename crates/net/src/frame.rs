@@ -33,6 +33,19 @@ pub enum Error {
     },
 }
 
+/// A message that arrived, kept alongside the bytes it arrived as.
+///
+/// The bytes are what gets stored and passed on. Re-encoding a value somebody else
+/// signed would mean storing something they never signed, and re-signing it with this
+/// node's key would mean storing a statement they never made.
+#[derive(Debug, Clone)]
+pub struct AsReceived<T> {
+    /// The message, checked.
+    pub message: T,
+    /// The frame exactly as it arrived.
+    pub frame: Vec<u8>,
+}
+
 /// Write one frame.
 ///
 /// The stream is flushed: arti buffers writes, and an unflushed heartbeat is a

@@ -7,8 +7,11 @@
 //! - [`frame`] moves length-prefixed byte strings over anything that reads and writes.
 //! - [`session`] runs one heartbeat exchange over such a stream. It knows nothing
 //!   about either transport, which is why the whole exchange is tested in memory.
+//! - [`asked`] says which of the two things a peer wants once the heartbeat is done.
 //! - [`liveness`] is the round that follows it when one node was drawn to ask another
 //!   whether it is awake.
+//! - [`handover`] is the other one: giving the file to somebody who does not have it,
+//!   which is the only way anybody ever becomes a member.
 //! - [`direct`] supplies a stream by opening a socket. This is the ordinary case.
 //! - [`tor`] supplies one through an onion service, for a node that needs its address
 //!   not to be seen. Present unless the `tor` feature is turned off.
@@ -33,8 +36,10 @@
     )
 )]
 
+pub mod asked;
 pub mod direct;
 pub mod frame;
+pub mod handover;
 pub mod invite;
 pub mod liveness;
 pub mod peer;
@@ -42,6 +47,7 @@ pub mod session;
 #[cfg(feature = "tor")]
 pub mod tor;
 
+pub use asked::{Asked, take_request};
 pub use invite::Invite;
 pub use peer::{DEFAULT_PORT, PeerAddress};
 pub use session::{Exchange, initiate, respond};

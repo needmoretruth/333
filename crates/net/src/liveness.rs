@@ -33,7 +33,7 @@ use n333_core::challenge::{self, Answer, Challenge, Exchange, SignedChallenge};
 use n333_core::chain::Head;
 use n333_core::{Epoch, Identity, draw};
 
-use crate::frame;
+use crate::frame::{self, AsReceived};
 
 /// Things that can go wrong during one round.
 #[derive(Debug, thiserror::Error)]
@@ -116,13 +116,40 @@ where
     })
 }
 
+/// Read whatever the peer says after the heartbeat, if anything.
+///
+/// `None` means the peer said its piece and hung up, which is the ordinary shape of a
+/// node that only wanted to exchange heartbeats.
+///
+/// # Errors
+/// Fails if the stream fails mid-frame, or the frame is not a challenge.
+pub async fn take_question<S>(
+    stream: &mut S,
+) -> Result<Option<AsReceived<SignedChallenge>>, Error>
+where
+    S: AsyncRead + Unpin,
+{
+    match frame::read_frame(stream).await {
+        Ok(frame) => Ok(Some(AsReceived {
+            message: challenge::open_challenge(&frame)?,
+            frame,
+        })),
+        Err(frame::Error::Io(_)) => Ok(None),
+        Err(e) => Err(e.into()),
+    }
+}
+
 /// What the prover ends a round holding.
 #[derive(Debug, Clone)]
 pub struct Answered {
     /// The challenge and this node's answer: two signatures, from two nodes.
     pub receipt: Exchange,
+    /// The verifier's challenge, exactly as it arrived.
+    pub challenge_frame: Vec<u8>,
+    /// This node's answer, exactly as it was sent.
+    pub answer_frame: Vec<u8>,
     /// The verifier's statement, if it handed one back.
-    pub attestation: Option<SignedAttestation>,
+    pub attestation: Option<AsReceived<SignedAttestation>>,
 }
 
 /// Read the question, answer it, and take the statement handed back.
@@ -138,25 +165,28 @@ pub async fn answer<S>(
     prover: &Identity,
     head: Head,
     roll: &BTreeSet<[u8; 32]>,
-    question: SignedChallenge,
+    question: AsReceived<SignedChallenge>,
 ) -> Result<Answered, Error>
 where
     S: AsyncRead + AsyncWrite + Unpin,
 {
-    let epoch = question.challenge.epoch();
+    let epoch = question.message.challenge.epoch();
     if !draw::is_entitled(
         epoch,
         &prover.public_key(),
-        &question.challenge.verifier,
+        &question.message.challenge.verifier,
         roll,
     ) {
         return Err(Error::NotEntitled { epoch: epoch.0 });
     }
 
-    let reply = Answer::to(&question.challenge, prover, head.digest, head.length);
-    let sealed = reply.seal(prover)?;
-    frame::write_frame(stream, &sealed).await?;
-    let receipt = Exchange::assemble(question, challenge::open_answer(&sealed)?)?;
+    let reply = Answer::to(&question.message.challenge, prover, head.digest, head.length);
+    let answer_frame = reply.seal(prover)?;
+    frame::write_frame(stream, &answer_frame).await?;
+    let receipt = Exchange::assemble(
+        question.message,
+        challenge::open_answer(&answer_frame)?,
+    )?;
 
     // The statement is a courtesy, not a requirement: a verifier that hangs up here
     // has still been answered, and the receipt above is what survives that.
@@ -168,7 +198,10 @@ where
             {
                 return Err(Error::NotOurs);
             }
-            Some(signed)
+            Some(AsReceived {
+                message: signed,
+                frame,
+            })
         }
         Err(frame::Error::Io(_)) => None,
         Err(e) => return Err(e.into()),
@@ -176,6 +209,8 @@ where
 
     Ok(Answered {
         receipt,
+        challenge_frame: question.frame,
+        answer_frame,
         attestation,
     })
 }
@@ -219,7 +254,7 @@ mod tests {
         let prover_key = prover.public_key();
 
         let answering = tokio::spawn(async move {
-            let question = challenge::open_challenge(&frame::read_frame(&mut b).await?)?;
+            let question = take_question(&mut b).await?.expect("a question arrives");
             answer(&mut b, &prover, head, &roll, question).await
         });
         let asked = ask(&mut a, &verifier, prover_key, epoch).await;
@@ -247,10 +282,12 @@ mod tests {
 
         // The prover holds both the verifier's statement and its own receipt.
         let held = answered.attestation.expect("the statement was handed back");
-        assert!(held.is_positive());
-        assert_eq!(held.attestation.prover, prover_key);
-        assert_eq!(held.attestation.verifier, verifier_key);
+        assert!(held.message.is_positive());
+        assert_eq!(held.message.attestation.prover, prover_key);
+        assert_eq!(held.message.attestation.verifier, verifier_key);
         assert_eq!(answered.receipt.epoch(), epoch);
+        // Kept as the bytes that arrived, not as something re-encoded here.
+        assert_eq!(held.frame, witnessed.attestation);
 
         // And a third party, holding only the published bytes, reads a presence.
         let published = attestation::open(&witnessed.attestation).expect("opens");
@@ -310,7 +347,7 @@ mod tests {
         let (a, b) = tokio::io::duplex(64 * 1024);
         let (mut a, mut b) = (a.compat(), b.compat());
         let answering = tokio::spawn(async move {
-            let question = challenge::open_challenge(&frame::read_frame(&mut b).await?)?;
+            let question = take_question(&mut b).await?.expect("a question arrives");
             answer(&mut b, &prover, Head::default(), &roll, question).await
         });
 

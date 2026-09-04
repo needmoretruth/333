@@ -1,4 +1,5 @@
-//! What other nodes said, kept for as long as it can still change a verdict.
+//! The statements a node holds about an epoch, kept for as long as they can still
+//! change a verdict.
 //!
 //! One file per epoch, each an append-only [`crate::log::Log`]. Forgetting an epoch is
 //! deleting a file, which is the cheapest operation a filesystem has and the only one
@@ -26,7 +27,8 @@ use crate::log::{Error, Log, Opened};
 /// The extension every epoch file carries.
 const EXTENSION: &str = "seg";
 
-/// Statements about other nodes, one file per epoch.
+/// Statements about an epoch — others' about this node, this node's about others,
+/// and the challenges and answers behind them — one file per epoch.
 pub struct Window {
     /// The directory holding the epoch files.
     root: PathBuf,
