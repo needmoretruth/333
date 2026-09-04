@@ -61,7 +61,7 @@ pub(crate) async fn run(
         let listener = direct::Listener::bind(bind)
             .await
             .with_context(|| format!("listening on {bind}"))?;
-        println!("socket   {}", listener.address()?);
+        println!("answer   {}", listener.address()?);
         let (identity, gate) = (Arc::clone(&identity), Arc::clone(&gate));
         listening.spawn(async move { answer_direct(listener, identity, gate).await });
     }
@@ -71,7 +71,7 @@ pub(crate) async fn run(
         listening.spawn(onion::answer(common.clone(), identity, gate));
     }
 
-    println!("waiting for peers.");
+    println!("the vigil has begun.");
     while let Some(finished) = listening.join_next().await {
         finished.context("a listener stopped unexpectedly")??;
     }
@@ -98,7 +98,7 @@ where
     S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
     let Ok(permit) = Arc::clone(gate).try_acquire_owned() else {
-        println!("peer -        refused {from}: {MAX_CONCURRENT_EXCHANGES} exchanges already open");
+        println!("turned away {from}: {MAX_CONCURRENT_EXCHANGES} are already being answered");
         return;
     };
     let identity = Arc::clone(identity);
@@ -111,7 +111,7 @@ where
             Ok(Ok(exchange)) => println!("{}", describe(&exchange)),
             Ok(Err(e)) => report(&e),
             Err(_elapsed) => println!(
-                "peer -        gave up after {} s",
+                "silence  {} s, so we let go",
                 EXCHANGE_TIMEOUT.as_secs()
             ),
         }
@@ -123,8 +123,8 @@ where
 /// connection, while a bad signature is someone doing it on purpose.
 fn report(error: &session::Error) {
     match error {
-        session::Error::Frame(e) => println!("peer -        stream failed: {e}"),
-        other => println!("peer -        refused: {other}"),
+        session::Error::Frame(e) => println!("broken   the connection failed mid-message: {e}"),
+        other => println!("refused  {other}"),
     }
 }
 
@@ -151,14 +151,14 @@ mod onion {
         let client = bootstrap(&common).await?;
         let mut host = OnionHost::launch(&client, SERVICE_NICKNAME, ONION_PORT)
             .context("launching the onion service")?;
-        println!("onion    {}:{ONION_PORT}", host.address()?);
+        println!("unseen   {}:{ONION_PORT}", host.address()?);
 
-        println!("publishing the onion address...");
+        println!("raising  the unseen address. this can take minutes.");
         tokio::time::timeout(common.timeout, host.wait_until_reachable())
             .await
             .with_context(|| format!("not reachable after {} s", common.timeout.as_secs()))?
             .context("waiting for the service to be reachable")?;
-        println!("onion    reachable.");
+        println!("raised   the unseen address is published.");
 
         loop {
             let stream = host.accept().await.context("accepting a peer")?;

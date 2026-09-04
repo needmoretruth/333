@@ -54,7 +54,7 @@ impl Common {
 #[cfg(feature = "tor")]
 pub(crate) async fn bootstrap(common: &Common) -> anyhow::Result<n333_net::tor::Client> {
     use anyhow::Context as _;
-    println!("connecting to the Tor network...");
+    println!("waking   Tor. the unseen road takes a while to open.");
     tokio::time::timeout(
         common.timeout,
         n333_net::tor::bootstrap(&common.paths.tor(), common.trust_directory_permissions),
@@ -65,15 +65,18 @@ pub(crate) async fn bootstrap(common: &Common) -> anyhow::Result<n333_net::tor::
 }
 
 /// One line describing what a completed exchange showed.
+///
+/// The parenthesis is the part that matters and the part most easily overstated: one
+/// of these two exchanges proves the peer was awake and the other does not.
 #[must_use]
 pub(crate) fn describe(exchange: &Exchange) -> String {
     let liveness = if exchange.proves_peer_was_live {
-        "answered our nonce"
+        "answered the challenge we chose"
     } else {
-        "spoke first"
+        "spoke first, which proves only that it spoke"
     };
     format!(
-        "peer {}  epoch {}  skew {:+}  ({liveness})",
+        "witness  {}  epoch {}  skew {:+}  ({liveness})",
         exchange.peer.node_id, exchange.peer.heartbeat.epoch, exchange.epoch_skew
     )
 }

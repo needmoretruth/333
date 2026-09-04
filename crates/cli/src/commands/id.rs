@@ -14,8 +14,8 @@ pub(crate) fn run(common: &Common) -> anyhow::Result<()> {
     match origin {
         Origin::Loaded => println!("name     {}", identity.node_id()),
         Origin::Created { attempts } => {
-            println!("name     {}  (new)", identity.node_id());
-            println!("search   {attempts} key pairs");
+            println!("name     {}", identity.node_id());
+            println!("called   after {attempts} keys were turned away");
         }
     }
     println!("home     {}", home.display());

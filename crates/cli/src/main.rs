@@ -39,7 +39,11 @@ use paths::NodePaths;
 
 /// One node of the 333 network.
 #[derive(Debug, Parser)]
-#[command(name = "333", version, about = "A node of the 333 network.")]
+#[command(
+    name = "333",
+    version,
+    about = "One node of 333. It keeps the hours, answers when asked, and passes the file on."
+)]
 struct Cli {
     /// Directory holding everything this node owns: its name, and Tor's state if it
     /// uses Tor.
@@ -54,7 +58,7 @@ struct Cli {
     #[arg(long, global = true, default_value_t = 300, value_name = "SECONDS")]
     timeout: u64,
 
-    /// Accept a data directory that other users on this machine can read.
+    /// Accept a directory that others on this machine can enter.
     ///
     /// Both this client and arti refuse to start on a loosely permissioned
     /// directory, which is the right default: that directory holds the only copy of
@@ -69,25 +73,25 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Command {
-    /// Show this node's name, creating an identity on first run.
+    /// Show this node's name, asking for one on first run.
     Id,
-    /// Answer heartbeats until interrupted.
+    /// Keep the vigil: answer whoever asks, until interrupted.
     Serve {
         /// Address and port to listen on.
         #[arg(long, default_value_t = default_bind(), value_name = "ADDR:PORT")]
         bind: SocketAddr,
 
-        /// Also publish an onion address, so peers can reach this node without
-        /// learning where it is. Starting Tor takes seconds to minutes.
+        /// Also raise an onion address, so others can reach this node without
+        /// learning where it is. Waking Tor takes seconds to minutes.
         #[arg(long)]
         tor: bool,
 
-        /// Do not listen on a socket at all. Only useful together with --tor, and
-        /// the only way to run a node whose address is nowhere on the wire.
+        /// Do not open a socket at all. Only useful with --tor, and the only way to
+        /// keep the vigil with your address nowhere on the wire.
         #[arg(long)]
         no_direct: bool,
     },
-    /// Reach another node and exchange one heartbeat.
+    /// Knock on another node, and exchange one heartbeat with it.
     Ping {
         /// The peer, as `host`, `host:port`, `[::1]:port` or `something.onion`.
         /// An onion address is reached through Tor; everything else directly.

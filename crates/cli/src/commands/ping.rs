@@ -21,7 +21,7 @@ pub(crate) async fn run(common: &Common, address: &PeerAddress) -> anyhow::Resul
     let (identity, _origin) =
         identity_file::load_or_create(&common.mistrust(), common.paths.root())?;
     println!("name     {}", identity.node_id());
-    println!("dialing  {address}");
+    println!("knocking {address}");
 
     let exchange = if address.needs_tor() {
         onion::exchange(common, address, &identity).await?
