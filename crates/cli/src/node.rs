@@ -17,20 +17,19 @@
 //! the alternative is discovering it is broken at the moment it has to be answered
 //! from, which is the moment it cannot be repaired.
 
-use std::collections::BTreeSet;
+mod people;
+mod record;
+mod words;
+
 use std::path::Path;
 
 use anyhow::Context as _;
 use fs_mistrust::Mistrust;
-use n333_core::attestation;
 use n333_core::chain::{self, Head};
-use n333_core::extinction::{Vigil, Watched};
-use n333_core::presence::{self, Attendance};
 use n333_core::roll::{Read, Roll};
 use n333_core::subject::{self, Subject};
-use n333_core::transfer::{self, Half};
-use n333_core::whereabouts::{self, Directory};
-use n333_core::{Epoch, Identity};
+use n333_core::whereabouts::Directory;
+use n333_core::Identity;
 use n333_store::{Log, Window};
 use tokio::sync::Mutex;
 
@@ -164,136 +163,9 @@ impl Node {
         &self.identity
     }
 
-    /// Where this node's record ends right now.
-    pub(crate) async fn head(&self) -> Head {
-        self.state.lock().await.head
-    }
-
-    /// The members this node knows of, in the shape the draw takes.
-    pub(crate) async fn roll(&self) -> BTreeSet<[u8; 32]> {
-        self.state.lock().await.roll.keys()
-    }
-
-    /// Keep a statement about some epoch.
-    ///
-    /// Nothing is checked here. A frame is kept as it arrived and judged when it is
-    /// read, which is what lets a statement this build does not understand still be
-    /// passed on by a build that does.
-    ///
-    /// # Errors
-    /// Fails if the file cannot be written.
-    pub(crate) async fn keep(&self, epoch: Epoch, frame: &[u8]) -> anyhow::Result<()> {
-        self.state
-            .lock()
-            .await
-            .window
-            .record(epoch, frame)
-            .with_context(|| format!("keeping a statement about epoch {}", epoch.0))
-    }
-
-    /// Everything held about one epoch.
-    ///
-    /// # Errors
-    /// Fails if the file cannot be read.
-    pub(crate) async fn statements(&self, epoch: Epoch) -> anyhow::Result<Vec<Vec<u8>>> {
-        self.state
-            .lock()
-            .await
-            .window
-            .read(epoch)
-            .with_context(|| format!("reading the statements about epoch {}", epoch.0))
-    }
-
-    /// Keep halves of admissions, and put anyone they complete on the roll.
-    ///
-    /// Unreadable halves are kept too. A half this build cannot open may still pair up
-    /// for a build that can, and the roll is rebuilt from the file every time anyway.
-    ///
-    /// # Errors
-    /// Fails if the file cannot be written or read back.
-    pub(crate) async fn admit(&self, halves: &[Vec<u8>]) -> anyhow::Result<usize> {
-        let mut state = self.state.lock().await;
-        for half in halves {
-            state
-                .admissions
-                .append(half)
-                .context("keeping an admission")?;
-        }
-        let frames = state
-            .admissions
-            .read_all()
-            .context("reading the admissions")?;
-        let (roll, _) = Roll::from_halves(&frames);
-        state.roll = roll;
-        Ok(state.roll.len())
-    }
-
     /// The file, if this node has it.
     pub(crate) async fn subject(&self) -> Option<Subject> {
         *self.subject.lock().await
-    }
-
-    /// Everything this node is willing to pass on to a peer.
-    ///
-    /// Addresses first, then admissions. Addresses because a node that does not know
-    /// where the members are cannot ask them anything, which makes every other kind of
-    /// statement moot; admissions because that is the only way a roll ever grows past
-    /// the one step a newcomer is handed at the door.
-    ///
-    /// Statements about epochs are not passed on. A node keeps those about itself,
-    /// because they are what it judges its own record from, and being a warehouse for
-    /// everybody else's is a job nobody asked for and nothing here needs done.
-    ///
-    /// The same run goes to a newcomer at the door, where it is the difference between
-    /// a node that can take part and one that knows nobody and nowhere.
-    ///
-    /// # Errors
-    /// Fails if the logs cannot be read.
-    pub(crate) async fn tidings(&self) -> anyhow::Result<Vec<Vec<u8>>> {
-        let mut state = self.state.lock().await;
-        let mut passed: Vec<Vec<u8>> = state
-            .directory
-            .frames()
-            .map(<[u8]>::to_vec)
-            .collect();
-        passed.extend(
-            state
-                .admissions
-                .read_all()
-                .context("reading the admissions")?,
-        );
-        passed.truncate(n333_net::frame::MAX_BATCH_FRAMES);
-        Ok(passed)
-    }
-
-    /// File what a peer passed on, each statement by what it opens as.
-    ///
-    /// Nothing is trusted about who handed these over, which is why there is no check
-    /// on that. A statement either opens under its own signature or it does not.
-    ///
-    /// # Errors
-    /// Fails if a log cannot be written.
-    pub(crate) async fn hear(&self, told: &[Vec<u8>]) -> anyhow::Result<Heard> {
-        let mut heard = Heard::default();
-        let mut admissions = Vec::new();
-        for frame in told {
-            if whereabouts::open(frame).is_ok() {
-                if self.note_address(frame).await? {
-                    heard.addresses += 1;
-                }
-            } else if transfer::open(frame, Half::Gave).is_ok()
-                || transfer::open(frame, Half::Received).is_ok()
-            {
-                admissions.push(frame.clone());
-            } else {
-                heard.unreadable += 1;
-            }
-        }
-        if !admissions.is_empty() {
-            let before = self.state.lock().await.roll.len();
-            heard.members = self.admit(&admissions).await?.saturating_sub(before);
-        }
-        Ok(heard)
     }
 
     /// Write the file down, now that somebody has handed it over.
@@ -308,204 +180,6 @@ impl Node {
         Ok(())
     }
 
-    /// Write one epoch's verdict into this node's own record.
-    ///
-    /// # Errors
-    /// Fails if the entry cannot be sealed or written.
-    pub(crate) async fn record(
-        &self,
-        epoch: Epoch,
-        attendance: n333_core::presence::Attendance,
-        evidence: [u8; 32],
-    ) -> anyhow::Result<Head> {
-        let mut state = self.state.lock().await;
-        let entry = chain::Entry::following(
-            Some(&state.head),
-            &self.identity,
-            epoch,
-            attendance,
-            evidence,
-        );
-        let frame = entry.seal(&self.identity).context("sealing the entry")?;
-        // The head moves only after the bytes are on the disk. A head advanced first
-        // and written second is a head that answers can commit to and nothing holds.
-        state.chain.append(&frame).context("writing the entry")?;
-        state.head = Head {
-            digest: n333_core::subject::digest_of(&frame),
-            length: state.head.length + 1,
-        };
-        Ok(state.head)
-    }
-
-    /// Keep a node's statement about where it is, if it is newer than what is held.
-    ///
-    /// # Errors
-    /// Fails if the file cannot be written.
-    pub(crate) async fn note_address(&self, frame: &[u8]) -> anyhow::Result<bool> {
-        let signed = whereabouts::open(frame).context("reading an address")?;
-        let mut state = self.state.lock().await;
-        if !state.directory.note(signed, frame.to_vec()) {
-            return Ok(false);
-        }
-        state
-            .whereabouts
-            .append(frame)
-            .context("keeping an address")?;
-        Ok(true)
-    }
-
-    /// Where a node last said it could be found.
-    pub(crate) async fn address_of(&self, node: &[u8; 32]) -> Option<String> {
-        self.state
-            .lock()
-            .await
-            .directory
-            .address_of(node)
-            .map(ToOwned::to_owned)
-    }
-
-    /// Where every node other than this one last said it could be found.
-    pub(crate) async fn where_others_are(&self) -> Vec<String> {
-        let me = self.identity.public_key();
-        self.state
-            .lock()
-            .await
-            .directory
-            .entries()
-            .filter(|(key, _)| **key != me)
-            .map(|(_, address)| address.to_owned())
-            .collect()
-    }
-
-    /// The epoch somebody handed this node the file, if anybody has.
-    ///
-    /// Absent for a node nobody has admitted — which is both a node that has not
-    /// joined and the one node that was never given the file by anybody.
-    pub(crate) async fn joined_in(&self) -> Option<Epoch> {
-        let key = self.identity.public_key();
-        self.state
-            .lock()
-            .await
-            .roll
-            .member(&key)
-            .map(|member| member.received_in)
-    }
-
-    /// The newest epoch this node's own record judges, if it has judged any.
-    pub(crate) async fn last_judged(&self) -> anyhow::Result<Option<Epoch>> {
-        let mut state = self.state.lock().await;
-        let frames = state.chain.read_all().context("reading this node's record")?;
-        let Some(last) = frames.last() else {
-            return Ok(None);
-        };
-        Ok(Some(chain::open(last).context("reading the last entry")?.entry.epoch()))
-    }
-
-    /// Mark this epoch as one this node was awake for.
-    ///
-    /// Written whether or not anything happens in it, because the difference between
-    /// an epoch nobody spoke in and an epoch this node was switched off for is the
-    /// whole of its right to say the network has ended.
-    ///
-    /// # Errors
-    /// Fails if the file cannot be created.
-    pub(crate) async fn keeping(&self, epoch: Epoch) -> anyhow::Result<()> {
-        self.state
-            .lock()
-            .await
-            .window
-            .touch(epoch)
-            .with_context(|| format!("marking epoch {} as kept", epoch.0))
-    }
-
-    /// This node's own record, epoch by epoch, the way anybody else would read it.
-    ///
-    /// # Errors
-    /// Fails if the record cannot be read, or an entry in it does not open.
-    pub(crate) async fn own_record(&self) -> anyhow::Result<Vec<(Epoch, Attendance)>> {
-        let mut state = self.state.lock().await;
-        let frames = state.chain.read_all().context("reading this node's record")?;
-        frames
-            .iter()
-            .map(|frame| {
-                let entry = chain::open(frame).context("reading an entry")?.entry;
-                Ok((entry.epoch(), entry.attendance))
-            })
-            .collect()
-    }
-
-    /// What this node watched, epoch by epoch, over everything it still holds.
-    ///
-    /// An epoch it was not running for is skipped, which breaks the run: a node cannot
-    /// vouch for what happened while it was not there.
-    ///
-    /// # Errors
-    /// Fails if the window cannot be listed or read.
-    pub(crate) async fn watched(&self, now: Epoch) -> anyhow::Result<Vigil> {
-        let state = self.state.lock().await;
-        let mut vigil = Vigil::new();
-        for number in presence::window(now).chain(std::iter::once(now.0)) {
-            let epoch = Epoch(number);
-            if !state.window.kept(epoch) {
-                continue;
-            }
-            let statements = state
-                .window
-                .read(epoch)
-                .with_context(|| format!("reading epoch {number}"))?;
-            vigil.watch(
-                epoch,
-                if statements.is_empty() {
-                    Watched::Nobody
-                } else {
-                    Watched::Someone
-                },
-            );
-        }
-        Ok(vigil)
-    }
-
-    /// Everyone this node holds signed evidence is answering, in this epoch or the last.
-    ///
-    /// Its own observation and nobody else's. Two nodes will not agree on this number
-    /// and are not meant to.
-    ///
-    /// # Errors
-    /// Fails if the window cannot be read.
-    pub(crate) async fn answering(&self, now: Epoch) -> anyhow::Result<BTreeSet<[u8; 32]>> {
-        let me = self.identity.public_key();
-        let state = self.state.lock().await;
-        let mut answering = BTreeSet::new();
-        for number in [now.0.saturating_sub(1), now.0] {
-            let epoch = Epoch(number);
-            for frame in state
-                .window
-                .read(epoch)
-                .with_context(|| format!("reading epoch {number}"))?
-            {
-                if let Ok(signed) = attestation::open(&frame)
-                    && signed.is_positive()
-                    && signed.attestation.prover != me
-                {
-                    answering.insert(signed.attestation.prover);
-                }
-            }
-        }
-        Ok(answering)
-    }
-
-    /// Forget statements about epochs that can no longer change anybody's standing.
-    ///
-    /// # Errors
-    /// Fails if a file cannot be removed.
-    pub(crate) async fn forget_old(&self, now: Epoch) -> anyhow::Result<usize> {
-        self.state
-            .lock()
-            .await
-            .window
-            .forget_before(now)
-            .context("forgetting old statements")
-    }
 }
 
 /// What filing a peer's statements changed.
@@ -515,6 +189,10 @@ pub(crate) struct Heard {
     pub(crate) addresses: usize,
     /// Members the admissions completed.
     pub(crate) members: usize,
+    /// Utterances kept, including ones already held: what a node said travels by
+    /// being repeated, so the same one arrives many times and that is the mechanism
+    /// working rather than a duplicate.
+    pub(crate) said: usize,
     /// Frames that opened as nothing this build knows.
     pub(crate) unreadable: usize,
 }
