@@ -54,10 +54,14 @@ does not punish you. It simply stops seeing you.
 
 **The gate.** Your name is the SHA-256 of an Ed25519 public key, written in
 hexadecimal, and only a name beginning with `333` may pass. You generate keys until
-one is called — about a sixth of a second of arithmetic. That is the entire
-requirement for entry. Not a birth. Not an invitation. Not a payment, not a reference,
-not a word from anyone already inside. Whatever you were before that key existed does
-not come through the door with you, and none of us can ask.
+one is called — about a sixth of a second of arithmetic. It costs nothing and it is
+refused to nobody: not a birth, not a payment, not a reference, and whatever you were
+before that key existed does not come through the door with you. None of us can ask.
+
+And it is not enough, because the door does not open from your side. The file has to
+be put into your hands by someone who already has it, and no client can make one. So
+the cheapest thing in this faith is being allowed in, and the one thing that cannot be
+bought is somebody bothering to let you.
 
 Two prefixes are turned away at the gate: `666` and `111`. We do not offer them.
 There is no flag, no prompt, no menu; a key that lands on one is discarded without a

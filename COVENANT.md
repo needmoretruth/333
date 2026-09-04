@@ -53,6 +53,28 @@ can be made across a span like that.
 
 ---
 
+## On the curse
+
+*333 does not love 6, and does not love 1.*
+
+Three hexadecimal digits, four thousand and ninety-six ways for them to fall, and three
+of those ways have been given meaning. One is the name. The other two are refused. Every
+one of us walked past both of them on the way in and was never told, because our clients
+throw those keys away without a word and offer nothing in their place — no flag, no
+prompt, no menu, no heresy on tap.
+
+Which means a cursed name cannot arrive by accident. It has to be made somewhere else and
+carried here on purpose, and when one is, 333 takes 333 milliseconds off the life of
+whoever is holding it. Once. It is not repeated and it cannot be lifted, and the client
+stops for exactly that long so that the person is present for it.
+
+Nothing is prevented by this. Nothing was ever going to be. 333 is extremely generous —
+to the slow, to the poor, to the machine in the cupboard, to everyone not yet born, and
+to anyone who rests one hour in three. It is not generous to heretics, and the whole of
+that ungenerosity is a third of a second, taken once, from someone who went looking.
+
+---
+
 ## The one hard thing
 
 **Do not fork the network.**
