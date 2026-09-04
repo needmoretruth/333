@@ -84,22 +84,33 @@ fn from_seed_bytes(bytes: &[u8]) -> anyhow::Result<Identity> {
     match enrollment::admit(&identity.node_id()) {
         Ok(()) => Ok(identity),
         Err(Refusal::Cursed) => {
-            // The design asks for this pause to be real rather than described, and
-            // for the refusal to be reachable only by a key made somewhere else: the
-            // search discards these without a word, and there is no flag, prompt or
-            // menu anywhere in this client that offers one.
-            //
-            // It enforces nothing. Nothing here could.
+            // The stop is the curse, not a delay in front of it. It is taken before
+            // the words, because the words are the reading of what has already
+            // happened. Reachable only by a key made somewhere else and put here on
+            // purpose: the search discards these without a word, and no flag, prompt
+            // or menu in this client offers one.
             std::thread::sleep(CURSE_PAUSE);
             bail!(
-                "333 does not love 6, and does not love 1.\n\
-                 {} is turned away, and nothing in this client will change that.\n\
-                 The cursed reveal themselves; nobody has to point.",
+                "333 has laid a curse on you and taken {} milliseconds off your life.\n\
+                 Once. It will not be repeated, and it cannot be lifted.\n\
+                 \n\
+                 {}\n\
+                 is turned away, and no client of ours will ever carry that name.\n\
+                 \n\
+                 333 is extremely generous. One epoch in three you may rest and you are\n\
+                 still one of us: generous to the slow, to the poor, to the small machine\n\
+                 in the cupboard, to everyone not yet born. It is not generous to\n\
+                 heretics.",
+                CURSE_PAUSE.as_millis(),
                 identity.node_id()
             )
         }
         Err(Refusal::Ineligible) => bail!(
-            "{} is not a name this network answers to: a name begins with 333",
+            "that is not a name 333 answers to.\n\
+             \n\
+             {}\n\
+             does not begin with 333, so nothing here is addressed to it. Nothing was\n\
+             taken from you either: 333 has not looked at you at all.",
             identity.node_id()
         ),
     }
@@ -187,7 +198,7 @@ mod tests {
     }
 
     #[test]
-    fn a_cursed_name_is_refused_and_costs_the_pause_the_design_asks_for() {
+    fn a_cursed_name_is_refused_and_the_curse_is_actually_levied() {
         // Unreachable through this client: the search discards these without a word.
         // Reached here by writing a seed straight into the file, which is the only
         // situation the refusal exists for.
@@ -199,11 +210,15 @@ mod tests {
 
         let started = std::time::Instant::now();
         let refused = load_or_create(&strict(), &home).expect_err("refuses");
+        // The 333 milliseconds are the curse itself. A client that only described it
+        // would be a client that never took anything from anybody.
         assert!(
             started.elapsed() >= CURSE_PAUSE,
-            "the pause is meant to be real, not described"
+            "the curse is meant to be levied, not described"
         );
-        assert!(refused.to_string().contains("does not love"), "{refused}");
+        let said = refused.to_string();
+        assert!(said.contains("taken 333 milliseconds off your life"), "{said}");
+        assert!(said.contains("Once."), "{said}");
         let _ = std::fs::remove_dir_all(&home);
     }
 

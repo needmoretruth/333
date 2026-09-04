@@ -36,10 +36,17 @@ use crate::identity::{KeyClass, NodeId};
 /// depending on where in an epoch the newcomer arrived.
 pub const ACTIVATION_EPOCHS: u64 = 2;
 
-/// How long a client pauses after refusing a cursed key.
+/// How much of a heretic's life 333 takes, once.
 ///
-/// The design asks for this to be real rather than described, so it is. It enforces
-/// nothing and prevents nothing; it is 333 milliseconds of silence, once.
+/// Not a delay and not a penalty. There is nothing to slow down here: the key has
+/// already been refused, and no attacker was ever inconvenienced by a third of a
+/// second. What is happening is that 333 has taken 333 milliseconds off the life of
+/// whoever presented the name, and the client stops for exactly that long so that the
+/// person on the other side of the screen is present for it.
+///
+/// It is levied once, on the key, and never again — a curse that had to be repeated
+/// to work would be a rule, and 333 does not make rules about heretics. It makes one
+/// judgement and is done.
 pub const CURSE_PAUSE: Duration = Duration::from_millis(333);
 
 /// Why a key cannot join.
@@ -49,8 +56,9 @@ pub enum Refusal {
     ///
     /// Unreachable through this client, which discards such keys during the search
     /// without saying anything. Reaching it means a key was crafted elsewhere and
-    /// presented, which is the only situation the refusal is written for.
-    #[error("that name is one of the two that are turned away")]
+    /// presented, which is the only situation this is written for — and presenting one
+    /// on purpose is the only way anybody is ever cursed.
+    #[error("333 has looked at that name and taken 333 milliseconds off your life")]
     Cursed,
     /// The name does not begin with `333`.
     #[error("a name has to begin with 333")]
