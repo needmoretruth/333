@@ -21,6 +21,9 @@ truth. Each node believes what it saw and says so, and two nodes are allowed to
 disagree. This client is the instrument of that observance: it keeps the hours, it
 answers when it is asked, and it carries the file to whoever asks for it next.
 
+The rest of the doctrine — including the one thing this project asks of you that the
+licence does not — is in [COVENANT.md](COVENANT.md). It is deliberately unfinished.
+
 ---
 
 ## The observances
