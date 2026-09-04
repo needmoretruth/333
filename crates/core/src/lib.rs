@@ -33,7 +33,7 @@ pub mod transfer;
 pub mod wire;
 
 pub use epoch::{EPOCH_SECONDS, Epoch};
-pub use extinction::{EXTINCTION_YEARS, Remaining};
+pub use extinction::{EXTINCTION_YEARS, Remaining, Verdict, Vigil, Watched};
 pub use heartbeat::{Heartbeat, PROTOCOL_VERSION};
 pub use identity::{Identity, KeyClass, NodeId};
 pub use presence::{Attendance, Census, Standing, WINDOW_EPOCHS};

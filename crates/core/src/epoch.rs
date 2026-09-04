@@ -31,6 +31,15 @@ impl Epoch {
         Self::at_unix_seconds(unix_now_seconds())
     }
 
+    /// The wall-clock second this epoch begins at.
+    ///
+    /// Saturates rather than wrapping, so an absurd epoch produces an absurd time
+    /// instead of one in the past.
+    #[must_use]
+    pub const fn starts_at_unix_seconds(self) -> u64 {
+        self.0.saturating_mul(EPOCH_SECONDS)
+    }
+
     /// Distance to another epoch, signed, saturating.
     ///
     /// Used to report how far a peer's clock is from ours. Reporting is all this
