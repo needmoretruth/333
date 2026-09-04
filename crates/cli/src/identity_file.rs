@@ -32,7 +32,8 @@ use std::path::Path;
 
 use anyhow::{Context as _, bail};
 use fs_mistrust::{CheckedDir, Mistrust};
-use n333_core::identity::{Identity, KeyClass};
+use n333_core::enrollment::{self, CURSE_PAUSE, Refusal};
+use n333_core::identity::Identity;
 
 /// The name of the seed file inside the node's directory.
 const SEED_FILE: &str = "identity.key";
@@ -80,13 +81,28 @@ fn from_seed_bytes(bytes: &[u8]) -> anyhow::Result<Identity> {
         )
     })?;
     let identity = Identity::from_seed(&seed);
-    if identity.class() != KeyClass::Eligible {
-        bail!(
-            "the identity in this file is not eligible: its name is {}",
+    match enrollment::admit(&identity.node_id()) {
+        Ok(()) => Ok(identity),
+        Err(Refusal::Cursed) => {
+            // The design asks for this pause to be real rather than described, and
+            // for the refusal to be reachable only by a key made somewhere else: the
+            // search discards these without a word, and there is no flag, prompt or
+            // menu anywhere in this client that offers one.
+            //
+            // It enforces nothing. Nothing here could.
+            std::thread::sleep(CURSE_PAUSE);
+            bail!(
+                "333 does not love 6, and does not love 1.\n\
+                 {} is turned away, and nothing in this client will change that.\n\
+                 The cursed reveal themselves; nobody has to point.",
+                identity.node_id()
+            )
+        }
+        Err(Refusal::Ineligible) => bail!(
+            "{} is not a name this network answers to: a name begins with 333",
             identity.node_id()
-        );
+        ),
     }
-    Ok(identity)
 }
 
 /// Search for an eligible identity and write it, failing if one is already there.
@@ -162,11 +178,32 @@ mod tests {
         let home = scratch("reload");
         let (first, origin) = load_or_create(&strict(), &home).expect("creates");
         assert!(matches!(origin, Origin::Created { .. }));
-        assert_eq!(first.class(), KeyClass::Eligible);
+        assert_eq!(first.class(), n333_core::KeyClass::Eligible);
 
         let (second, origin) = load_or_create(&strict(), &home).expect("loads");
         assert_eq!(origin, Origin::Loaded);
         assert_eq!(first.node_id(), second.node_id());
+        let _ = std::fs::remove_dir_all(&home);
+    }
+
+    #[test]
+    fn a_cursed_name_is_refused_and_costs_the_pause_the_design_asks_for() {
+        // Unreachable through this client: the search discards these without a word.
+        // Reached here by writing a seed straight into the file, which is the only
+        // situation the refusal exists for.
+        let home = scratch("cursed");
+        make_private_dir(&home);
+        let mut seed = [0_u8; 32];
+        seed[..4].copy_from_slice(&4307_u32.to_le_bytes());
+        std::fs::write(home.join(SEED_FILE), seed).expect("writes");
+
+        let started = std::time::Instant::now();
+        let refused = load_or_create(&strict(), &home).expect_err("refuses");
+        assert!(
+            started.elapsed() >= CURSE_PAUSE,
+            "the pause is meant to be real, not described"
+        );
+        assert!(refused.to_string().contains("does not love"), "{refused}");
         let _ = std::fs::remove_dir_all(&home);
     }
 
