@@ -30,6 +30,7 @@ use std::time::Duration;
 
 use anyhow::Context as _;
 use n333_core::attestation::{self, Evidence, JUDGEMENT_DELAY_EPOCHS};
+use n333_core::enrollment;
 use n333_core::challenge::{self, Exchange, RESPONSE_WINDOW_SECONDS};
 use n333_core::chain::evidence_digest;
 use n333_core::presence::Attendance;
@@ -157,7 +158,7 @@ async fn ask_those_drawn(node: &Node, dialer: &Dialer, now: Epoch) {
         let Some(address) = node.address_of(&peer).await else {
             // Drawn to ask somebody nobody has said the whereabouts of. Not their
             // fault and not a silence worth publishing: this node simply cannot ask.
-            println!("cannot   ask a node whose address is unknown");
+            println!("unknown  drawn to ask one of us that nobody has said the whereabouts of");
             continue;
         };
         match ask_one(node, dialer, &address, peer, now).await {
@@ -204,7 +205,12 @@ async fn judge_what_is_ready(node: &Node, now: Epoch) {
     };
     // A node nobody has admitted has nothing to judge: no verifier is ever drawn for
     // it, so every epoch would be an empty entry saying nothing.
-    if !node.is_admitted().await {
+    let Some(joined) = node.joined_in().await else {
+        return;
+    };
+    // Epochs before this node counted are not absences and not excluded epochs. They
+    // are epochs it was not here for, and its record has nothing to say about them.
+    if !enrollment::covers(joined, ready) {
         return;
     }
     match node.last_judged().await {
@@ -239,12 +245,8 @@ async fn judge_one(node: &Node, epoch: Epoch) -> anyhow::Result<()> {
     let head = node
         .record(epoch, attendance, evidence_digest(&frames))
         .await?;
-    println!(
-        "judged   epoch {} {} (record now {} long)",
-        epoch.0,
-        said(attendance),
-        head.length
-    );
+    println!("judged   epoch {}: {}", epoch.0, said(attendance));
+    println!("record   {}", epochs(head.length));
     Ok(())
 }
 
@@ -269,11 +271,15 @@ fn receipt_in(frames: &[Vec<u8>], me: &[u8; 32]) -> Option<Exchange> {
 }
 
 /// The word for a verdict, in the register the rest of the output uses.
+///
+/// An excluded epoch is not a bad mark and not a good one. Nobody was drawn to ask,
+/// so there was no question to answer and the epoch leaves the count entirely — which
+/// is a different thing from having been asked and having answered.
 const fn said(attendance: Attendance) -> &'static str {
     match attendance {
-        Attendance::Present => "present",
-        Attendance::Absent => "absent",
-        Attendance::Excluded => "nobody asked",
+        Attendance::Present => "present. it will not be judged again.",
+        Attendance::Absent => "absent. it will not be judged again.",
+        Attendance::Excluded => "nobody was drawn to ask, so the epoch counts for nothing.",
     }
 }
 
@@ -281,7 +287,9 @@ const fn said(attendance: Attendance) -> &'static str {
 async fn forget_the_old(node: &Node, now: Epoch) {
     match node.forget_old(now).await {
         Ok(0) => {}
-        Ok(dropped) => println!("forgot   {dropped} epochs that can no longer change anything"),
+        Ok(dropped) => println!(
+            "forgot   {dropped} epochs. nothing said about them now could change a verdict."
+        ),
         Err(e) => println!("failed   forgetting old statements: {e:#}"),
     }
 }
@@ -293,4 +301,13 @@ async fn sleep_until_the_next_boundary(now: Epoch) {
     // A clock that jumped forward past the boundary gives zero here. Waiting a second
     // rather than spinning is the difference between a hot loop and a late start.
     tokio::time::sleep(Duration::from_secs(seconds.max(1))).await;
+}
+
+/// "1 epoch" or "N epochs", said the way a person would.
+fn epochs(count: u64) -> String {
+    if count == 1 {
+        "1 epoch answered for".to_owned()
+    } else {
+        format!("{count} epochs answered for")
+    }
 }

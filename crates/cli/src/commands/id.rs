@@ -11,13 +11,19 @@ pub(crate) fn run(common: &Common) -> anyhow::Result<()> {
     let home = common.paths.root();
     let (identity, origin) = identity_file::load_or_create(&common.mistrust(), home)?;
 
-    match origin {
-        Origin::Loaded => println!("name     {}", identity.node_id()),
-        Origin::Created { attempts } => {
-            println!("name     {}", identity.node_id());
-            println!("called   after {attempts} keys were turned away");
-        }
+    println!("name     {}", identity.node_id());
+    if let Origin::Created { attempts } = origin {
+        println!("called   after {attempts} keys were turned away");
     }
     println!("home     {}", home.display());
+    if matches!(origin, Origin::Created { .. }) {
+        // Said once, on the run that makes the name, because it is the only run on
+        // which the warning can still be acted on.
+        println!(
+            "keep     that directory. lose it and you lose this name, every hour\n\
+             \x20        anyone ever witnessed for you, and any way of proving you\n\
+             \x20        were here. There is no recovery and there is no appeal."
+        );
+    }
     Ok(())
 }

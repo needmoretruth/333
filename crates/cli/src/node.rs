@@ -374,10 +374,18 @@ impl Node {
             .collect()
     }
 
-    /// Is this node on its own roll — has anybody admitted it?
-    pub(crate) async fn is_admitted(&self) -> bool {
+    /// The epoch somebody handed this node the file, if anybody has.
+    ///
+    /// Absent for a node nobody has admitted — which is both a node that has not
+    /// joined and the one node that was never given the file by anybody.
+    pub(crate) async fn joined_in(&self) -> Option<Epoch> {
         let key = self.identity.public_key();
-        self.state.lock().await.roll.member(&key).is_some()
+        self.state
+            .lock()
+            .await
+            .roll
+            .member(&key)
+            .map(|member| member.received_in)
     }
 
     /// The newest epoch this node's own record judges, if it has judged any.

@@ -164,7 +164,7 @@ where
             Ok(Ok(())) => {}
             Ok(Err(e)) => println!("refused  {e:#}"),
             Err(_elapsed) => println!(
-                "silence  {} s, so we let go",
+                "silence  {} s of it, so we let go",
                 EXCHANGE_TIMEOUT.as_secs()
             ),
         }
@@ -252,7 +252,7 @@ where
     S: AsyncRead + AsyncWrite + Unpin,
 {
     let Some(subject) = node.subject().await else {
-        println!("empty    somebody asked for the file and this node does not have it");
+        println!("empty    somebody asked for the file. this node has nothing to give.");
         return Ok(());
     };
     let tidings = node.tidings().await?;
@@ -277,7 +277,7 @@ where
         given.transfer.epoch().0
     );
     let members = node.admit(&[given.gave, given.received]).await?;
-    println!("roll     {members} members");
+    println!("roll     {members} of us");
     Ok(())
 }
 

@@ -82,16 +82,26 @@ pub(crate) fn report_opening(opened: &crate::node::Opened) {
         );
     }
     if opened.chain_length != 0 {
-        println!("record   {} epochs judged", opened.chain_length);
+        let epochs = if opened.chain_length == 1 {
+            "1 epoch".to_owned()
+        } else {
+            format!("{} epochs", opened.chain_length)
+        };
+        println!("record   {epochs} already answered for, none of them open to revision");
     }
     if opened.members != 0 {
-        println!("roll     {} members", opened.members);
+        let us = if opened.members == 1 {
+            "1 of us, which is this node".to_owned()
+        } else {
+            format!("{} of us", opened.members)
+        };
+        println!("roll     {us}");
     }
     if opened.addresses != 0 {
-        println!("known    where {} of them said to look", opened.addresses);
+        println!("known    where {} of us said to look", opened.addresses);
     }
     if opened.has_the_file {
-        println!("holding  the file");
+        println!("holding  the file, and able to pass it on");
     }
     if opened.read.unreadable != 0 {
         println!(

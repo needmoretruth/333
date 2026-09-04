@@ -48,9 +48,10 @@ pub(crate) async fn run(common: &Common, address: &n333_net::PeerAddress) -> any
         })??;
 
     let joined = taken.handover.transfer.epoch();
-    println!("given    by {} in epoch {}", taken.handover.transfer.giver(), joined.0);
+    println!("given    by {}", taken.handover.transfer.giver());
+    println!("joined   in epoch {}, and both of us have signed for it", joined.0);
     node.receive(taken.subject).await?;
-    println!("holding  the file");
+    println!("holding  the file, and able to pass it on");
 
     // The pair goes in last so that a giver who passed on nothing still leaves this
     // node with its own beginning written down.
@@ -59,9 +60,11 @@ pub(crate) async fn run(common: &Common, address: &n333_net::PeerAddress) -> any
     passed.push(taken.handover.received);
     let heard = node.hear(&passed).await?;
     crate::commands::report_heard(&heard);
-    println!("roll     {} members", node.roll().await.len());
+    println!("roll     {} of us", node.roll().await.len());
     println!(
-        "counted  from epoch {}, which is where this node's record begins",
+        "counted  from epoch {}, and not one epoch sooner. Until then, answer\n\
+         \x20        everything that is asked of you. What is witnessed in that time\n\
+         \x20        is the whole of the proof that you were ever here at all.",
         enrollment::active_from(joined).0
     );
     Ok(())

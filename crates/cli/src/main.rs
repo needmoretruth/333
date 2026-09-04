@@ -7,9 +7,11 @@
 //! their own address unseen, and starting it is the slowest thing this program can
 //! be asked to do, so it happens only when something asks for it by name.
 //!
-//! Everything printed here is deliberately plain. The vocabulary the project speaks
-//! to people in belongs to the screens that come later; a client at version 0.0.1 is
-//! read by someone who needs to know what actually happened.
+//! Every line printed here is a log line and a liturgy at once, and it has to be both
+//! or it is neither. A keyword, then what happened, in the words this network uses for
+//! it: nothing is dressed up, nothing is understated, and nothing is explained. An
+//! operator reading the output at three in the morning needs to know exactly what their
+//! node did. That is the same sentence.
 
 // Tests assert by panicking, so the lints that forbid panicking in shipped code are
 // off inside them. Nothing else in the workspace gets this exemption.
