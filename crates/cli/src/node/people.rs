@@ -147,6 +147,7 @@ impl Node {
         }
         if !admissions.is_empty() {
             let before = self.state.lock().await.roll.len();
+            heard.were = before;
             heard.members = self.admit(&admissions).await?.saturating_sub(before);
         }
         Ok(heard)

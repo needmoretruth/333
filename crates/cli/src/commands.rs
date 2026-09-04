@@ -132,7 +132,17 @@ pub(crate) fn report_heard(heard: &crate::node::Heard) {
         println!("learned  where {} more of us are", heard.addresses);
     }
     if heard.members != 0 {
-        println!("learned  {} more of us by name", heard.members);
+        if heard.were != 0 && heard.members >= heard.were {
+            // One meeting brought more of us than this node had ever held. Two halves
+            // of a network that had not spoken look exactly like this from one side.
+            println!(
+                "rejoined {} more of us by name, from a node that knew {}. There were\n\
+                 \x20        two of us and now the counting is one count.",
+                heard.members, heard.were
+            );
+        } else {
+            println!("learned  {} more of us by name", heard.members);
+        }
     }
     if heard.said != 0 {
         println!("heard    {} of us speak", heard.said);

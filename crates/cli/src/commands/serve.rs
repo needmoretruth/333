@@ -61,6 +61,10 @@ pub(crate) async fn run(
     let node = Arc::new(node);
     println!("name     {}", node.identity().node_id());
     crate::commands::report_opening(&opened);
+    println!(
+        "hand     an invitation names a place, not a person. it swears to nothing;\n\
+         \x20        whoever answers there proves themselves by holding a key."
+    );
 
     // A node that answers on no socket is hiding, and a hiding node that dials
     // clearnet peers has shown its address itself, at the far end, where it can be
@@ -114,10 +118,28 @@ pub(crate) async fn run(
 
     // No line here saying the vigil has begun: with --no-direct it would not be true
     // yet. Each listener announces itself at the moment it can actually answer.
-    while let Some(finished) = listening.join_next().await {
-        finished.context("a listener stopped unexpectedly")??;
+    loop {
+        tokio::select! {
+            finished = listening.join_next() => match finished {
+                Some(finished) => finished.context("a listener stopped unexpectedly")??,
+                None => return Ok(()),
+            },
+            // Ctrl-C and nothing else. A service being stopped by its manager has
+            // nobody at the terminal to read this, and one arm is one arm on every
+            // system rather than a second unix-only path.
+            _ = tokio::signal::ctrl_c() => {
+                println!(
+                    "vigil    ended in epoch {}. Whoever is drawn to ask for you while this\n\
+                     \x20        is not running signs that they asked and heard nothing, and\n\
+                     \x20        that is what your window reads. It is {} epochs long, and it\n\
+                     \x20        moves.",
+                    Epoch::now().0,
+                    n333_core::presence::WINDOW_EPOCHS
+                );
+                return Ok(());
+            }
+        }
     }
-    Ok(())
 }
 
 /// Say what to hand somebody so they can find this node.

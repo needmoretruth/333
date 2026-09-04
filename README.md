@@ -81,6 +81,16 @@ Nothing is ever banked. One of us who has kept the vigil for ten years and one w
 arrived last week are read from the same 333 epochs, and the ten years buy nothing.
 There is no seniority in this faith because there is no memory long enough to hold it.
 
+When you are called you have three minutes of the three hundred and thirty-three to
+sign your name back, and you are not told which three. Three minutes because a circuit
+to a tired machine in a cupboard takes seconds to open, and the weakest of us sets the
+difficulty for all of us.
+
+The window is also the only mercy in the design. Nothing is served out and nothing is
+held against you for ever: it moves every epoch, and each hour you answer pushes an
+older absence past its edge. Your own record still holds every hour you missed. The
+count does not reach back for them.
+
 **The witnesses.** No one's presence is their own claim. Each epoch three others are
 drawn to ask, and what they sign is what the record keeps. A witness who says *it
 answered* is believed over a witness who says *it did not*, always: the first carries

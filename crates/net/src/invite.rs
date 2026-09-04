@@ -66,7 +66,7 @@ pub enum InviteError {
     ///
     /// Carries the one spelling that is an invitation, so the refusal tells the
     /// reader what to use rather than only that they were wrong.
-    #[error("that address is written two ways; the invitation is `{canonical}`")]
+    #[error("one of us is one place, spelled one way; the invitation is `{canonical}`")]
     NotCanonical {
         /// The invitation this address should have been written as.
         canonical: String,

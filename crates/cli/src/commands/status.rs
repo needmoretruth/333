@@ -216,12 +216,16 @@ fn read_standing(standing: &Standing) -> String {
         "By your own record, you are counted."
     } else {
         "By your own record, you are not counted. Two of every three is the whole of\n\
-         what is asked."
+         what is asked.\n\
+         Nothing here is being served out. The window moves every epoch, and each one\n\
+         you answer pushes an older absence past its edge. Your chain still holds every\n\
+         hour you missed. The count does not reach back for them."
     };
     format!(
         "Present in {} of the {} epochs your record covers — {share}. {verdict}\n\
          The window is the last {WINDOW_EPOCHS} epochs and nothing before it exists.\n\
-         Ten years of it would read exactly the same, and buy exactly as much.",
+         Ten years of it would read exactly the same, and buy exactly as much; a year\n\
+         away and an hour away read exactly the same too, and cost exactly as little.",
         standing.present, standing.counted
     )
 }

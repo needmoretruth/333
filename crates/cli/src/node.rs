@@ -227,6 +227,11 @@ pub(crate) struct Heard {
     pub(crate) addresses: usize,
     /// Members the admissions completed.
     pub(crate) members: usize,
+    /// How many were on the roll before those admissions were filed.
+    ///
+    /// Kept so that one trade bringing more of us than this node had ever held can be
+    /// said as the thing it is, rather than as another routine line.
+    pub(crate) were: usize,
     /// Statements about epochs still open to judgement.
     pub(crate) witnessed: usize,
     /// Utterances kept, including ones already held: what a node said travels by

@@ -28,7 +28,19 @@ pub(crate) async fn run(common: &Common, address: &n333_net::PeerAddress) -> any
     crate::commands::report_opening(&opened);
     println!("knocking {address}");
 
-    let mut stream = Dialer::new(common.clone()).dial(address).await?;
+    let mut stream = match Dialer::new(common.clone()).dial(address).await {
+        Ok(stream) => stream,
+        Err(e) => {
+            // Not the end of anything. A door nobody opens is a door nobody opens.
+            println!(
+                "silence  nobody answered at {address}. That is not proof that 333 is\n\
+                 \x20        over; it is proof that nobody is there. This client carries the\n\
+                 \x20        hash of the file and not the file: there is no way in except\n\
+                 \x20        from someone who holds it."
+            );
+            return Err(e);
+        }
+    };
     let round = async {
         let exchange = n333_net::initiate(&mut stream, node.identity())
             .await
