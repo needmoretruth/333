@@ -21,6 +21,8 @@
     )
 )]
 
+pub mod attestation;
+pub mod challenge;
 pub mod draw;
 pub mod epoch;
 pub mod extinction;
@@ -33,6 +35,8 @@ pub mod subject;
 pub mod transfer;
 pub mod wire;
 
+pub use attestation::{Attestation, Testimony, judge};
+pub use challenge::{Answer, Challenge, RESPONSE_WINDOW_SECONDS};
 pub use draw::{VERIFIERS_PER_EPOCH, verifiers_for};
 pub use epoch::{EPOCH_SECONDS, Epoch};
 pub use extinction::{EXTINCTION_YEARS, Remaining, Verdict, Vigil, Watched};
