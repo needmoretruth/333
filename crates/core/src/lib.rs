@@ -21,6 +21,7 @@
     )
 )]
 
+pub mod draw;
 pub mod epoch;
 pub mod extinction;
 pub mod heartbeat;
@@ -32,6 +33,7 @@ pub mod subject;
 pub mod transfer;
 pub mod wire;
 
+pub use draw::{VERIFIERS_PER_EPOCH, verifiers_for};
 pub use epoch::{EPOCH_SECONDS, Epoch};
 pub use extinction::{EXTINCTION_YEARS, Remaining, Verdict, Vigil, Watched};
 pub use heartbeat::{Heartbeat, PROTOCOL_VERSION};
