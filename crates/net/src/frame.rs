@@ -4,8 +4,14 @@
 //!
 //! The length is read before the body, so the limit is enforced on the *announced*
 //! size: a stranger cannot make this node allocate a buffer it did not agree to.
-//! Four bytes for a 150-byte heartbeat is 2.7% of overhead, which buys room for the
-//! larger messages that come later without a second framing to reason about.
+//! Four bytes in front of a 139- or 171-byte heartbeat frame is under 3% of overhead,
+//! which buys room for the larger messages that come later without a second framing
+//! to reason about.
+//!
+//! There is no deadline here. Framing is generic over any byte stream so the exchange
+//! can be tested in memory, and a timer inside it would add a runtime dependency, a
+//! second responsibility, and per-call deadlines that sum instead of bounding. The
+//! deadline belongs to the caller that knows what the whole exchange is worth.
 
 use futures::{AsyncRead, AsyncReadExt as _, AsyncWrite, AsyncWriteExt as _};
 use n333_core::MAX_FRAME_LEN;
@@ -48,18 +54,27 @@ pub async fn write_frame<W: AsyncWrite + Unpin>(
     Ok(())
 }
 
+/// The announced length, if this node agreed to read that much.
+///
+/// Pulled out of [`read_frame`] so the bound is a pure function with its own test.
+/// Inside an async function that also allocates, the only thing keeping the check
+/// ahead of the allocation is the order of two lines.
+fn checked_length(prefix: [u8; LENGTH_PREFIX_LEN]) -> Result<usize, Error> {
+    let length = usize::try_from(u32::from_be_bytes(prefix)).unwrap_or(usize::MAX);
+    if length > MAX_FRAME_LEN {
+        return Err(Error::TooLong { got: length });
+    }
+    Ok(length)
+}
+
 /// Read one frame.
 ///
 /// # Errors
 /// Fails if the peer announces an oversized frame, or the stream ends early.
 pub async fn read_frame<R: AsyncRead + Unpin>(stream: &mut R) -> Result<Vec<u8>, Error> {
-    let mut length_bytes = [0_u8; LENGTH_PREFIX_LEN];
-    stream.read_exact(&mut length_bytes).await?;
-    let length = usize::try_from(u32::from_be_bytes(length_bytes)).unwrap_or(usize::MAX);
-    if length > MAX_FRAME_LEN {
-        return Err(Error::TooLong { got: length });
-    }
-    let mut frame = vec![0_u8; length];
+    let mut prefix = [0_u8; LENGTH_PREFIX_LEN];
+    stream.read_exact(&mut prefix).await?;
+    let mut frame = vec![0_u8; checked_length(prefix)?];
     stream.read_exact(&mut frame).await?;
     Ok(frame)
 }
@@ -93,12 +108,42 @@ mod tests {
         writer.await.expect("task").expect("writes");
     }
 
+    #[test]
+    fn the_announced_length_is_bounded_before_anything_is_read() {
+        assert_eq!(checked_length([0, 0, 0, 0]).expect("zero is a frame"), 0);
+        assert_eq!(
+            checked_length([0, 0, 0x10, 0]).expect("exactly the limit"),
+            MAX_FRAME_LEN
+        );
+        assert!(matches!(
+            checked_length([0, 0, 0x10, 1]),
+            Err(Error::TooLong { got }) if got == MAX_FRAME_LEN + 1
+        ));
+        assert!(matches!(
+            checked_length([0xff, 0xff, 0xff, 0xff]),
+            Err(Error::TooLong { .. })
+        ));
+    }
+
     #[tokio::test]
-    async fn an_oversized_announcement_is_refused_without_allocating() {
+    async fn a_frame_of_exactly_the_limit_round_trips() {
+        // Tested only from the refusing side, an off-by-one would refuse the largest
+        // frame the protocol promises to carry.
+        let (client, server) = tokio::io::duplex(64 * 1024);
+        let (mut client, mut server) = (client.compat(), server.compat());
+        let sent = vec![3_u8; MAX_FRAME_LEN];
+        let writer = tokio::spawn(async move { write_frame(&mut client, &sent).await });
+        let got = read_frame(&mut server).await.expect("reads");
+        writer.await.expect("task").expect("writes");
+        assert_eq!(got.len(), MAX_FRAME_LEN);
+    }
+
+    #[tokio::test]
+    async fn an_oversized_announcement_is_refused_before_the_body_is_read() {
         let (client, server) = tokio::io::duplex(1024);
         let (mut client, mut server) = (client.compat(), server.compat());
-        // Announce four gigabytes and send nothing. A reader that allocated first
-        // would be holding the buffer before it noticed.
+        // Announce four gigabytes and send nothing. A reader that waited for the
+        // body before checking the length would block here forever.
         let announced = u32::MAX;
         let writer = tokio::spawn(async move {
             client.write_all(&announced.to_be_bytes()).await.map_err(|e| e.to_string())?;

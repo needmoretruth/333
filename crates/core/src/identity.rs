@@ -144,6 +144,22 @@ fn is_canonical_encoding(bytes: &[u8; 32]) -> bool {
     false
 }
 
+/// Why a signature was not accepted.
+///
+/// The two cases are kept apart because a caller may want to say which happened,
+/// but they are one type on purpose: a function returning `Result<bool, _>` invites
+/// `if verify(..).is_ok()`, which reads like English, compiles, and accepts every
+/// forgery whose key merely parses.
+#[derive(Debug, thiserror::Error, PartialEq, Eq)]
+pub enum VerifyError {
+    /// The sender's public key is unusable.
+    #[error(transparent)]
+    Key(#[from] PublicKeyError),
+    /// The key is fine; the signature does not match this message.
+    #[error("signature does not match")]
+    BadSignature,
+}
+
 /// Verify a signature made by `public_key` over `message`.
 ///
 /// Uses strict verification, which refuses low-order public keys and low-order
@@ -152,17 +168,16 @@ fn is_canonical_encoding(bytes: &[u8; 32]) -> bool {
 /// over the network from a stranger.
 ///
 /// # Errors
-/// Returns the parse error if the key is unusable, or `Ok(false)` if the key is fine
-/// and the signature simply does not match.
+/// Fails if the key is unusable or the signature does not match. A returned `Ok`
+/// means verified, with nothing further to inspect.
 pub fn verify(
     public_key: &[u8; 32],
     message: &[u8],
     signature: &[u8; 64],
-) -> Result<bool, PublicKeyError> {
+) -> Result<(), VerifyError> {
     let key = parse_public_key(public_key)?;
-    Ok(key
-        .verify_strict(message, &Signature::from_bytes(signature))
-        .is_ok())
+    key.verify_strict(message, &Signature::from_bytes(signature))
+        .map_err(|_| VerifyError::BadSignature)
 }
 
 /// This node's key pair.
@@ -304,8 +319,35 @@ mod tests {
     fn signatures_round_trip() {
         let identity = Identity::from_seed(&[9_u8; 32]);
         let signature = identity.sign(b"333");
-        assert_eq!(verify(&identity.public_key(), b"333", &signature), Ok(true));
-        assert_eq!(verify(&identity.public_key(), b"334", &signature), Ok(false));
+        assert_eq!(verify(&identity.public_key(), b"333", &signature), Ok(()));
+        assert_eq!(
+            verify(&identity.public_key(), b"334", &signature),
+            Err(VerifyError::BadSignature)
+        );
+    }
+
+    #[test]
+    fn a_small_order_key_never_verifies() {
+        // The identity point, written as y = 1 with the sign bit clear. It is a
+        // canonical encoding and it decompresses, so it reaches verification. Paired
+        // with R = the same point and s = 0, the permissive check succeeds against
+        // EVERY message — which is the forgery strict verification exists to refuse.
+        // Replacing verify_strict with verify makes this test fail.
+        let mut point = [0_u8; 32];
+        point[0] = 1;
+        let mut signature = [0_u8; 64];
+        signature[0] = 1;
+        assert!(
+            parse_public_key(&point).is_ok(),
+            "the key has to reach verification for this to test anything"
+        );
+        for message in [b"333".as_slice(), b"a message it never saw".as_slice()] {
+            assert_eq!(
+                verify(&point, message, &signature),
+                Err(VerifyError::BadSignature),
+                "a small-order key verified"
+            );
+        }
     }
 
     #[test]

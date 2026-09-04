@@ -37,11 +37,16 @@ pub const SIGNATURE_LEN: usize = 64;
 
 /// Largest frame this protocol will read from a peer.
 ///
-/// A heartbeat is under 150 bytes; the rest is room for the message types that come
-/// after it. Bulk transfers — a node handing over its attendance log — do not travel
-/// as one frame and are not bounded by this number; when they arrive they carry their
-/// own limit, because a stranger must never be able to make this node buffer more
-/// than it agreed to.
+/// A heartbeat frame is 139 bytes when it opens an exchange and 171 when it answers
+/// one, measured at a 2026 clock. Both grow: the epoch and the timestamp are
+/// variable-length integers that each gain a byte roughly once a century — the
+/// timestamp in 2109, the epoch in 3298. The rest of this limit is room for the
+/// message types that come after.
+///
+/// Bulk transfers — a node handing over its attendance log — do not travel as one
+/// frame and are not bounded by this number; when they arrive they carry their own
+/// limit, because a stranger must never be able to make this node buffer more than
+/// it agreed to.
 pub const MAX_FRAME_LEN: usize = 4096;
 
 /// The domain for heartbeats.
@@ -145,11 +150,10 @@ pub fn check_signature(
     public_key: &[u8; 32],
 ) -> Result<(), Error> {
     let signed = signing_input(domain, body);
-    if crate::identity::verify(public_key, &signed, signature)? {
-        Ok(())
-    } else {
-        Err(Error::BadSignature)
-    }
+    crate::identity::verify(public_key, &signed, signature).map_err(|e| match e {
+        crate::identity::VerifyError::Key(key) => Error::SenderKey(key),
+        crate::identity::VerifyError::BadSignature => Error::BadSignature,
+    })
 }
 
 #[cfg(test)]
@@ -157,8 +161,43 @@ mod tests {
     use super::*;
 
     #[test]
-    fn every_domain_is_the_same_length() {
-        assert_eq!(DOMAIN_HEARTBEAT.len(), DOMAIN_LEN);
+    fn the_frozen_values_are_the_agreed_ones() {
+        // Recomputed from the constants, these would be tautologies. Written as
+        // literals, they are what stands between a one-character edit and a network
+        // split into builds that cannot verify each other.
+        assert_eq!(DOMAIN_HEARTBEAT, b"333.v1.heartbeat");
+        assert_eq!(MAX_FRAME_LEN, 4096);
+        assert_eq!(DOMAIN_LEN, 16);
+        assert_eq!(SIGNATURE_LEN, 64);
+    }
+
+    #[test]
+    fn the_signed_bytes_are_the_domain_then_the_body() {
+        // Signer and verifier both call this, so testing them against each other
+        // proves nothing about the order. This asserts the bytes.
+        assert_eq!(
+            signing_input(DOMAIN_HEARTBEAT, b"hello"),
+            b"333.v1.heartbeathello".to_vec()
+        );
+    }
+
+    #[test]
+    fn a_frame_is_the_signature_then_the_body() {
+        let identity = Identity::from_seed(&[1_u8; 32]);
+        let frame = seal(DOMAIN_HEARTBEAT, b"hello", &identity).expect("small body");
+        assert_eq!(
+            &frame[..SIGNATURE_LEN],
+            &identity.sign(&signing_input(DOMAIN_HEARTBEAT, b"hello"))
+        );
+        assert_eq!(&frame[SIGNATURE_LEN..], b"hello");
+
+        // ...and the reader takes them from the same ends. Moving the signature to
+        // the tail on both sides would pass a round-trip test; it fails this one.
+        let mut hand_built = vec![0_u8; SIGNATURE_LEN];
+        hand_built.extend_from_slice(b"body");
+        let (signature, body) = split(&hand_built).expect("well-formed");
+        assert_eq!(signature, &[0_u8; SIGNATURE_LEN]);
+        assert_eq!(body, b"body");
     }
 
     #[test]
@@ -204,16 +243,23 @@ mod tests {
     }
 
     #[test]
-    fn frames_over_the_limit_are_refused_at_both_ends() {
+    fn the_frame_limit_is_inclusive() {
+        // Tested only from the refusing side, an off-by-one here would refuse the
+        // largest frame the protocol promises to carry — on both sides at once, so
+        // neither could fix it alone.
         let identity = Identity::from_seed(&[4_u8; 32]);
-        let body = vec![0_u8; MAX_FRAME_LEN];
+        let exactly = vec![0_u8; MAX_FRAME_LEN - SIGNATURE_LEN];
+        let frame = seal(DOMAIN_HEARTBEAT, &exactly, &identity).expect("exactly at the limit");
+        assert_eq!(frame.len(), MAX_FRAME_LEN);
+        assert!(split(&frame).is_ok());
+
+        let one_more = vec![0_u8; MAX_FRAME_LEN - SIGNATURE_LEN + 1];
         assert!(matches!(
-            seal(DOMAIN_HEARTBEAT, &body, &identity),
+            seal(DOMAIN_HEARTBEAT, &one_more, &identity),
             Err(Error::TooLong { .. })
         ));
-        let frame = vec![0_u8; MAX_FRAME_LEN + 1];
         assert_eq!(
-            split(&frame),
+            split(&vec![0_u8; MAX_FRAME_LEN + 1]),
             Err(Error::TooLong {
                 got: MAX_FRAME_LEN + 1
             })

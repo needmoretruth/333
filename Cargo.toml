@@ -30,7 +30,18 @@ thiserror = "2"
 # --- transport side ------------------------------------------------------------
 # Every arti crate is pinned to the exact same version. A caret range that resolves
 # to a different minor produces two incompatible copies of DataStream and Connected.
-arti-client = { version = "=0.46.0", features = ["onion-service-service", "onion-service-client", "vanguards"] }
+# `compression` is off on purpose. It is a default feature, and it is the only reason
+# this tree compiles C: it pulls zstd-sys and liblzma-sys, about 145,000 lines of
+# vendored C, to make directory downloads smaller. Without it arti still advertises
+# and decodes deflate, which is pure Rust — the cost is bandwidth on bootstrap, not a
+# lost capability. `tokio` and `native-tls` are the other two defaults, kept.
+arti-client = { version = "=0.46.0", default-features = false, features = [
+    "tokio",
+    "native-tls",
+    "onion-service-service",
+    "onion-service-client",
+    "vanguards",
+] }
 tor-hsservice = "=0.46.0"
 tor-cell = "=0.46.0"
 tor-proto = { version = "=0.46.0", features = ["hs-service"] }
@@ -38,7 +49,7 @@ tor-rtcompat = "=0.46.0"
 tor-error = "=0.46.0"
 safelog = "0.9"
 futures = "0.3"
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "signal"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "signal", "sync"] }
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
 tracing = "0.1"

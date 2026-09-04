@@ -192,16 +192,30 @@ mod tests {
         }
     }
 
+    /// A heartbeat with every field pinned, so a size or a byte string asserted
+    /// against it does not move with the clock.
+    fn pinned(in_reply_to: Option<[u8; 32]>) -> Heartbeat {
+        Heartbeat {
+            protocol: PROTOCOL_VERSION,
+            sender: [0xaa; 32],
+            epoch: 89_516,
+            sent_at_ms: 1_788_000_000_000,
+            nonce: [0xbb; 32],
+            in_reply_to,
+        }
+    }
+
     #[test]
-    fn a_heartbeat_fits_well_inside_the_frame_limit() {
+    fn a_heartbeat_frame_is_the_size_the_limit_was_chosen_for() {
         let me = identity(9);
-        let frame = Heartbeat::now(&me, Some([0_u8; 32]))
-            .seal(&me)
-            .expect("seals");
+        // At a 2026 clock the epoch is a 3-byte varint and the timestamp a 6-byte
+        // one; both gain a byte roughly once a century, so these numbers are the
+        // shape of the message and not a permanent promise.
+        assert_eq!(pinned(None).seal(&me).expect("seals").len(), 139);
+        assert_eq!(pinned(Some([0xcc; 32])).seal(&me).expect("seals").len(), 171);
         assert!(
-            frame.len() < 200,
-            "heartbeat frame grew to {} bytes",
-            frame.len()
+            Heartbeat::now(&me, None).seal(&me).expect("seals").len() <= 200,
+            "a live heartbeat outgrew the size this limit was chosen for"
         );
     }
 

@@ -5,7 +5,7 @@
 //! node that disagrees about the time simply fails to be attested by the nodes that
 //! do agree, which is the only correction this protocol has.
 
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, SystemTimeError, UNIX_EPOCH};
 
 /// 333 minutes, in seconds. Frozen by the specification.
 pub const EPOCH_SECONDS: u64 = 333 * 60;
@@ -55,17 +55,25 @@ impl std::fmt::Display for Epoch {
 /// Seconds since the Unix epoch, or 0 if the clock is set before 1970.
 #[must_use]
 pub fn unix_now_seconds() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_or(0, |d| d.as_secs())
+    seconds_since_epoch(SystemTime::now().duration_since(UNIX_EPOCH))
 }
 
 /// Milliseconds since the Unix epoch, or 0 if the clock is set before 1970.
 #[must_use]
 pub fn unix_now_millis() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_or(0, |d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX))
+    millis_since_epoch(SystemTime::now().duration_since(UNIX_EPOCH))
+}
+
+/// Reading the clock and interpreting it are separated so that both documented
+/// fallbacks — a clock set before 1970, and a duration too large to express in
+/// milliseconds — are reachable from a test. A global clock a test cannot stub is
+/// the one piece of I/O this crate would otherwise contain.
+fn seconds_since_epoch(since_epoch: Result<Duration, SystemTimeError>) -> u64 {
+    since_epoch.map_or(0, |d| d.as_secs())
+}
+
+fn millis_since_epoch(since_epoch: Result<Duration, SystemTimeError>) -> u64 {
+    since_epoch.map_or(0, |d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX))
 }
 
 #[cfg(test)]
@@ -94,8 +102,54 @@ mod tests {
     }
 
     #[test]
-    fn now_is_after_2020() {
-        // 2020-01-01 is epoch 78949 at 333-minute steps; any sane clock is past it.
-        assert!(Epoch::now() > Epoch::at_unix_seconds(1_577_836_800));
+    fn a_known_date_lands_in_a_known_epoch() {
+        // 2020-01-01T00:00:00Z is 1_577_836_800 seconds, which is 78,970 whole
+        // epochs of 19,980 seconds with 16,200 left over.
+        assert_eq!(Epoch::at_unix_seconds(1_577_836_800), Epoch(78_970));
+    }
+
+    #[test]
+    fn now_is_the_epoch_containing_the_current_second() {
+        // A whole-epoch offset in `now` would survive any test that only asserts it
+        // is large. Reading the clock either side pins it without a race.
+        let before = unix_now_seconds();
+        let now = Epoch::now();
+        let after = unix_now_seconds();
+        assert!(
+            now == Epoch::at_unix_seconds(before) || now == Epoch::at_unix_seconds(after),
+            "Epoch::now() was {now}, not the epoch of {before}..={after}"
+        );
+    }
+
+    #[test]
+    fn a_clock_set_before_1970_reads_as_zero() {
+        let backwards = UNIX_EPOCH.duration_since(SystemTime::now());
+        assert!(
+            backwards.is_err(),
+            "this machine's clock is before 1970, so the error arm is untested"
+        );
+        assert_eq!(seconds_since_epoch(backwards), 0);
+        assert_eq!(
+            millis_since_epoch(UNIX_EPOCH.duration_since(SystemTime::now())),
+            0
+        );
+    }
+
+    #[test]
+    fn milliseconds_saturate_rather_than_wrap() {
+        assert_eq!(millis_since_epoch(Ok(Duration::from_secs(3))), 3_000);
+        assert_eq!(millis_since_epoch(Ok(Duration::MAX)), u64::MAX);
+    }
+
+    #[test]
+    fn the_millisecond_clock_is_not_a_second_clock() {
+        // Returning seconds where milliseconds are promised puts a value a thousand
+        // times too small on a wire field that cannot be changed later.
+        let seconds = unix_now_seconds();
+        let millis = unix_now_millis();
+        assert!(
+            millis / 1000 + 1 >= seconds && millis / 1000 <= seconds + 1,
+            "milliseconds {millis} and seconds {seconds} disagree"
+        );
     }
 }
