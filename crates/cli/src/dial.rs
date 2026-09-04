@@ -63,15 +63,6 @@ impl Dialer {
         Ok(Box::new(stream))
     }
 
-    /// How long this node is willing to wait on any one step that talks to a network.
-    ///
-    /// Shared so that hosting an onion address gives up on the same schedule as
-    /// dialling one. Two different deadlines for the same Tor client would mean a node
-    /// that has given up on being reachable while still waiting to reach others.
-    pub(crate) const fn timeout(&self) -> std::time::Duration {
-        self.common.timeout
-    }
-
     /// The sentence both transports use when the peer never answers.
     fn gave_up_on(&self, address: &PeerAddress) -> String {
         format!(
@@ -84,6 +75,15 @@ impl Dialer {
 /// What a build with arti in it can do.
 #[cfg(feature = "tor")]
 impl Dialer {
+    /// How long this node is willing to wait on any one step that talks to Tor.
+    ///
+    /// Shared so that hosting an onion address gives up on the same schedule as
+    /// dialling one. Two different deadlines for the same Tor client would mean a node
+    /// that has given up on being reachable while still waiting to reach others.
+    pub(crate) const fn timeout(&self) -> std::time::Duration {
+        self.common.timeout
+    }
+
     /// The Tor client, started on the first call and shared from then on.
     ///
     /// # Errors
