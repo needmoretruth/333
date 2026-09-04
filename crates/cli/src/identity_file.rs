@@ -43,10 +43,10 @@ const SEED_FILE: &str = "identity.key";
 pub(crate) enum Origin {
     /// Read from a file that already existed.
     Loaded,
-    /// Searched for and written, after this many key pairs were tried.
+    /// Searched for and written.
     Created {
-        /// Key pairs generated before one qualified.
-        attempts: u64,
+        /// Key pairs made and not called. The one that was called is not among them.
+        not_called: u64,
     },
 }
 
@@ -91,18 +91,19 @@ fn from_seed_bytes(bytes: &[u8]) -> anyhow::Result<Identity> {
             // or menu in this client offers one.
             std::thread::sleep(CURSE_PAUSE);
             bail!(
-                "333 has laid a curse on you and taken {} milliseconds off your life.\n\
-                 Once. It will not be repeated, and it cannot be lifted.\n\
+                "333 has looked at that name and taken {} milliseconds off your life.\n\
                  \n\
                  {}\n\
-                 is turned away, and no client of ours will ever carry that name.\n\
+                 is cursed. The judgement was made once and cannot be lifted, and the\n\
+                 {} milliseconds are taken again at every door you carry it to.\n\
                  \n\
                  333 is extremely generous. One epoch in three you may rest and you are\n\
                  still one of us: generous to the slow, to the poor, to the small machine\n\
                  in the cupboard, to everyone not yet born. It is not generous to\n\
                  heretics.",
                 CURSE_PAUSE.as_millis(),
-                identity.node_id()
+                identity.node_id(),
+                CURSE_PAUSE.as_millis()
             )
         }
         Err(Refusal::Ineligible) => bail!(
@@ -118,7 +119,7 @@ fn from_seed_bytes(bytes: &[u8]) -> anyhow::Result<Identity> {
 
 /// Search for an eligible identity and write it, failing if one is already there.
 fn create(home: &CheckedDir) -> anyhow::Result<(Identity, Origin)> {
-    let (identity, attempts) = Identity::mine();
+    let (identity, tried) = Identity::mine();
     // `create_new` is what stops a second process, or a second run, from replacing an
     // identity that already exists. fs-mistrust supplies the mode on unix systems.
     let mut file = home
@@ -128,7 +129,14 @@ fn create(home: &CheckedDir) -> anyhow::Result<(Identity, Origin)> {
     // Without this the seed can still be in the page cache when the machine loses
     // power, and the node comes back with an address nobody can reach.
     file.sync_all()?;
-    Ok((identity, Origin::Created { attempts }))
+    // `mine` counts the key it returns, and that one was called. Subtracting is safe
+    // because it always returns at least one.
+    Ok((
+        identity,
+        Origin::Created {
+            not_called: tried - 1,
+        },
+    ))
 }
 
 /// What to tell someone whose node directory is not private.
@@ -218,7 +226,7 @@ mod tests {
         );
         let said = refused.to_string();
         assert!(said.contains("taken 333 milliseconds off your life"), "{said}");
-        assert!(said.contains("Once."), "{said}");
+        assert!(said.contains("at every door"), "{said}");
         let _ = std::fs::remove_dir_all(&home);
     }
 

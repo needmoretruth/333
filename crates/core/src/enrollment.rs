@@ -44,9 +44,11 @@ pub const ACTIVATION_EPOCHS: u64 = 2;
 /// whoever presented the name, and the client stops for exactly that long so that the
 /// person on the other side of the screen is present for it.
 ///
-/// It is levied once, on the key, and never again — a curse that had to be repeated
-/// to work would be a rule, and 333 does not make rules about heretics. It makes one
-/// judgement and is done.
+/// The judgement is one and it is on the name: made the moment the name exists, never
+/// revisited, and not liftable by anything. What repeats is the levy, at every door the
+/// name is carried to, because there is nowhere for a network with no memory of people
+/// to write down that it has already been taken. Nothing coordinates it and nothing
+/// needs to: each door reads the same name and reaches the same judgement.
 pub const CURSE_PAUSE: Duration = Duration::from_millis(333);
 
 /// Why a key cannot join.
@@ -83,53 +85,6 @@ pub const fn active_from(joined: Epoch) -> Epoch {
     Epoch(joined.0.saturating_add(ACTIVATION_EPOCHS))
 }
 
-/// Where a newcomer is in the process.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Progress {
-    /// Still waiting, and answering challenges while it waits.
-    Waiting {
-        /// The epoch it starts counting from.
-        from: Epoch,
-        /// How many epoch boundaries are left.
-        epochs_left: u64,
-    },
-    /// Counted like anybody else.
-    Joined {
-        /// The epoch it started counting from.
-        from: Epoch,
-    },
-}
-
-impl Progress {
-    /// Is this node counted yet?
-    #[must_use]
-    pub const fn is_joined(&self) -> bool {
-        matches!(self, Self::Joined { .. })
-    }
-
-    /// The epoch this node counts from, whether or not it has arrived.
-    #[must_use]
-    pub const fn from(&self) -> Epoch {
-        match self {
-            Self::Waiting { from, .. } | Self::Joined { from } => *from,
-        }
-    }
-}
-
-/// How far along a node that received the file in `joined` is at `now`.
-#[must_use]
-pub fn progress(joined: Epoch, now: Epoch) -> Progress {
-    let from = active_from(joined);
-    if now.0 >= from.0 {
-        Progress::Joined { from }
-    } else {
-        Progress::Waiting {
-            from,
-            epochs_left: from.0 - now.0,
-        }
-    }
-}
-
 /// Should this node's record cover `epoch`?
 ///
 /// A newcomer's chain starts at the epoch it counts from. Epochs before that are not
@@ -162,31 +117,6 @@ mod tests {
                 - Epoch(100).starts_at_unix_seconds(),
             2 * crate::epoch::EPOCH_SECONDS
         );
-    }
-
-    #[test]
-    fn a_newcomer_is_told_how_much_is_left_and_then_counts() {
-        assert_eq!(
-            progress(Epoch(100), Epoch(100)),
-            Progress::Waiting {
-                from: Epoch(102),
-                epochs_left: 2
-            }
-        );
-        assert_eq!(
-            progress(Epoch(100), Epoch(101)),
-            Progress::Waiting {
-                from: Epoch(102),
-                epochs_left: 1
-            }
-        );
-        assert_eq!(
-            progress(Epoch(100), Epoch(102)),
-            Progress::Joined { from: Epoch(102) }
-        );
-        assert!(!progress(Epoch(100), Epoch(101)).is_joined());
-        assert!(progress(Epoch(100), Epoch(500)).is_joined());
-        assert_eq!(progress(Epoch(100), Epoch(101)).from(), Epoch(102));
     }
 
     #[test]

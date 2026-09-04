@@ -264,9 +264,56 @@ pub fn judge(
     roll: &std::collections::BTreeSet<[u8; 32]>,
     evidence: &Evidence<'_>,
 ) -> Attendance {
+    read(epoch, prover, roll, evidence).attendance
+}
+
+/// A verdict and the reason it was reached.
+///
+/// The reason is for a screen and for nothing else. It is not serialised, it does not
+/// go into a record, and it never travels: two nodes holding different evidence reach
+/// the same verdict for different reasons all the time, and that is two observations
+/// rather than a disagreement.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Verdict {
+    /// What the epoch counts as.
+    pub attendance: Attendance,
+    /// Which of the five ways it got there.
+    pub because: Because,
+}
+
+/// The five ways [`judge`] reaches a verdict, in the order it tries them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Because {
+    /// A verifier that was drawn published the node's own answer.
+    Answered,
+    /// Every verifier that was drawn swore nothing came back.
+    Denounced,
+    /// The roll was too small to draw anybody, so nothing was asked.
+    NoneDrawn,
+    /// The node kept a question and the answer it gave, which withdraws an accusation
+    /// without earning a presence.
+    ReceiptWithdrew,
+    /// Some of those drawn said nothing at all, and silence is not agreement.
+    NotAllSpoke,
+}
+
+/// Judge one epoch, and say which of the five ways it went.
+///
+/// [`judge`] is this with the reason dropped.
+#[must_use]
+pub fn read(
+    epoch: Epoch,
+    prover: &[u8; 32],
+    roll: &std::collections::BTreeSet<[u8; 32]>,
+    evidence: &Evidence<'_>,
+) -> Verdict {
+    let said = |attendance, because| Verdict {
+        attendance,
+        because,
+    };
     let drawn = draw::verifiers_for(epoch, prover, roll);
     if drawn.is_empty() {
-        return Attendance::Excluded;
+        return said(Attendance::Excluded, Because::NoneDrawn);
     }
 
     let relevant = |a: &SignedAttestation| {
@@ -281,7 +328,7 @@ pub fn judge(
         .filter(|a| relevant(a))
         .any(|a| a.is_positive())
     {
-        return Attendance::Present;
+        return said(Attendance::Present, Because::Answered);
     }
 
     if let Some(receipt) = evidence.receipt
@@ -289,7 +336,7 @@ pub fn judge(
         && &receipt.answer.answer.prover == prover
         && drawn.contains(&receipt.challenge.challenge.verifier)
     {
-        return Attendance::Excluded;
+        return said(Attendance::Excluded, Because::ReceiptWithdrew);
     }
 
     // Distinct verifiers, so one verifier publishing the same negative twice does not
@@ -304,9 +351,9 @@ pub fn judge(
     denouncing.dedup();
 
     if denouncing.len() == drawn.len() {
-        Attendance::Absent
+        said(Attendance::Absent, Because::Denounced)
     } else {
-        Attendance::Excluded
+        said(Attendance::Excluded, Because::NotAllSpoke)
     }
 }
 

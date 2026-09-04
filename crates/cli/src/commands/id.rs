@@ -12,8 +12,8 @@ pub(crate) fn run(common: &Common) -> anyhow::Result<()> {
     let (identity, origin) = identity_file::load_or_create(&common.mistrust(), home)?;
 
     println!("name     {}", identity.node_id());
-    if let Origin::Created { attempts } = origin {
-        println!("called   after {attempts} keys were turned away");
+    if let Origin::Created { not_called } = origin {
+        println!("{}", crate::commands::naming(not_called));
     }
     println!("home     {}", home.display());
     if matches!(origin, Origin::Created { .. }) {

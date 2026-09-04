@@ -42,11 +42,11 @@ pub mod utterance;
 pub mod whereabouts;
 pub mod wire;
 
-pub use attestation::{Attestation, Testimony, judge};
+pub use attestation::{Attestation, Because, Testimony, judge};
 pub use chain::{Entry, Head};
 pub use challenge::{Answer, Challenge, RESPONSE_WINDOW_SECONDS};
 pub use draw::{VERIFIERS_PER_EPOCH, verifiers_for};
-pub use enrollment::{ACTIVATION_EPOCHS, Progress};
+pub use enrollment::ACTIVATION_EPOCHS;
 pub use epoch::{EPOCH_SECONDS, Epoch};
 pub use extinction::{EXTINCTION_YEARS, Remaining, Verdict, Vigil, Watched};
 pub use heartbeat::{Heartbeat, PROTOCOL_VERSION};

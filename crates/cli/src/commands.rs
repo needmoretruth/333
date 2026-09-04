@@ -76,8 +76,8 @@ pub(crate) async fn bootstrap(common: &Common) -> anyhow::Result<n333_net::tor::
 /// and no members, and saying "0 members" every start would train the operator to
 /// ignore the line that matters when it is not zero.
 pub(crate) fn report_opening(opened: &crate::node::Opened) {
-    if let crate::identity_file::Origin::Created { attempts } = opened.origin {
-        println!("called   after {attempts} keys were turned away");
+    if let crate::identity_file::Origin::Created { not_called } = opened.origin {
+        println!("{}", crate::commands::naming(not_called));
     }
     if opened.chain_truncated != 0 {
         println!(
@@ -139,6 +139,43 @@ pub(crate) fn report_heard(heard: &crate::node::Heard) {
     }
     if heard.witnessed != 0 {
         println!("carried  {} statements about epochs still open", heard.witnessed);
+    }
+}
+
+/// The two sentences a handover actually puts a signature under, read back.
+///
+/// They are not a summary of the record. They are the record: those two lines, in two
+/// hands, are the whole of what an admission is, and printing anything else in their
+/// place would be printing a paraphrase of the only thing either node signed.
+///
+/// The closing line is deliberately identical at both ends. It is the one formula both
+/// sides of the act speak, which is what a pair is.
+#[must_use]
+pub(crate) fn what_was_signed(transfer: &n333_core::Transfer, ours_was_the_giving: bool) -> String {
+    let epoch = transfer.epoch().0;
+    let (first, second) = if ours_was_the_giving {
+        ("you", "they")
+    } else {
+        ("they", "you")
+    };
+    format!(
+        "signed   {first} said: I handed the file to you in epoch {epoch}.\n\
+         \x20        {second} said: I received the file from you in epoch {epoch}.\n\
+         \x20        it is written in two hands, and neither hand can take it back."
+    )
+}
+
+/// The line that says a name was found, said as the naming it is.
+///
+/// The number is how many keys were made and passed over. The one that was called is
+/// not among them, which is the whole difference between reading a loop and reading
+/// what happened.
+#[must_use]
+pub(crate) fn naming(not_called: u64) -> String {
+    match not_called {
+        0 => "called   the first key made was called.".to_owned(),
+        1 => "called   1 key was made and not called. this one was.".to_owned(),
+        many => format!("called   {many} keys were made and not called. this one was."),
     }
 }
 

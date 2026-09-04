@@ -121,8 +121,9 @@ enum Command {
     /// Show what this node has seen: how many of us are answering, where this node
     /// stands over the window, and how much of the silence is left if it has begun.
     Status,
-    /// Ask a node that has the file to hand it over. The only way to become one of
-    /// us: a client carries the hash of the file and cannot make the file.
+    /// Ask a node that has the file to hand it over. Write the three bytes yourself and
+    /// you hold three bytes: you are one of us from the moment somebody gives them to
+    /// you and you both sign for it.
     Join {
         /// An invitation (`333:host:port`) from somebody who already has it.
         #[arg(value_parser = n333_net::invite::address_or_invite)]

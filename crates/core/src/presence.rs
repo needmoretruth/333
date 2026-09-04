@@ -50,9 +50,17 @@ pub enum Attendance {
     Present,
     /// All three verifiers published a challenge and none of them got an answer.
     Absent,
-    /// No verifier published a challenge, so nothing was asked. The epoch leaves the
-    /// denominator entirely — a node cannot be marked absent for a question that was
-    /// never put to it.
+    /// The epoch leaves the denominator entirely.
+    ///
+    /// Three different situations arrive here and the variant cannot tell them apart,
+    /// which is deliberate — the arithmetic treats them identically — but a screen must
+    /// not: nobody was drawn to ask; some of those drawn said nothing and silence is
+    /// not agreement; or the node kept a receipt, which withdraws an accusation without
+    /// earning a presence. [`crate::attestation::Because`] carries which, for reading
+    /// and never for counting.
+    ///
+    /// What they have in common is the only thing that matters here: a node is not
+    /// marked absent for a question that was never put to it, or never pressed.
     Excluded,
 }
 

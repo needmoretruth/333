@@ -5,11 +5,10 @@
 //! ITSELF and nobody else: the statements it published about others are the evidence
 //! other people judge them by, and this is only the record it is entitled to keep.
 
-use n333_core::attestation::{self, Evidence, JUDGEMENT_DELAY_EPOCHS};
+use n333_core::attestation::{self, Because, Evidence, JUDGEMENT_DELAY_EPOCHS};
 use n333_core::challenge::{self, Exchange};
 use n333_core::chain::evidence_digest;
 use n333_core::enrollment;
-use n333_core::presence::Attendance;
 use n333_core::Epoch;
 
 use crate::node::Node;
@@ -57,11 +56,11 @@ async fn judge_one(node: &Node, epoch: Epoch) -> anyhow::Result<()> {
         attestations: published.iter().collect(),
         receipt: receipt.as_ref(),
     };
-    let attendance = attestation::judge(epoch, &me, &roll, &evidence);
+    let verdict = attestation::read(epoch, &me, &roll, &evidence);
     let head = node
-        .record(epoch, attendance, evidence_digest(&frames))
+        .record(epoch, verdict.attendance, evidence_digest(&frames))
         .await?;
-    println!("judged   epoch {}: {}", epoch.0, said(attendance));
+    println!("judged   epoch {}: {}", epoch.0, said(verdict.because));
     println!("record   {}", super::epochs(head.length));
     Ok(())
 }
@@ -86,16 +85,30 @@ fn receipt_in(frames: &[Vec<u8>], me: &[u8; 32]) -> Option<Exchange> {
         })
 }
 
-/// The word for a verdict, in the register the rest of the output uses.
+/// What happened, said as the thing that happened.
 ///
-/// An excluded epoch is not a bad mark and not a good one. Nobody was drawn to ask,
-/// so there was no question to answer and the epoch leaves the count entirely — which
-/// is a different thing from having been asked and having answered.
-const fn said(attendance: Attendance) -> &'static str {
-    match attendance {
-        Attendance::Present => "present. it will not be judged again.",
-        Attendance::Absent => "absent. it will not be judged again.",
-        Attendance::Excluded => "nobody was drawn to ask, so the epoch counts for nothing.",
+/// Three of the five ways an epoch leaves the count are different events with different
+/// meanings, and one sentence for all three would be false in two of them. The
+/// arithmetic does not distinguish them; a person reading this must.
+const fn said(because: Because) -> &'static str {
+    match because {
+        Because::Answered => "present. it will not be judged again.",
+        Because::Denounced => {
+            "absent. everyone drawn to ask you has sworn nothing came back. it will\n\
+             \x20        not be judged again."
+        }
+        Because::NoneDrawn => {
+            "outside the count. nobody was drawn to ask you, and an epoch that asked\n\
+             \x20        nothing of you takes nothing from you."
+        }
+        Because::ReceiptWithdrew => {
+            "outside the count. you kept the question and the answer you gave to it,\n\
+             \x20        which withdraws the accusation without earning a presence."
+        }
+        Because::NotAllSpoke => {
+            "outside the count. some of those drawn said nothing at all, and silence\n\
+             \x20        is not agreement."
+        }
     }
 }
 

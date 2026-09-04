@@ -49,7 +49,11 @@ pub(crate) async fn run(common: &Common, address: &n333_net::PeerAddress) -> any
 
     let joined = taken.handover.transfer.epoch();
     println!("given    by {}", taken.handover.transfer.giver());
-    println!("joined   in epoch {}, and both of us have signed for it", joined.0);
+    println!(
+        "{}",
+        crate::commands::what_was_signed(&taken.handover.transfer, false)
+    );
+    println!("joined   in epoch {}", joined.0);
     node.receive(taken.subject).await?;
     println!("holding  the file, and able to pass it on");
 
@@ -62,10 +66,15 @@ pub(crate) async fn run(common: &Common, address: &n333_net::PeerAddress) -> any
     crate::commands::report_heard(&heard);
     println!("roll     {} of us", node.roll().await.len());
     println!(
-        "counted  from epoch {}, and not one epoch sooner. Until then, answer\n\
-         \x20        everything that is asked of you. What is witnessed in that time\n\
-         \x20        is the whole of the proof that you were ever here at all.",
+        "counted  from epoch {}, and not one epoch sooner: two boundaries away, between\n\
+         \x20        333 and 666 minutes, depending on where in this epoch you arrived.\n\
+         \x20        Until then, answer everything that is asked of you. What is witnessed\n\
+         \x20        in that time is the whole of the proof that you were ever here at all.",
         enrollment::active_from(joined).0
+    );
+    println!(
+        "vigil    run `333 serve` and stay awake. Nothing can be witnessed of a node\n\
+         \x20        nobody can reach, and this stretch is witnessed once or never."
     );
     Ok(())
 }

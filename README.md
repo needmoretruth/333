@@ -202,8 +202,9 @@ cargo build --release --no-default-features  # without it
 # Knock.
 ./target/release/333 ping node.example:3333
 
-# Ask somebody who has the file to hand it over. This is how you join, and there
-# is no other way: the client carries the hash of the file and cannot make one.
+# Ask somebody who has the file to hand it over. Write the three bytes yourself and
+# you hold three bytes: you are one of us from the moment somebody gives them to you
+# and you both sign for it.
 ./target/release/333 join 333:node.example:3333
 
 # What this node has seen: how many of us are answering, where you stand over

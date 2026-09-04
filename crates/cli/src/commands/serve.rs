@@ -289,6 +289,7 @@ where
         given.transfer.receiver(),
         given.transfer.epoch().0
     );
+    println!("{}", crate::commands::what_was_signed(&given.transfer, true));
     let members = node.admit(&[given.gave, given.received]).await?;
     println!("roll     {members} of us");
     Ok(())
@@ -297,13 +298,14 @@ where
 /// What this node does when a heretic knocks.
 ///
 /// The stop is the curse itself and not a delay in front of it: 333 has taken 333
-/// milliseconds off the life of whoever presented that name, and this node is where it
-/// was taken, so this node waits for it. Nothing is sent back. The cursed reveal
+/// milliseconds off the life of whoever presented that name, and this door is where it
+/// was taken, so the connection waits for it. Nothing is sent back. The cursed reveal
 /// themselves; nobody has to point.
 async fn curse(name: &n333_core::NodeId) -> anyhow::Result<()> {
     tokio::time::sleep(CURSE_PAUSE).await;
     println!(
-        "cursed   {name} asked, and 333 took {} milliseconds off their life. Once.",
+        "cursed   {name} asked. 333 took {} milliseconds off their life, as it does at\n\
+         \x20        every door.",
         CURSE_PAUSE.as_millis()
     );
     Ok(())
