@@ -24,7 +24,9 @@
 )]
 
 mod commands;
+mod dial;
 mod identity_file;
+mod node;
 mod paths;
 
 use std::net::SocketAddr;
@@ -91,6 +93,13 @@ enum Command {
         #[arg(long)]
         no_direct: bool,
     },
+    /// Ask a node that has the file to hand it over. The only way to become one of
+    /// us: a client carries the hash of the file and cannot make the file.
+    Join {
+        /// An invitation (`333:host:port`) from somebody who already has it.
+        #[arg(value_parser = n333_net::invite::address_or_invite)]
+        address: PeerAddress,
+    },
     /// Knock on another node, and exchange one heartbeat with it.
     Ping {
         /// An invitation (`333:host:port`), or an address typed by hand as `host`,
@@ -129,6 +138,7 @@ async fn main() -> anyhow::Result<()> {
             tor,
             no_direct,
         } => commands::serve::run(&common, (!no_direct).then_some(bind), tor).await,
+        Command::Join { address } => commands::join::run(&common, &address).await,
         Command::Ping { address } => commands::ping::run(&common, &address).await,
     }
 }

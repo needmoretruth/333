@@ -2259,6 +2259,7 @@ dependencies = [
  "futures",
  "n333-core",
  "n333-net",
+ "n333-store",
  "tokio",
  "tracing",
  "tracing-subscriber",

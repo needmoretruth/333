@@ -3,7 +3,9 @@
 //! One file per command. Each one owns its own output text, because the words a
 //! person reads are part of the command, not a detail of it.
 
+pub(crate) mod hours;
 pub(crate) mod id;
+pub(crate) mod join;
 pub(crate) mod ping;
 pub(crate) mod serve;
 
@@ -62,6 +64,41 @@ pub(crate) async fn bootstrap(common: &Common) -> anyhow::Result<n333_net::tor::
     .await
     .with_context(|| format!("no Tor connection after {} s", common.timeout.as_secs()))?
     .context("starting the Tor client")
+}
+
+/// What opening a node found, said once at the start.
+///
+/// Only the lines that are true of this node right now. A fresh node has no record
+/// and no members, and saying "0 members" every start would train the operator to
+/// ignore the line that matters when it is not zero.
+pub(crate) fn report_opening(opened: &crate::node::Opened) {
+    if let crate::identity_file::Origin::Created { attempts } = opened.origin {
+        println!("called   after {attempts} keys were turned away");
+    }
+    if opened.chain_truncated != 0 {
+        println!(
+            "torn     {} bytes of an unfinished entry were dropped from the record",
+            opened.chain_truncated
+        );
+    }
+    if opened.chain_length != 0 {
+        println!("record   {} epochs judged", opened.chain_length);
+    }
+    if opened.members != 0 {
+        println!("roll     {} members", opened.members);
+    }
+    if opened.addresses != 0 {
+        println!("known    where {} of them said to look", opened.addresses);
+    }
+    if opened.has_the_file {
+        println!("holding  the file");
+    }
+    if opened.read.unreadable != 0 {
+        println!(
+            "ignored  {} admissions that could not be read",
+            opened.read.unreadable
+        );
+    }
 }
 
 /// One line describing what a completed exchange showed.

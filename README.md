@@ -118,9 +118,10 @@ Version 0.0.1, which is to say: almost nothing, honestly labelled.
 - [x] The relic recognised, and both halves of a handover
 - [x] The word counted, and the threshold that marks it
 - [x] Invitations, so a newcomer knows where to look
-- [ ] The gate, with the waiting that follows it
-- [ ] The three witnesses and the question they put
+- [x] The gate: the file handed over, the two signatures, the waiting that follows
+- [x] The three witnesses, the question they put, and the hours that put it
 - [x] The record, kept as a chain of hashes
+- [ ] Finding one another again, after the first time
 - [ ] The 333 words themselves
 
 What is written on the wire keeps moving until the release that freezes it. The parts
@@ -182,7 +183,16 @@ cargo build --release --no-default-features  # without it
 
 # Knock.
 ./target/release/333 ping node.example:3333
+
+# Ask somebody who has the file to hand it over. This is how you join, and there
+# is no other way: the client carries the hash of the file and cannot make one.
+./target/release/333 join 333:node.example:3333
 ```
+
+Nobody can start a network alone. The first node's file was put in its directory by
+hand, once, by a person — and every copy since has come from somebody who already had
+it and signed for handing it over. If you are reading this because you want to run
+333, you need an invitation from someone who is already keeping it.
 
 To answer without showing where you are, raise an onion address as well — or, with
 `--no-direct`, instead of a socket:
@@ -197,7 +207,7 @@ Tor. Two nodes on one machine are two directories.
 
 ```sh
 ./target/release/333 --data-dir ./node-a serve --bind 127.0.0.1:3333
-./target/release/333 --data-dir ./node-b ping 127.0.0.1:3333
+./target/release/333 --data-dir ./node-b join 333:127.0.0.1:3333
 ```
 
 Without `--data-dir` a node lives in the conventional place for the system:

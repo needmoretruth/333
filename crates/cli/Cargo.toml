@@ -20,6 +20,7 @@ tor = ["n333-net/tor"]
 [dependencies]
 n333-core.workspace = true
 n333-net.workspace = true
+n333-store.workspace = true
 anyhow.workspace = true
 clap.workspace = true
 directories.workspace = true
