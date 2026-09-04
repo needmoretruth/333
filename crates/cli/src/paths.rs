@@ -21,8 +21,6 @@
 
 use std::path::{Path, PathBuf};
 
-use n333_net::tor;
-
 /// The layout of a node's directory.
 #[derive(Debug, Clone)]
 pub(crate) struct NodePaths {
@@ -58,10 +56,15 @@ impl NodePaths {
         &self.root
     }
 
-    /// The directories arti needs.
+    /// The directories arti needs, if this build has arti in it.
+    ///
+    /// They sit under the node's own home rather than arti's default, which is shared
+    /// by every arti program on the machine: two nodes started with the defaults would
+    /// fight over the same lock files, quietly.
+    #[cfg(feature = "tor")]
     #[must_use]
-    pub(crate) fn tor(&self) -> tor::Paths {
-        tor::Paths {
+    pub(crate) fn tor(&self) -> n333_net::tor::Paths {
+        n333_net::tor::Paths {
             state_dir: self.root.join("tor").join("state"),
             cache_dir: self.root.join("tor").join("cache"),
         }
@@ -76,15 +79,16 @@ mod tests {
     fn every_path_lives_under_the_root() {
         let paths = NodePaths::at(PathBuf::from("/tmp/example"));
         assert!(paths.root().starts_with("/tmp/example"));
-        assert!(paths.tor().state_dir.starts_with("/tmp/example"));
-        assert!(paths.tor().cache_dir.starts_with("/tmp/example"));
     }
 
+    #[cfg(feature = "tor")]
     #[test]
-    fn tor_state_and_cache_are_different_directories() {
+    fn tor_keeps_its_directories_under_the_node_and_apart_from_each_other() {
         // Two nodes sharing either one fail quietly rather than loudly, so the two
         // must never collapse into the same path by accident.
         let paths = NodePaths::at(PathBuf::from("/tmp/example"));
+        assert!(paths.tor().state_dir.starts_with("/tmp/example"));
+        assert!(paths.tor().cache_dir.starts_with("/tmp/example"));
         assert_ne!(paths.tor().state_dir, paths.tor().cache_dir);
     }
 

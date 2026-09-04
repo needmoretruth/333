@@ -100,19 +100,28 @@ impl OnionHost {
     /// that looks like a bug and is not one. Arti is explicit that reachability is an
     /// implication in one direction only: `false` does not prove unreachable.
     ///
+    /// Returns a future that borrows nothing — `use<>` captures no lifetime — rather
+    /// than being an `async fn` taking `&self`. The stream of incoming requests is
+    /// `Send` but not `Sync`, so a future holding a shared reference to this whole
+    /// object could not be moved to another task, and waiting is exactly the thing a
+    /// caller wants to do on a task of its own.
+    ///
     /// # Errors
     /// Fails if the service stops before it becomes reachable.
-    pub async fn wait_until_reachable(&self) -> Result<(), Error> {
-        if self.service.status().state().is_fully_reachable() {
-            return Ok(());
-        }
-        let mut events = self.service.status_events();
-        while let Some(status) = events.next().await {
-            if status.state().is_fully_reachable() {
+    pub fn wait_until_reachable(&self) -> impl Future<Output = Result<(), Error>> + Send + use<> {
+        let service = Arc::clone(&self.service);
+        async move {
+            if service.status().state().is_fully_reachable() {
                 return Ok(());
             }
+            let mut events = service.status_events();
+            while let Some(status) = events.next().await {
+                if status.state().is_fully_reachable() {
+                    return Ok(());
+                }
+            }
+            Err(Error::Stopped)
         }
-        Err(Error::Stopped)
     }
 
     /// Accept the next stream addressed to this service's port.

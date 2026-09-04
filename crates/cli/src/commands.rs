@@ -9,7 +9,6 @@ pub(crate) mod serve;
 
 use std::time::Duration;
 
-use anyhow::Context as _;
 use n333_net::Exchange;
 
 /// Options every command shares.
@@ -44,12 +43,17 @@ impl Common {
 
 /// Start a Tor client, giving up after the shared timeout.
 ///
+/// Only reached when an address asks for Tor, or when `serve --tor` was used. A node
+/// that is not hiding never calls this and never pays for it.
+///
 /// Arti retries bootstrap 128 times by default, so without a deadline a broken
 /// network hangs instead of failing.
 ///
 /// # Errors
 /// Fails if the timeout elapses or arti cannot start.
+#[cfg(feature = "tor")]
 pub(crate) async fn bootstrap(common: &Common) -> anyhow::Result<n333_net::tor::Client> {
+    use anyhow::Context as _;
     println!("connecting to the Tor network...");
     tokio::time::timeout(
         common.timeout,

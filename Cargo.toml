@@ -49,7 +49,11 @@ tor-rtcompat = "=0.46.0"
 tor-error = "=0.46.0"
 safelog = "0.9"
 futures = "0.3"
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "signal", "sync"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "signal", "sync", "net"] }
+# Bridges Tokio's socket traits to the futures ones arti's streams already speak, so
+# one exchange is written once for both transports. Already in the tree; this only
+# turns on a feature of it.
+tokio-util = { version = "0.7", features = ["compat"] }
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
 tracing = "0.1"
@@ -69,7 +73,9 @@ fs-mistrust = "=0.15.1"
 directories = "6"
 
 n333-core = { path = "crates/core" }
-n333-net = { path = "crates/net" }
+# default-features off at the root so each edition names what it wants; the CLI
+# turns "tor" back on through its own feature of the same name.
+n333-net = { path = "crates/net", default-features = false }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

@@ -1,29 +1,45 @@
 [package]
 name = "n333-net"
-description = "333 transport: framing over a byte stream, and the Tor onion service that carries it."
+description = "333 transport: framing over a byte stream, reached directly or through Tor."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[features]
+# Tor is bundled by default so that any node can reach a hidden one, but nothing
+# uses it unless an address asks for it. Turning it off removes arti entirely, which
+# is what the smallest edition does: it is by far the largest thing in the tree.
+default = ["tor"]
+tor = [
+    "dep:arti-client",
+    "dep:tor-hsservice",
+    "dep:tor-cell",
+    "dep:tor-proto",
+    "dep:tor-rtcompat",
+    "dep:tor-error",
+    "dep:safelog",
+]
+
 [dependencies]
 n333-core.workspace = true
-arti-client.workspace = true
-tor-hsservice.workspace = true
-tor-cell.workspace = true
-tor-proto.workspace = true
-tor-rtcompat.workspace = true
-tor-error.workspace = true
-safelog.workspace = true
 futures.workspace = true
-tokio.workspace = true
+tokio = { workspace = true, features = ["net"] }
+tokio-util.workspace = true
 tracing.workspace = true
 thiserror.workspace = true
 
+arti-client = { workspace = true, optional = true }
+tor-hsservice = { workspace = true, optional = true }
+tor-cell = { workspace = true, optional = true }
+tor-proto = { workspace = true, optional = true }
+tor-rtcompat = { workspace = true, optional = true }
+tor-error = { workspace = true, optional = true }
+safelog = { workspace = true, optional = true }
+
 [dev-dependencies]
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "io-util", "time"] }
-tokio-util = { version = "0.7", features = ["compat"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "io-util", "time", "net"] }
 
 [lints]
 workspace = true

@@ -1,7 +1,11 @@
 //! The 333 command line client.
 //!
-//! Three things it can do at this version: show this node's name, publish an onion
-//! address and answer heartbeats on it, and dial another node to exchange one.
+//! Three things it can do at this version: show this node's name, listen for
+//! heartbeats, and reach another node to exchange one.
+//!
+//! Reaching a peer is direct by default. Tor is carried for the nodes that need
+//! their own address unseen, and starting it is the slowest thing this program can
+//! be asked to do, so it happens only when something asks for it by name.
 //!
 //! Everything printed here is deliberately plain. The vocabulary the project speaks
 //! to people in belongs to the screens that come later; a client at version 0.0.1 is
@@ -23,12 +27,14 @@ mod commands;
 mod identity_file;
 mod paths;
 
+use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::time::Duration;
 
 use clap::{Parser, Subcommand};
 
 use commands::Common;
+use n333_net::PeerAddress;
 use paths::NodePaths;
 
 /// One node of the 333 network.
@@ -59,16 +65,33 @@ struct Cli {
 enum Command {
     /// Show this node's name, creating an identity on first run.
     Id,
-    /// Publish an onion address and answer heartbeats until interrupted.
-    Serve,
-    /// Dial another node and exchange one heartbeat.
-    Ping {
-        /// The peer's onion address, without the port.
-        address: String,
-        /// The peer's port.
-        #[arg(long, default_value_t = commands::ping::default_port())]
-        port: u16,
+    /// Answer heartbeats until interrupted.
+    Serve {
+        /// Address and port to listen on.
+        #[arg(long, default_value_t = default_bind(), value_name = "ADDR:PORT")]
+        bind: SocketAddr,
+
+        /// Also publish an onion address, so peers can reach this node without
+        /// learning where it is. Starting Tor takes seconds to minutes.
+        #[arg(long)]
+        tor: bool,
+
+        /// Do not listen on a socket at all. Only useful together with --tor, and
+        /// the only way to run a node whose address is nowhere on the wire.
+        #[arg(long)]
+        no_direct: bool,
     },
+    /// Reach another node and exchange one heartbeat.
+    Ping {
+        /// The peer, as `host`, `host:port`, `[::1]:port` or `something.onion`.
+        /// An onion address is reached through Tor; everything else directly.
+        address: PeerAddress,
+    },
+}
+
+/// Listen on every interface, on the port peers expect.
+fn default_bind() -> SocketAddr {
+    SocketAddr::from(([0, 0, 0, 0], n333_net::DEFAULT_PORT))
 }
 
 #[tokio::main]
@@ -89,7 +112,11 @@ async fn main() -> anyhow::Result<()> {
 
     match cli.command {
         Command::Id => commands::id::run(&common),
-        Command::Serve => commands::serve::run(&common).await,
-        Command::Ping { address, port } => commands::ping::run(&common, &address, port).await,
+        Command::Serve {
+            bind,
+            tor,
+            no_direct,
+        } => commands::serve::run(&common, (!no_direct).then_some(bind), tor).await,
+        Command::Ping { address } => commands::ping::run(&common, &address).await,
     }
 }

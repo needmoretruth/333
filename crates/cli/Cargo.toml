@@ -11,6 +11,12 @@ repository.workspace = true
 name = "333"
 path = "src/main.rs"
 
+[features]
+# Arti is bundled by default, and nothing starts it unless an address asks for Tor.
+# The smallest edition builds with --no-default-features, which drops it entirely.
+default = ["tor"]
+tor = ["n333-net/tor"]
+
 [dependencies]
 n333-core.workspace = true
 n333-net.workspace = true
