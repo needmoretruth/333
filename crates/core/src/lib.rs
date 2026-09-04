@@ -22,11 +22,15 @@
 )]
 
 pub mod epoch;
+pub mod extinction;
 pub mod heartbeat;
 pub mod identity;
+pub mod presence;
 pub mod wire;
 
 pub use epoch::{EPOCH_SECONDS, Epoch};
+pub use extinction::{EXTINCTION_YEARS, Remaining};
+pub use presence::{Attendance, Census, Standing, WINDOW_EPOCHS};
 pub use heartbeat::{Heartbeat, PROTOCOL_VERSION};
 pub use identity::{Identity, KeyClass, NodeId};
 pub use wire::{Error as WireError, MAX_FRAME_LEN};
