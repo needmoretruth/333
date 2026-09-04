@@ -41,19 +41,25 @@ use paths::NodePaths;
 #[derive(Debug, Parser)]
 #[command(name = "333", version, about = "A node of the 333 network.")]
 struct Cli {
-    /// Directory holding this node's identity and Tor state.
+    /// Directory holding everything this node owns: its name, and Tor's state if it
+    /// uses Tor.
     #[arg(long, global = true, value_name = "DIR")]
     data_dir: Option<PathBuf>,
 
-    /// Seconds to wait for any single step that talks to the Tor network.
+    /// Seconds to wait for any single step that talks to the network.
+    ///
+    /// A ceiling rather than a delay. A direct connection is done in milliseconds
+    /// and fails on its own; this is sized for a Tor bootstrap, which is the one
+    /// step here that can legitimately take minutes.
     #[arg(long, global = true, default_value_t = 300, value_name = "SECONDS")]
     timeout: u64,
 
     /// Accept a data directory that other users on this machine can read.
     ///
-    /// Arti refuses to start on a loosely permissioned directory, which is the right
-    /// default. This exists for scratch directories and containers with odd
-    /// ownership, and it does what its name says.
+    /// Both this client and arti refuse to start on a loosely permissioned
+    /// directory, which is the right default: that directory holds the only copy of
+    /// this node's name. The flag exists for scratch directories and containers with
+    /// odd ownership, and it does what its name says.
     #[arg(long, global = true)]
     dangerously_trust_directory_permissions: bool,
 
