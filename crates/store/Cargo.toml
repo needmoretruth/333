@@ -1,0 +1,15 @@
+[package]
+name = "n333-store"
+description = "333 storage: append-only logs of signed frames, and the window of what peers said."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+n333-core.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true

@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/core", "crates/net", "crates/cli"]
+members = ["crates/core", "crates/net", "crates/store", "crates/cli"]
 
 [workspace.package]
 version = "0.0.1"
@@ -76,6 +76,7 @@ n333-core = { path = "crates/core" }
 # default-features off at the root so each edition names what it wants; the CLI
 # turns "tor" back on through its own feature of the same name.
 n333-net = { path = "crates/net", default-features = false }
+n333-store = { path = "crates/store" }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
