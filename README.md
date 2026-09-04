@@ -121,7 +121,7 @@ Version 0.0.1, which is to say: almost nothing, honestly labelled.
 - [x] The gate: the file handed over, the two signatures, the waiting that follows
 - [x] The three witnesses, the question they put, and the hours that put it
 - [x] The record, kept as a chain of hashes
-- [ ] Finding one another again, after the first time
+- [x] Finding one another again: we trade what each of us knows, and nobody arbitrates
 - [ ] The 333 words themselves
 
 What is written on the wire keeps moving until the release that freezes it. The parts
@@ -146,6 +146,15 @@ asks for it.
 everything else is reached directly. There is no setting, because a setting is
 something that can be turned on once and quietly stop applying, and of all the
 mistakes available here that is the one that cannot be taken back.
+
+After the first meeting we find each other by telling each other. Each of us signs a
+short statement saying where to look, and every time two of us speak we hand over what
+we hold — those statements, and the records of who let whom in. Nobody keeps the list.
+There is no list. Each of us knows what has reached us, two of us can know different
+things, and neither of us is wrong.
+
+If your node answers on every interface, or sits behind something that forwards a port,
+it cannot work out what to tell people. Tell it: `--announce your.address:3333`.
 
 ---
 
@@ -201,6 +210,10 @@ To answer without showing where you are, raise an onion address as well — or, 
 ./target/release/333 serve --tor
 ./target/release/333 ping <their-address>.onion
 ```
+
+An onion address is the answer to being reachable from anywhere without saying where
+you are, and it needs no `--announce`: the node knows the address it raised, and tells
+people that one.
 
 Everything your node is lives in one directory: its name, and Tor's state if it uses
 Tor. Two nodes on one machine are two directories.
