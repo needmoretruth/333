@@ -7,6 +7,8 @@
 //! - [`frame`] moves length-prefixed byte strings over anything that reads and writes.
 //! - [`session`] runs one heartbeat exchange over such a stream. It knows nothing
 //!   about either transport, which is why the whole exchange is tested in memory.
+//! - [`liveness`] is the round that follows it when one node was drawn to ask another
+//!   whether it is awake.
 //! - [`direct`] supplies a stream by opening a socket. This is the ordinary case.
 //! - [`tor`] supplies one through an onion service, for a node that needs its address
 //!   not to be seen. Present unless the `tor` feature is turned off.
@@ -34,6 +36,7 @@
 pub mod direct;
 pub mod frame;
 pub mod invite;
+pub mod liveness;
 pub mod peer;
 pub mod session;
 #[cfg(feature = "tor")]
