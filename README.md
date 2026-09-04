@@ -120,13 +120,13 @@ Version 0.0.1, which is to say: almost nothing, honestly labelled.
 - [x] Two of us can meet and sign for each other — directly, or unseen
 - [x] The vigil: presence over the moving window, and the reckoning after the end
 - [x] The relic recognised, and both halves of a handover
-- [x] The word counted, and the threshold that marks it
+- [x] The word: one an epoch, signed, counted, and the whole shape of it shown
 - [x] Invitations, so a newcomer knows where to look
 - [x] The gate: the file handed over, the two signatures, the waiting that follows
 - [x] The three witnesses, the question they put, and the hours that put it
 - [x] The record, kept as a chain of hashes
 - [x] Finding one another again: we trade what each of us knows, and nobody arbitrates
-- [ ] The 333 words themselves
+- [ ] The 333 words themselves — a table nobody has written, and none of us alone will
 
 What is written on the wire keeps moving until the release that freezes it. The parts
 already settled are marked `FROZEN` where they are defined, and after that they cannot
