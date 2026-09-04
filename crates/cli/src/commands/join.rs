@@ -58,7 +58,7 @@ pub(crate) async fn run(common: &Common, address: &n333_net::PeerAddress) -> any
     let mut passed = taken.tidings;
     passed.push(taken.handover.gave);
     passed.push(taken.handover.received);
-    let heard = node.hear(&passed).await?;
+    let heard = node.hear(&passed, Epoch::now()).await?;
     crate::commands::report_heard(&heard);
     println!("roll     {} of us", node.roll().await.len());
     println!(

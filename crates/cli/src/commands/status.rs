@@ -77,11 +77,22 @@ async fn the_count(
         now.0.saturating_sub(1),
         now.0
     )?;
+    if !CAN_WALK_THE_UNSEEN_ROAD {
+        writeln!(
+            out,
+            "This build cannot walk the unseen road, so none of us who are hiding are in\n\
+             that number, and none of us ever will be."
+        )?;
+    }
     Ok(())
 }
 
 /// What this node's own record says about this node.
-async fn this_node(out: &mut impl std::io::Write, node: &Node, now: Epoch) -> anyhow::Result<()> {
+async fn this_node(
+    out: &mut impl std::io::Write,
+    node: &Node,
+    now: Epoch,
+) -> anyhow::Result<()> {
     let Some(joined) = node.joined_in().await else {
         writeln!(out, "You are on nobody's roll. Nobody has handed you the file, so there is\n\
                   nothing yet for anyone to witness. `333 join` is the whole of it.")?;
@@ -100,8 +111,28 @@ async fn this_node(out: &mut impl std::io::Write, node: &Node, now: Epoch) -> an
         return Ok(());
     }
 
-    let standing = presence::standing_at(now, node.own_record().await?);
+    let record = node.own_record().await?;
+    let standing = presence::standing_at(now, record.iter().copied());
+    let window = presence::window(now);
+    let written = record
+        .iter()
+        .filter(|(epoch, _)| window.contains(&epoch.0))
+        .count();
+    let missing = usize::try_from(WINDOW_EPOCHS)
+        .unwrap_or(usize::MAX)
+        .saturating_sub(written);
     writeln!(out, "{}", read_standing(&standing))?;
+    if missing != 0 {
+        writeln!(
+            out,
+            "\nYour record says nothing at all about {} of those {WINDOW_EPOCHS} epochs.\n\
+             Nothing here turns that into an absence — a record can only say what a node\n\
+             was there to write. It is also why this ratio is not what anybody else reads\n\
+             you by: what they read is what they were told about you, by whoever was\n\
+             drawn to ask.",
+            missing
+        )?;
+    }
     Ok(())
 }
 
@@ -182,12 +213,13 @@ fn read_standing(standing: &Standing) -> String {
             format!("{}.{}%", per_mille / 10, per_mille % 10)
         });
     let verdict = if standing.qualifies() {
-        "You are counted."
+        "By your own record, you are counted."
     } else {
-        "You are not counted. Two of every three is the whole of what is asked."
+        "By your own record, you are not counted. Two of every three is the whole of\n\
+         what is asked."
     };
     format!(
-        "Present in {} of the {} epochs you were asked about — {share}. {verdict}\n\
+        "Present in {} of the {} epochs your record covers — {share}. {verdict}\n\
          The window is the last {WINDOW_EPOCHS} epochs and nothing before it exists.\n\
          Ten years of it would read exactly the same, and buy exactly as much.",
         standing.present, standing.counted
@@ -201,6 +233,21 @@ async fn the_silence(
     now: Epoch,
 ) -> anyhow::Result<()> {
     let vigil = node.watched(now).await.context("reading the watch")?;
+    // A build without arti cannot reach an onion address at all, so it has never heard
+    // from the members who are hiding and never will. It may report what it saw; it may
+    // not say the count reached zero, because a whole class of us was never in its
+    // count to begin with.
+    if !CAN_WALK_THE_UNSEEN_ROAD && matches!(vigil.verdict(), Verdict::Ended { .. }) {
+        writeln!(
+            out,
+            "Nobody has answered this node through {} of unbroken watching, and this\n\
+             build will not call that the end. It cannot walk the unseen road, so it has\n\
+             never heard from any of us who are hiding and never will. What it can say is\n\
+             that it has seen nobody, and that is not the same sentence.",
+            epochs(n333_core::extinction::SILENT_EPOCHS_BEFORE_THE_END)
+        )?;
+        return Ok(());
+    }
     match vigil.verdict() {
         Verdict::NothingToSay => writeln!(
             out,
@@ -240,6 +287,11 @@ async fn the_silence(
     }
     Ok(())
 }
+
+/// Was this client built with arti in it?
+///
+/// It decides one thing only, and it is the heaviest thing this program says.
+const CAN_WALK_THE_UNSEEN_ROAD: bool = cfg!(feature = "tor");
 
 /// "1 epoch" or "N epochs", said the way a person would.
 fn epochs(count: u64) -> String {

@@ -20,7 +20,7 @@ use n333_net::{Asked, Invite, PeerAddress, direct, gossip, handover, liveness, r
 use tokio::sync::{OwnedSemaphorePermit, Semaphore, watch};
 
 use crate::commands::{Common, describe, hours};
-use crate::dial::Dialer;
+use crate::dial::{Dialer, Roads};
 use crate::node::Node;
 
 /// How long one exchange may take before this node stops waiting on it.
@@ -62,7 +62,17 @@ pub(crate) async fn run(
     println!("name     {}", node.identity().node_id());
     crate::commands::report_opening(&opened);
 
-    let dialer = Dialer::new(common.clone());
+    // A node that answers on no socket is hiding, and a hiding node that dials
+    // clearnet peers has shown its address itself, at the far end, where it can be
+    // written down.
+    let dialer = Dialer::travelling(
+        common.clone(),
+        if bind.is_none() {
+            Roads::OnlyUnseen
+        } else {
+            Roads::Whichever
+        },
+    );
     let gate = Arc::new(Semaphore::new(MAX_CONCURRENT_EXCHANGES));
     // Where this node will tell others to look, once it knows. Empty until a listener
     // has an address worth handing out, and written again if the onion address comes
@@ -204,8 +214,10 @@ where
     S: AsyncRead + AsyncWrite + Unpin,
 {
     let mine = node.tidings(Epoch::now()).await?;
-    let theirs = gossip::listen(stream, node.identity(), Epoch::now(), header, &mine).await?;
-    let heard = node.hear(&theirs).await?;
+    crate::commands::report_left_behind(&mine);
+    let theirs =
+        gossip::listen(stream, node.identity(), Epoch::now(), header, &mine.frames).await?;
+    let heard = node.hear(&theirs, Epoch::now()).await?;
     crate::commands::report_heard(&heard);
     Ok(())
 }
@@ -224,7 +236,8 @@ where
     let roll = node.roll().await;
     let head = node.head().await;
 
-    let answered = liveness::answer(stream, node.identity(), head, &roll, question).await?;
+    let answered =
+        liveness::answer(stream, node.identity(), Epoch::now(), head, &roll, question).await?;
     println!("asked    epoch {} by {asked_by}", epoch.0);
 
     // All of it is kept as the bytes that travelled. The challenge and the answer
@@ -262,7 +275,7 @@ where
         Epoch::now(),
         plea,
         &subject,
-        &tidings,
+        &tidings.frames,
     )
     .await
     {

@@ -18,6 +18,7 @@
 //! from, which is the moment it cannot be repaired.
 
 mod people;
+pub(crate) use people::Tidings;
 mod record;
 mod words;
 
@@ -76,6 +77,9 @@ const WHEREABOUTS_FILE: &str = "whereabouts.log";
 pub(crate) struct Node {
     /// The directory everything of this node's lives in.
     home: std::path::PathBuf,
+    /// How many runs of statements this node has passed on, so that a node with more
+    /// to say than fits does not send the same frames every time.
+    passed_on: std::sync::atomic::AtomicU64,
     /// The key everything is signed with.
     identity: Identity,
     /// The file, if this node has been given it.
@@ -175,6 +179,7 @@ impl Node {
         Ok((
             Self {
                 home: home.to_path_buf(),
+                passed_on: std::sync::atomic::AtomicU64::new(0),
                 identity,
                 subject: Mutex::new(subject),
                 state: Mutex::new(State {
@@ -222,6 +227,8 @@ pub(crate) struct Heard {
     pub(crate) addresses: usize,
     /// Members the admissions completed.
     pub(crate) members: usize,
+    /// Statements about epochs still open to judgement.
+    pub(crate) witnessed: usize,
     /// Utterances kept, including ones already held: what a node said travels by
     /// being repeated, so the same one arrives many times and that is the mechanism
     /// working rather than a duplicate.

@@ -137,6 +137,22 @@ pub(crate) fn report_heard(heard: &crate::node::Heard) {
     if heard.said != 0 {
         println!("heard    {} of us speak", heard.said);
     }
+    if heard.witnessed != 0 {
+        println!("carried  {} statements about epochs still open", heard.witnessed);
+    }
+}
+
+/// Say when a node had more to pass on than would fit in one run.
+///
+/// A cap that nothing reports is a cap that reads as "everything was sent" right up
+/// until somebody wonders why the roll stopped growing.
+pub(crate) fn report_left_behind(tidings: &crate::node::Tidings) {
+    if tidings.left_behind != 0 {
+        println!(
+            "brimming {} statements would not fit in one run and wait for the next",
+            tidings.left_behind
+        );
+    }
 }
 
 /// One line describing what a completed exchange showed.

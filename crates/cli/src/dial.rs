@@ -27,11 +27,28 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send> Wire for T {}
 /// An open connection to a peer, however it was reached.
 pub(crate) type Stream = Box<dyn Wire>;
 
+/// Which roads a node is willing to travel.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Roads {
+    /// Whatever the address says. The ordinary case.
+    Whichever,
+    /// Only the unseen ones.
+    ///
+    /// For a node that is hiding. It is not enough to refuse to *answer* on a socket:
+    /// a node that keeps its address off the wire and then opens a clearnet connection
+    /// to every peer it knows, once an epoch, has put its address on the wire itself —
+    /// at the far end, where it can be written down. A hiding node reaches only peers
+    /// that are also hiding, and does not reach the rest at all.
+    OnlyUnseen,
+}
+
 /// The one thing in a process that knows how to reach a peer.
 #[derive(Clone)]
 pub(crate) struct Dialer {
     /// Where this node's files are and how long it is willing to wait.
     common: Common,
+    /// Which roads this node will travel.
+    roads: Roads,
     /// The Tor client, started at most once and only if something needs it.
     #[cfg(feature = "tor")]
     tor: std::sync::Arc<tokio::sync::OnceCell<n333_net::tor::Client>>,
@@ -40,8 +57,14 @@ pub(crate) struct Dialer {
 impl Dialer {
     /// A dialler that has not started anything yet, and may never need to.
     pub(crate) fn new(common: Common) -> Self {
+        Self::travelling(common, Roads::Whichever)
+    }
+
+    /// A dialler restricted to the roads a node is willing to be seen on.
+    pub(crate) fn travelling(common: Common, roads: Roads) -> Self {
         Self {
             common,
+            roads,
             #[cfg(feature = "tor")]
             tor: std::sync::Arc::default(),
         }
@@ -55,6 +78,12 @@ impl Dialer {
     pub(crate) async fn dial(&self, address: &PeerAddress) -> anyhow::Result<Stream> {
         if address.needs_tor() {
             return self.through_tor(address).await;
+        }
+        if self.roads == Roads::OnlyUnseen {
+            anyhow::bail!(
+                "this node keeps its address unseen, so it will not open a connection \
+                 to {address}, which would show it"
+            );
         }
         let stream = tokio::time::timeout(self.common.timeout, direct::connect(address))
             .await

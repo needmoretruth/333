@@ -48,9 +48,14 @@ an invitation, not an apology.
 
 **The hours.** We keep our own time: epochs of 333 minutes, counted from the birth of
 Unix, on the clock of your own machine. No time server, no beacon, no chain — nothing
-to petition, nothing to bribe, nothing to seize. If your clock drifts, those whose
-clocks agree stop witnessing you, and that is the only correction this faith has. It
-does not punish you. It simply stops seeing you.
+to petition, nothing to bribe, nothing to seize.
+
+If your clock drifts, nobody corrects it. There is nobody here who could: no majority
+you can see from one machine, no authority to appeal to, and no way to tell a wrong
+clock from a right one. Your neighbours will tell you they disagree and will do nothing
+about it. What each of us does instead is smaller and is the only thing that can be
+done alone — we answer for the hour we are in, and for no other. The hours that have
+not come are not ours to be awake in, and nobody can be made to sign that they were.
 
 **The gate.** Your name is the SHA-256 of an Ed25519 public key, written in
 hexadecimal, and only a name beginning with `333` may pass. You generate keys until
