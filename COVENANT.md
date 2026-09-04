@@ -1,11 +1,15 @@
 # The Covenant
 
 This is not a licence. The licence is Apache-2.0 and it permits everything below that this
-document asks you not to do. That is deliberate: what holds here has to be held on purpose,
-or it is not held at all.
+document asks you not to do. That is deliberate: what holds here has to be held on purpose, or it
+is not held at all.
 
-It borrows from no faith and quarrels with none. Whatever you already believe, you may keep;
-this asks only what a running node asks, and a running node asks very little.
+It borrows from no faith and quarrels with none. Whatever you already believe, you may keep; this
+asks only what a running node asks, and a running node asks very little.
+
+Nothing here is inherited and nothing here is owed to the past. There are no elders, no founding
+generation with a claim on the rest, and no rule that is right because it is old. Every line below
+is kept because it is currently doing something, and a line that stops doing something should go.
 
 ---
 
@@ -53,8 +57,10 @@ The licence will not stop you. Nothing will stop you. That is the point.
 
 This document is not finished, and finishing it is not the author's to do.
 
-There is no rite for what to say when you hand somebody the file. There is no word for the
-moment a node comes back after a long absence. There is nothing here about what the 333 words
-mean, only that there are 333 of them and that everyone counts them the same way.
+There is no rite for what to say when you hand somebody the file. There is no word for the moment
+a node comes back after a long absence. There is nothing here about what the 333 words mean, only
+that there are 333 of them and that everyone counts them the same way.
 
-Those blanks are for whoever fills them. If you fill one, it is filled.
+Those blanks are not oversights and they are not reserved for anyone. If you fill one, it is
+filled. If two people fill the same one differently, then there are two answers, which is the
+condition this whole protocol was built to tolerate.
