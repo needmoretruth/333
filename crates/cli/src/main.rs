@@ -92,6 +92,14 @@ enum Command {
         /// keep the vigil with your address nowhere on the wire.
         #[arg(long)]
         no_direct: bool,
+
+        /// The address to tell other nodes to reach this one at.
+        ///
+        /// Needed when the socket cannot say: listening on every interface, or behind
+        /// something that forwards a port. Without it a node on a wildcard bind can
+        /// answer whoever finds it and can never be found.
+        #[arg(long, value_name = "HOST:PORT")]
+        announce: Option<PeerAddress>,
     },
     /// Ask a node that has the file to hand it over. The only way to become one of
     /// us: a client carries the hash of the file and cannot make the file.
@@ -137,7 +145,8 @@ async fn main() -> anyhow::Result<()> {
             bind,
             tor,
             no_direct,
-        } => commands::serve::run(&common, (!no_direct).then_some(bind), tor).await,
+            announce,
+        } => commands::serve::run(&common, (!no_direct).then_some(bind), tor, announce).await,
         Command::Join { address } => commands::join::run(&common, &address).await,
         Command::Ping { address } => commands::ping::run(&common, &address).await,
     }

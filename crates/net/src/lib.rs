@@ -7,11 +7,13 @@
 //! - [`frame`] moves length-prefixed byte strings over anything that reads and writes.
 //! - [`session`] runs one heartbeat exchange over such a stream. It knows nothing
 //!   about either transport, which is why the whole exchange is tested in memory.
-//! - [`asked`] says which of the two things a peer wants once the heartbeat is done.
+//! - [`asked`] says which of the three things a peer wants once the heartbeat is done.
 //! - [`liveness`] is the round that follows it when one node was drawn to ask another
 //!   whether it is awake.
-//! - [`handover`] is the other one: giving the file to somebody who does not have it,
+//! - [`handover`] is the second: giving the file to somebody who does not have it,
 //!   which is the only way anybody ever becomes a member.
+//! - [`gossip`] is the third: trading signed statements, which is how a node learns
+//!   where the other members are and therefore how it can ask them anything at all.
 //! - [`direct`] supplies a stream by opening a socket. This is the ordinary case.
 //! - [`tor`] supplies one through an onion service, for a node that needs its address
 //!   not to be seen. Present unless the `tor` feature is turned off.
@@ -39,6 +41,7 @@
 pub mod asked;
 pub mod direct;
 pub mod frame;
+pub mod gossip;
 pub mod handover;
 pub mod invite;
 pub mod liveness;

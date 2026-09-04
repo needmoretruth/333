@@ -54,11 +54,12 @@ pub(crate) async fn run(common: &Common, address: &n333_net::PeerAddress) -> any
 
     // The pair goes in last so that a giver who passed on nothing still leaves this
     // node with its own beginning written down.
-    let mut halves = taken.lineage;
-    halves.push(taken.handover.gave);
-    halves.push(taken.handover.received);
-    let members = node.admit(&halves).await?;
-    println!("roll     {members} members");
+    let mut passed = taken.tidings;
+    passed.push(taken.handover.gave);
+    passed.push(taken.handover.received);
+    let heard = node.hear(&passed).await?;
+    crate::commands::report_heard(&heard);
+    println!("roll     {} members", node.roll().await.len());
     println!(
         "counted  from epoch {}, which is where this node's record begins",
         enrollment::active_from(joined).0

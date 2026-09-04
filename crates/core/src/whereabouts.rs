@@ -175,6 +175,11 @@ impl Directory {
             .map(|(key, (w, _))| (key, w.address.as_str()))
     }
 
+    /// Every statement held, as it arrived, to pass on unchanged.
+    pub fn frames(&self) -> impl Iterator<Item = &[u8]> {
+        self.entries.values().map(|(_, frame)| frame.as_slice())
+    }
+
     /// Take a statement, keeping it only if it is newer than what is held.
     ///
     /// Returns whether anything changed. An older statement is dropped rather than

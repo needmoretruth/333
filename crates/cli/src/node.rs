@@ -230,30 +230,67 @@ impl Node {
         *self.subject.lock().await
     }
 
-    /// The two halves that admitted this node, to hand on to a newcomer.
+    /// Everything this node is willing to pass on to a peer.
     ///
-    /// Empty for the one node nobody ever gave the file to.
+    /// Addresses first, then admissions. Addresses because a node that does not know
+    /// where the members are cannot ask them anything, which makes every other kind of
+    /// statement moot; admissions because that is the only way a roll ever grows past
+    /// the one step a newcomer is handed at the door.
+    ///
+    /// Statements about epochs are not passed on. A node keeps those about itself,
+    /// because they are what it judges its own record from, and being a warehouse for
+    /// everybody else's is a job nobody asked for and nothing here needs done.
+    ///
+    /// The same run goes to a newcomer at the door, where it is the difference between
+    /// a node that can take part and one that knows nobody and nowhere.
     ///
     /// # Errors
-    /// Fails if the admissions cannot be read.
-    pub(crate) async fn lineage(&self) -> anyhow::Result<Vec<Vec<u8>>> {
-        let me = self.identity.public_key();
+    /// Fails if the logs cannot be read.
+    pub(crate) async fn tidings(&self) -> anyhow::Result<Vec<Vec<u8>>> {
         let mut state = self.state.lock().await;
-        let frames = state
-            .admissions
-            .read_all()
-            .context("reading the admissions")?;
-        // Both halves of the transfer that made this node a member: the one it signed
-        // and the one signed by whoever handed the file over.
-        Ok(frames
-            .into_iter()
-            .filter(|frame| {
-                transfer::open(frame, Half::Received)
-                    .is_ok_and(|half| half.record.author == me)
-                    || transfer::open(frame, Half::Gave)
-                        .is_ok_and(|half| half.record.counterparty == me)
-            })
-            .collect())
+        let mut passed: Vec<Vec<u8>> = state
+            .directory
+            .frames()
+            .map(<[u8]>::to_vec)
+            .collect();
+        passed.extend(
+            state
+                .admissions
+                .read_all()
+                .context("reading the admissions")?,
+        );
+        passed.truncate(n333_net::frame::MAX_BATCH_FRAMES);
+        Ok(passed)
+    }
+
+    /// File what a peer passed on, each statement by what it opens as.
+    ///
+    /// Nothing is trusted about who handed these over, which is why there is no check
+    /// on that. A statement either opens under its own signature or it does not.
+    ///
+    /// # Errors
+    /// Fails if a log cannot be written.
+    pub(crate) async fn hear(&self, told: &[Vec<u8>]) -> anyhow::Result<Heard> {
+        let mut heard = Heard::default();
+        let mut admissions = Vec::new();
+        for frame in told {
+            if whereabouts::open(frame).is_ok() {
+                if self.note_address(frame).await? {
+                    heard.addresses += 1;
+                }
+            } else if transfer::open(frame, Half::Gave).is_ok()
+                || transfer::open(frame, Half::Received).is_ok()
+            {
+                admissions.push(frame.clone());
+            } else {
+                heard.unreadable += 1;
+            }
+        }
+        if !admissions.is_empty() {
+            let before = self.state.lock().await.roll.len();
+            heard.members = self.admit(&admissions).await?.saturating_sub(before);
+        }
+        Ok(heard)
     }
 
     /// Write the file down, now that somebody has handed it over.
@@ -324,6 +361,19 @@ impl Node {
             .map(ToOwned::to_owned)
     }
 
+    /// Where every node other than this one last said it could be found.
+    pub(crate) async fn where_others_are(&self) -> Vec<String> {
+        let me = self.identity.public_key();
+        self.state
+            .lock()
+            .await
+            .directory
+            .entries()
+            .filter(|(key, _)| **key != me)
+            .map(|(_, address)| address.to_owned())
+            .collect()
+    }
+
     /// Is this node on its own roll — has anybody admitted it?
     pub(crate) async fn is_admitted(&self) -> bool {
         let key = self.identity.public_key();
@@ -352,6 +402,17 @@ impl Node {
             .forget_before(now)
             .context("forgetting old statements")
     }
+}
+
+/// What filing a peer's statements changed.
+#[derive(Debug, Clone, Copy, Default)]
+pub(crate) struct Heard {
+    /// Addresses that were newer than what was held.
+    pub(crate) addresses: usize,
+    /// Members the admissions completed.
+    pub(crate) members: usize,
+    /// Frames that opened as nothing this build knows.
+    pub(crate) unreadable: usize,
 }
 
 /// Read `333.txt` out of a node's directory, if what is there is the file.

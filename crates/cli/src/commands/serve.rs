@@ -11,10 +11,12 @@ use std::time::Duration;
 use anyhow::{Context as _, bail};
 use futures::{AsyncRead, AsyncWrite};
 use n333_core::Epoch;
+use n333_core::enrollment::CURSE_PAUSE;
 use n333_core::challenge::SignedChallenge;
 use n333_core::plea::Signed as SignedPlea;
+use n333_core::tidings::Signed as SignedTidings;
 use n333_net::frame::AsReceived;
-use n333_net::{Asked, Invite, PeerAddress, direct, handover, liveness, respond, session};
+use n333_net::{Asked, Invite, PeerAddress, direct, gossip, handover, liveness, respond, session};
 use tokio::sync::{OwnedSemaphorePermit, Semaphore, watch};
 
 use crate::commands::{Common, describe, hours};
@@ -40,7 +42,8 @@ const MAX_CONCURRENT_EXCHANGES: usize = 64;
 /// Run until interrupted, answering everyone who arrives.
 ///
 /// `bind` is the socket to listen on, or `None` to listen only through Tor. `tor`
-/// publishes an onion address as well.
+/// publishes an onion address as well. `announce` overrides what this node tells
+/// others to reach it at, for the ordinary case of a socket that cannot say.
 ///
 /// # Errors
 /// Fails if the node cannot be opened, if neither way of listening was asked for, if
@@ -49,6 +52,7 @@ pub(crate) async fn run(
     common: &Common,
     bind: Option<SocketAddr>,
     tor: bool,
+    announce: Option<PeerAddress>,
 ) -> anyhow::Result<()> {
     if bind.is_none() && !tor {
         bail!("nothing would be listening: --no-direct needs --tor");
@@ -64,7 +68,10 @@ pub(crate) async fn run(
     // has an address worth handing out, and written again if the onion address comes
     // up later: an onion address is reachable from anywhere and a socket address may
     // not be, so the one that arrives last is the one worth publishing.
-    let (found_address, address) = watch::channel(None);
+    let (found_address, address) = watch::channel(announce.clone());
+    if let Some(announce) = &announce {
+        println!("invite   {}", Invite::to(announce.clone()));
+    }
     let mut listening = tokio::task::JoinSet::new();
 
     if let Some(bind) = bind {
@@ -74,7 +81,9 @@ pub(crate) async fn run(
         // True the instant the socket is bound, which is why it is printed here.
         let bound = listener.address()?;
         println!("answer   {bound}");
-        announce(bound, &found_address);
+        if announce.is_none() {
+            say_the_invitation(bound, &found_address);
+        }
         let (node, gate) = (Arc::clone(&node), Arc::clone(&gate));
         listening.spawn(async move { answer_direct(listener, node, gate).await });
     }
@@ -108,7 +117,7 @@ pub(crate) async fn run(
 /// address of the machine, if any, a stranger can reach. Printing `333:0.0.0.0:3333`
 /// would look like an invitation and work for nobody, so it says what is missing
 /// instead.
-fn announce(bound: SocketAddr, found_address: &watch::Sender<Option<PeerAddress>>) {
+fn say_the_invitation(bound: SocketAddr, found_address: &watch::Sender<Option<PeerAddress>>) {
     if bound.ip().is_unspecified() {
         println!(
             "invite   333:<an address others can reach>:{}",
@@ -181,7 +190,24 @@ where
         Asked::Nothing => Ok(()),
         Asked::Liveness(question) => be_asked(stream, node, question).await,
         Asked::TheFile(plea) => hand_it_over(stream, node, &plea).await,
+        Asked::Tidings(header) => trade(stream, node, &header).await,
     }
+}
+
+/// Take what a peer passes on, and pass on what this node has.
+async fn trade<S>(
+    stream: &mut S,
+    node: &Node,
+    header: &AsReceived<SignedTidings>,
+) -> anyhow::Result<()>
+where
+    S: AsyncRead + AsyncWrite + Unpin,
+{
+    let mine = node.tidings().await?;
+    let theirs = gossip::listen(stream, node.identity(), Epoch::now(), header, &mine).await?;
+    let heard = node.hear(&theirs).await?;
+    crate::commands::report_heard(&heard);
+    Ok(())
 }
 
 /// Answer a challenge, and keep everything the round produced.
@@ -229,16 +255,21 @@ where
         println!("empty    somebody asked for the file and this node does not have it");
         return Ok(());
     };
-    let lineage = node.lineage().await?;
-    let given = handover::give(
+    let tidings = node.tidings().await?;
+    let given = match handover::give(
         stream,
         node.identity(),
         Epoch::now(),
         plea,
         &subject,
-        &lineage,
+        &tidings,
     )
-    .await?;
+    .await
+    {
+        Ok(given) => given,
+        Err(handover::Error::Cursed) => return curse(&plea.message.asker).await,
+        Err(e) => return Err(e.into()),
+    };
 
     println!(
         "gave     the file to {} in epoch {}",
@@ -247,6 +278,21 @@ where
     );
     let members = node.admit(&[given.gave, given.received]).await?;
     println!("roll     {members} members");
+    Ok(())
+}
+
+/// What this node does when a heretic knocks.
+///
+/// The stop is the curse itself and not a delay in front of it: 333 has taken 333
+/// milliseconds off the life of whoever presented that name, and this node is where it
+/// was taken, so this node waits for it. Nothing is sent back. The cursed reveal
+/// themselves; nobody has to point.
+async fn curse(name: &n333_core::NodeId) -> anyhow::Result<()> {
+    tokio::time::sleep(CURSE_PAUSE).await;
+    println!(
+        "cursed   {name} asked, and 333 took {} milliseconds off their life. Once.",
+        CURSE_PAUSE.as_millis()
+    );
     Ok(())
 }
 

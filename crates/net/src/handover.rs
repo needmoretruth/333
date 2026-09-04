@@ -10,16 +10,20 @@
 //! asker  →  giver   a signed plea: this is my key, this is the epoch I think it is
 //! giver  →  asker   the file, then "I gave it to you in epoch N" + signature
 //! asker  →  giver   "I received it from you in epoch N" + signature
-//! giver  →  asker   the halves that admitted the giver, then an empty frame
+//! giver  →  asker   what the giver has to pass on, then an empty frame
 //! ```
 //!
-//! THE LAST STEP IS WHY A NEWCOMER IS NOT ALONE. Its two halves put exactly one name
-//! on its roll — its own — and a roll of one draws no verifiers, so a node that
-//! received nothing else could never be asked anything by anybody. The giver therefore
-//! hands over the pair that admitted the giver, which is the genealogy the record was
-//! designed to form. A giver that has no such pair is the one node that never received
-//! the file from anybody, and a newcomer of theirs starts alone until somebody else
-//! joins.
+//! THE LAST STEP IS WHY A NEWCOMER IS NOT ALONE. Its own two halves put exactly one
+//! name on its roll — its own — and a roll of one draws no verifiers, so a node that
+//! received nothing else could never be asked anything by anybody, for ever. It would
+//! also know where nobody is, including the node it was standing in front of a moment
+//! ago. So the giver passes on what it holds: the admissions that make up the roll, and
+//! the addresses members have signed for themselves. Exactly the same run of statements
+//! that [`crate::gossip`] trades, sent here because this is the one moment a node has
+//! nothing at all.
+//!
+//! A giver with nothing to pass on is the one node that was never given the file by
+//! anybody. Its newcomer starts alone, and stays alone until somebody else joins.
 //!
 //! TWO HALVES, TWO KEYS. Neither half means anything alone, so neither node can
 //! manufacture a member. It is also why the round cannot be shortened: the asker
@@ -53,14 +57,6 @@ use crate::frame::{self, AsReceived};
 /// that happens on its own every 333 minutes.
 pub const MAX_EPOCH_SKEW: u64 = 1;
 
-/// How many admission halves a giver may hand over along with the file.
-///
-/// A bound rather than a policy: a giver decides what it passes on, and this is only
-/// the point past which the asker stops reading. It is deliberately far above the two
-/// a giver sends today, so that handing over more of the genealogy later is a change
-/// to what is sent and not to what can be received.
-pub const MAX_LINEAGE_FRAMES: usize = 333;
-
 /// Why a handover did not happen.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -88,14 +84,15 @@ pub enum Error {
         theirs: u64,
     },
     /// The asker's name begins with one of the two refused prefixes.
-    #[error("333 does not love 6, and does not love 1")]
+    ///
+    /// The door is where the network meets a heretic, and the only place it can. A
+    /// client refuses its own cursed key long before this, so a name that reaches here
+    /// was made somewhere else and presented on purpose.
+    #[error("333 has looked at that name and taken 333 milliseconds off the life of whoever holds it")]
     Cursed,
     /// The asker's name does not begin with 333.
-    #[error("that name does not begin with 333")]
+    #[error("that is not a name 333 answers to")]
     Ineligible,
-    /// The giver kept sending genealogy past the point of reading it.
-    #[error("more than {MAX_LINEAGE_FRAMES} admissions were handed over")]
-    TooMuchLineage,
 }
 
 impl From<Refusal> for Error {
@@ -125,11 +122,11 @@ pub struct Taken {
     pub handover: Handover,
     /// The file itself, recognised.
     pub subject: Subject,
-    /// Admission halves the giver passed on, unopened and unjudged.
+    /// What the giver passed on, unopened and unjudged.
     ///
     /// Kept as they arrived. Whether any of them mean anything is decided by reading
     /// them, not by who handed them over.
-    pub lineage: Vec<Vec<u8>>,
+    pub tidings: Vec<Vec<u8>>,
 }
 
 /// Ask a node for the file, and countersign the record if it gives it.
@@ -182,39 +179,14 @@ where
             received: received_frame,
         },
         subject,
-        lineage: take_lineage(stream).await?,
+        tidings: frame::read_batch(stream).await?,
     })
-}
-
-/// Read the admissions the giver passes on, up to the empty frame that ends them.
-///
-/// A giver that hangs up instead of sending the terminator has still handed over the
-/// file, so the stream ending is an end and not a failure.
-async fn take_lineage<S>(stream: &mut S) -> Result<Vec<Vec<u8>>, Error>
-where
-    S: AsyncRead + Unpin,
-{
-    let mut lineage = Vec::new();
-    loop {
-        match frame::read_frame(stream).await {
-            Ok(frame) if frame.is_empty() => return Ok(lineage),
-            Ok(frame) => {
-                if lineage.len() >= MAX_LINEAGE_FRAMES {
-                    return Err(Error::TooMuchLineage);
-                }
-                lineage.push(frame);
-            }
-            Err(frame::Error::Io(_)) => return Ok(lineage),
-            Err(e) => return Err(e.into()),
-        }
-    }
 }
 
 /// Hand the file over to whoever asked, and take their half of the record.
 ///
-/// `now` is this node's own epoch, and it is the one that gets signed. `lineage` is
-/// what this node passes on so the newcomer's roll is not a roll of one — ordinarily
-/// the pair that admitted this node.
+/// `now` is this node's own epoch, and it is the one that gets signed. `tidings` is
+/// what this node passes on so the newcomer is not left knowing nobody and nowhere.
 ///
 /// # Errors
 /// Fails if the asker's name is refused, the clocks are too far apart, the stream
@@ -225,12 +197,13 @@ pub async fn give<S>(
     now: Epoch,
     plea: &AsReceived<SignedPlea>,
     subject: &Subject,
-    lineage: &[Vec<u8>],
+    tidings: &[Vec<u8>],
 ) -> Result<Handover, Error>
 where
     S: AsyncRead + AsyncWrite + Unpin,
 {
-    // The two refused prefixes are refused here, at the only door into the network.
+    // Judged before anything is read or sent. There is exactly one door into this
+    // network and this is it, so it is also the one place a heretic can be met.
     enrollment::admit(&plea.message.asker)?;
     let theirs = plea.message.plea.epoch();
     if theirs.0.abs_diff(now.0) > MAX_EPOCH_SKEW {
@@ -252,12 +225,7 @@ where
     }
     let gave = transfer::open(&gave_frame, Half::Gave)?;
 
-    // The empty frame at the end says there is no more, which a stream that simply
-    // closed could not say.
-    let mut passed: Vec<&[u8]> = lineage.iter().map(Vec::as_slice).collect();
-    passed.truncate(MAX_LINEAGE_FRAMES);
-    passed.push(&[]);
-    frame::write_frames(stream, &passed).await?;
+    frame::write_batch(stream, tidings).await?;
 
     Ok(Handover {
         transfer: Transfer::assemble(gave, received)?,
@@ -309,7 +277,7 @@ mod tests {
         asker_seed: usize,
         giver_epoch: Epoch,
         asker_epoch: Epoch,
-        lineage: Vec<Vec<u8>>,
+        tidings: Vec<Vec<u8>>,
     ) -> (Result<Handover, Error>, Result<Taken, Error>) {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
             .await
@@ -329,7 +297,7 @@ mod tests {
                 giver_epoch,
                 &plea,
                 &the_file(),
-                &lineage,
+                &tidings,
             )
             .await;
             // Held open until the asker has read everything: dropping a socket with
@@ -375,13 +343,13 @@ mod tests {
         let (elder, giver, asker) = (identity(3), identity(0), identity(1));
         let (elders_gift, _) = handover(3, 0, Epoch(800), Epoch(800), Vec::new()).await;
         let elders_gift = elders_gift.expect("the elder completed");
-        let lineage = vec![elders_gift.gave, elders_gift.received];
+        let passed_on = vec![elders_gift.gave, elders_gift.received];
 
-        let (_, taken) = handover(0, 1, Epoch(900), Epoch(900), lineage).await;
+        let (_, taken) = handover(0, 1, Epoch(900), Epoch(900), passed_on).await;
         let taken = taken.expect("the asker completed");
-        assert_eq!(taken.lineage.len(), 2);
+        assert_eq!(taken.tidings.len(), 2);
 
-        let mut held = taken.lineage;
+        let mut held = taken.tidings;
         held.push(taken.handover.gave);
         held.push(taken.handover.received);
         let (roll, _) = Roll::from_halves(&held);
@@ -395,7 +363,7 @@ mod tests {
         // The one node that was never given the file. Its newcomer starts alone, and
         // stays alone until somebody else joins.
         let (_, taken) = handover(0, 1, Epoch(900), Epoch(900), Vec::new()).await;
-        assert!(taken.expect("the asker completed").lineage.is_empty());
+        assert!(taken.expect("the asker completed").tidings.is_empty());
     }
 
     #[tokio::test]

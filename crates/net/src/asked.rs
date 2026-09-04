@@ -1,9 +1,9 @@
 //! What a peer says after the heartbeat, and which of the two things it is.
 //!
-//! A node that has just exchanged heartbeats can want one of exactly two things: to
-//! ask whether this node is awake, or to be given the file. Anything else is refused
-//! by name rather than guessed at, because a frame this build does not recognise is
-//! not something to improvise on.
+//! A node that has just exchanged heartbeats can want one of exactly three things: to
+//! ask whether this node is awake, to be given the file, or to trade what each of them
+//! knows. Anything else is refused by name rather than guessed at, because a frame this
+//! build does not recognise is not something to improvise on.
 //!
 //! WHY THIS IS ONE FRAME AND NOT A HANDSHAKE. There is no negotiation, no capability
 //! list and no version dance beyond the one number already inside every message. The
@@ -13,6 +13,7 @@
 use futures::AsyncRead;
 use n333_core::challenge::{self, SignedChallenge};
 use n333_core::plea::{self, Signed as SignedPlea};
+use n333_core::tidings::{self, Signed as SignedTidings};
 
 use crate::frame::{self, AsReceived};
 
@@ -37,6 +38,8 @@ pub enum Asked {
     Liveness(AsReceived<SignedChallenge>),
     /// The file, which this node can hand over only if it has it.
     TheFile(AsReceived<SignedPlea>),
+    /// A trade: the peer will pass on what it has and take what this node has.
+    Tidings(AsReceived<SignedTidings>),
 }
 
 /// Read whatever the peer says next, and say which of the two it is.
@@ -61,6 +64,9 @@ where
     }
     if let Ok(message) = plea::open(&frame) {
         return Ok(Asked::TheFile(AsReceived { message, frame }));
+    }
+    if let Ok(message) = tidings::open(&frame) {
+        return Ok(Asked::Tidings(AsReceived { message, frame }));
     }
     Err(Error::Unrecognised)
 }
@@ -104,6 +110,15 @@ mod tests {
         let asker = identity(3);
         let frame = Plea::of(&asker, Epoch(7)).seal(&asker).expect("seals");
         assert!(challenge::open_challenge(&frame).is_err());
+    }
+
+    #[tokio::test]
+    async fn a_run_of_statements_is_read_as_a_run_of_statements() {
+        let teller = identity(3);
+        let frame = n333_core::Tidings::from(&teller, Epoch(7))
+            .seal(&teller)
+            .expect("seals");
+        assert!(matches!(sent(&frame).await, Ok(Asked::Tidings(_))));
     }
 
     #[tokio::test]

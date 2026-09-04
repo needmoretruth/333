@@ -19,6 +19,14 @@ use n333_core::MAX_FRAME_LEN;
 /// Length of the size prefix.
 pub const LENGTH_PREFIX_LEN: usize = 4;
 
+/// How many frames may travel in one run.
+///
+/// A run is a sequence of frames ended by an empty one, which is how a node hands over
+/// a batch of signed statements without saying up front how many there will be. The
+/// cap is the point past which the reader stops rather than a rule about what a sender
+/// may send: whoever is reading decides how much it is willing to take.
+pub const MAX_BATCH_FRAMES: usize = 333;
+
 /// Things that can go wrong moving a frame.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -31,6 +39,54 @@ pub enum Error {
         /// The announced size.
         got: usize,
     },
+    /// The peer kept sending frames past the end of what this node will read.
+    #[error("peer sent more than {MAX_BATCH_FRAMES} frames in one run")]
+    TooMany,
+}
+
+/// Write a run of frames and the empty frame that ends it, flushing once.
+///
+/// The terminator is what lets a reader tell "there is no more" from "the connection
+/// stopped", which a closed stream cannot say. Anything past the cap is not sent.
+///
+/// # Errors
+/// Fails if a frame is over the limit or the stream fails.
+pub async fn write_batch<W: AsyncWrite + Unpin>(
+    stream: &mut W,
+    frames: &[Vec<u8>],
+) -> Result<(), Error> {
+    let mut run: Vec<&[u8]> = frames
+        .iter()
+        .take(MAX_BATCH_FRAMES)
+        .map(Vec::as_slice)
+        .collect();
+    run.push(&[]);
+    write_frames(stream, &run).await
+}
+
+/// Read a run of frames, up to the empty frame that ends it.
+///
+/// A peer that hangs up instead of sending the terminator has still sent whatever
+/// arrived, so the stream ending is an end and not a failure. A peer that keeps going
+/// past the cap is stopped.
+///
+/// # Errors
+/// Fails if the stream fails mid-frame, or the run does not end in time.
+pub async fn read_batch<R: AsyncRead + Unpin>(stream: &mut R) -> Result<Vec<Vec<u8>>, Error> {
+    let mut run = Vec::new();
+    loop {
+        match read_frame(stream).await {
+            Ok(frame) if frame.is_empty() => return Ok(run),
+            Ok(frame) => {
+                if run.len() >= MAX_BATCH_FRAMES {
+                    return Err(Error::TooMany);
+                }
+                run.push(frame);
+            }
+            Err(Error::Io(_)) => return Ok(run),
+            Err(e) => return Err(e),
+        }
+    }
 }
 
 /// A message that arrived, kept alongside the bytes it arrived as.

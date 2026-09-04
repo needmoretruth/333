@@ -6,9 +6,14 @@
 //! keep answering.
 //!
 //! 1. Say where it is, if it has an address worth telling anybody.
-//! 2. Ask the nodes it was drawn to ask.
-//! 3. Judge the epoch that is now old enough to judge, and write the verdict down.
-//! 4. Forget the statements that can no longer change anything.
+//! 2. Trade statements with every node it knows the whereabouts of.
+//! 3. Ask the nodes it was drawn to ask.
+//! 4. Judge the epoch that is now old enough to judge, and write the verdict down.
+//! 5. Forget the statements that can no longer change anything.
+//!
+//! Trading comes before asking because it is what supplies the addresses asking needs.
+//! A node that has just started knows where exactly one member is — whoever handed it
+//! the file — and everything else it ever learns comes through that step.
 //!
 //! NOTHING HERE DECIDES ANYTHING ABOUT ANYBODY ELSE'S STANDING. It writes down what
 //! this node concluded about **itself** from what it was given, which is the only
@@ -30,7 +35,7 @@ use n333_core::chain::evidence_digest;
 use n333_core::presence::Attendance;
 use n333_core::whereabouts::Whereabouts;
 use n333_core::{Epoch, draw, epoch};
-use n333_net::{PeerAddress, liveness};
+use n333_net::{PeerAddress, gossip, liveness};
 
 use crate::dial::Dialer;
 use crate::node::Node;
@@ -66,6 +71,7 @@ pub(crate) async fn keep(
         if let Some(address) = address {
             say_where(&node, &address, now).await;
         }
+        trade_news(&node, &dialer, now).await;
         ask_those_drawn(&node, &dialer, now).await;
         judge_what_is_ready(&node, now).await;
         forget_the_old(&node, now).await;
@@ -87,6 +93,50 @@ async fn say_where(node: &Node, address: &PeerAddress, now: Epoch) {
         }
         Err(e) => println!("failed   saying where this node is: {e:#}"),
     }
+}
+
+/// Trade statements with every node this one knows how to reach.
+///
+/// Every one of them, not a sample: at this cadence a node with a thousand neighbours
+/// opens three connections a minute, and choosing a few would mean choosing, which
+/// means a rule about whom to prefer, which is a thing this protocol does not have.
+async fn trade_news(node: &Node, dialer: &Dialer, now: Epoch) {
+    let mine = match node.tidings().await {
+        Ok(mine) => mine,
+        Err(e) => {
+            println!("failed   gathering what this node could pass on: {e:#}");
+            return;
+        }
+    };
+    for address in node.where_others_are().await {
+        match trade_with(node, dialer, &address, now, &mine).await {
+            Ok(heard) => crate::commands::report_heard(&heard),
+            Err(e) => println!("quiet    {address}: {e:#}"),
+        }
+    }
+}
+
+/// One round with one node: greet, trade, file whatever came back.
+async fn trade_with(
+    node: &Node,
+    dialer: &Dialer,
+    address: &str,
+    now: Epoch,
+    mine: &[Vec<u8>],
+) -> anyhow::Result<crate::node::Heard> {
+    let address: PeerAddress = address.parse().context("reading a peer's address")?;
+    let theirs = tokio::time::timeout(ROUND_TIMEOUT, async {
+        let mut stream = dialer.dial(&address).await?;
+        n333_net::initiate(&mut stream, node.identity())
+            .await
+            .context("exchanging heartbeats")?;
+        gossip::tell(&mut stream, node.identity(), now, mine)
+            .await
+            .context("trading statements")
+    })
+    .await
+    .with_context(|| format!("no answer from {address} within the window"))??;
+    node.hear(&theirs).await
 }
 
 /// Ask everybody this node was drawn to ask this epoch.

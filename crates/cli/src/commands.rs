@@ -101,6 +101,20 @@ pub(crate) fn report_opening(opened: &crate::node::Opened) {
     }
 }
 
+/// What a trade of statements changed, when it changed anything.
+///
+/// Silent when it changed nothing, which is the ordinary case once a node has settled:
+/// a line every time would be a line every 333 minutes per neighbour saying nothing
+/// happened.
+pub(crate) fn report_heard(heard: &crate::node::Heard) {
+    if heard.addresses != 0 {
+        println!("learned  where {} more of us are", heard.addresses);
+    }
+    if heard.members != 0 {
+        println!("learned  {} more of us by name", heard.members);
+    }
+}
+
 /// One line describing what a completed exchange showed.
 ///
 /// The parenthesis is the part that matters and the part most easily overstated: one
