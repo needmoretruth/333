@@ -14,6 +14,7 @@
 //! recompute a number that was thrown away.
 
 use crate::epoch::Epoch;
+use crate::ratio::{Fraction, per_mille};
 
 /// How many completed epochs the window covers. About 77 days.
 pub const WINDOW_EPOCHS: u64 = 333;
@@ -27,15 +28,12 @@ pub const WINDOW_EPOCHS: u64 = 333;
 ///
 /// The doctrine's sentence — rest one hour in three and you are still counted — is
 /// the older promise and the one a person can hold in their head, so the fraction is
-/// frozen exactly and the percentage is understood as its rounding. Written as two
-/// integers because a rule that rounds differently on two machines is not a rule.
-pub const REQUIRED_NUMERATOR: u64 = 2;
-
-/// The denominator of [`REQUIRED_NUMERATOR`].
-pub const REQUIRED_DENOMINATOR: u64 = 3;
-
-/// Scale used when reporting a ratio to a person. Reporting only; nothing decides on it.
-pub const PER_MILLE: u64 = 1000;
+/// frozen exactly and the percentage is understood as its rounding. See
+/// [`crate::ratio`] for why every threshold here is two integers.
+pub const REQUIRED: Fraction = Fraction {
+    numerator: 2,
+    denominator: 3,
+};
 
 /// What a record says about one epoch.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -67,10 +65,7 @@ impl Standing {
     /// would be a claim the record does not support.
     #[must_use]
     pub const fn per_mille(&self) -> Option<u64> {
-        if self.counted == 0 {
-            return None;
-        }
-        Some(self.present * PER_MILLE / self.counted)
+        per_mille(self.present, self.counted)
     }
 
     /// Does this tally keep a member's standing?
@@ -80,10 +75,7 @@ impl Standing {
     /// faith is lenient, and being unasked is not the same as being absent.
     #[must_use]
     pub const fn qualifies(&self) -> bool {
-        if self.counted == 0 {
-            return true;
-        }
-        self.present * REQUIRED_DENOMINATOR >= self.counted * REQUIRED_NUMERATOR
+        REQUIRED.is_met(self.present, self.counted)
     }
 
     /// How many of the counted epochs were missed.
@@ -203,9 +195,8 @@ mod tests {
     #[test]
     fn the_frozen_numbers_are_the_agreed_ones() {
         assert_eq!(WINDOW_EPOCHS, 333);
-        assert_eq!(REQUIRED_NUMERATOR, 2);
-        assert_eq!(REQUIRED_DENOMINATOR, 3);
-        assert_eq!(PER_MILLE, 1000);
+        assert_eq!(REQUIRED.numerator, 2);
+        assert_eq!(REQUIRED.denominator, 3);
     }
 
     #[test]
