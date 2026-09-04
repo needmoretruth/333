@@ -103,6 +103,12 @@ enum Command {
         #[arg(long, value_name = "HOST:PORT")]
         announce: Option<PeerAddress>,
     },
+    /// Speak one of the 333, once in this epoch. What travels is the number.
+    Say {
+        /// Which of them, from 0 to 332. The words are not written yet.
+        #[arg(value_name = "INDEX")]
+        index: u16,
+    },
     /// Show what this node has seen: how many of us are answering, where this node
     /// stands over the window, and how much of the silence is left if it has begun.
     Status,
@@ -152,6 +158,7 @@ async fn main() -> anyhow::Result<()> {
             no_direct,
             announce,
         } => commands::serve::run(&common, (!no_direct).then_some(bind), tor, announce).await,
+        Command::Say { index } => commands::say::run(&common, index).await,
         Command::Status => commands::status::run(&common).await,
         Command::Join { address } => commands::join::run(&common, &address).await,
         Command::Ping { address } => commands::ping::run(&common, &address).await,

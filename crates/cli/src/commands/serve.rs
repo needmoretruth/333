@@ -203,7 +203,7 @@ async fn trade<S>(
 where
     S: AsyncRead + AsyncWrite + Unpin,
 {
-    let mine = node.tidings().await?;
+    let mine = node.tidings(Epoch::now()).await?;
     let theirs = gossip::listen(stream, node.identity(), Epoch::now(), header, &mine).await?;
     let heard = node.hear(&theirs).await?;
     crate::commands::report_heard(&heard);
@@ -255,7 +255,7 @@ where
         println!("empty    somebody asked for the file. this node has nothing to give.");
         return Ok(());
     };
-    let tidings = node.tidings().await?;
+    let tidings = node.tidings(Epoch::now()).await?;
     let given = match handover::give(
         stream,
         node.identity(),

@@ -109,7 +109,7 @@ async fn say_where(node: &Node, address: &PeerAddress, now: Epoch) {
 /// opens three connections a minute, and choosing a few would mean choosing, which
 /// means a rule about whom to prefer, which is a thing this protocol does not have.
 async fn trade_news(node: &Node, dialer: &Dialer, now: Epoch) {
-    let mine = match node.tidings().await {
+    let mine = match node.tidings(now).await {
         Ok(mine) => mine,
         Err(e) => {
             println!("failed   gathering what this node could pass on: {e:#}");

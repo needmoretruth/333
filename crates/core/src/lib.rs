@@ -38,6 +38,7 @@ pub mod signal;
 pub mod subject;
 pub mod tidings;
 pub mod transfer;
+pub mod utterance;
 pub mod whereabouts;
 pub mod wire;
 
@@ -58,5 +59,6 @@ pub use signal::{SIGNAL_COUNT, Signal, Tally};
 pub use subject::Subject;
 pub use tidings::Tidings;
 pub use transfer::Transfer;
+pub use utterance::Utterance;
 pub use whereabouts::{Directory, Whereabouts};
 pub use wire::{Error as WireError, MAX_FRAME_LEN};

@@ -7,6 +7,7 @@ pub(crate) mod hours;
 pub(crate) mod id;
 pub(crate) mod join;
 pub(crate) mod ping;
+pub(crate) mod say;
 pub(crate) mod serve;
 pub(crate) mod status;
 
@@ -123,6 +124,9 @@ pub(crate) fn report_heard(heard: &crate::node::Heard) {
     }
     if heard.members != 0 {
         println!("learned  {} more of us by name", heard.members);
+    }
+    if heard.said != 0 {
+        println!("heard    {} of us speak", heard.said);
     }
 }
 

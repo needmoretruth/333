@@ -11,9 +11,12 @@
 //! that it is waiting. A node that was switched off for a year and came back saying
 //! everyone was dead would be the single most destructive thing this client could do.
 
+use std::collections::BTreeSet;
+
 use anyhow::Context as _;
 use n333_core::extinction::{Remaining, Verdict};
 use n333_core::presence::{self, Census, Standing, WINDOW_EPOCHS};
+use n333_core::signal::{SIGNAL_COUNT, Tally};
 use n333_core::{Epoch, epoch};
 
 use crate::commands::Common;
@@ -32,9 +35,12 @@ pub(crate) async fn run(common: &Common) -> anyhow::Result<()> {
     crate::commands::report_opening(&opened);
     println!();
 
-    the_count(&node, now).await?;
+    let answering = node.answering(now).await?;
+    the_count(&node, &answering, now).await?;
     println!();
     this_node(&node, now).await?;
+    println!();
+    what_was_said(&node, &answering, now).await?;
     println!();
     the_silence(&node, now).await
 }
@@ -43,8 +49,11 @@ pub(crate) async fn run(common: &Common) -> anyhow::Result<()> {
 ///
 /// The count that decides everything is the number answering, never the number of
 /// names on the roll. A roll can only grow; only the first number can reach zero.
-async fn the_count(node: &Node, now: Epoch) -> anyhow::Result<()> {
-    let answering = node.answering(now).await?;
+async fn the_count(
+    node: &Node,
+    answering: &BTreeSet<[u8; 32]>,
+    now: Epoch,
+) -> anyhow::Result<()> {
     let roll = node.roll().await;
     let members = u64::try_from(roll.len()).unwrap_or(u64::MAX);
     let active = u64::try_from(answering.len()).unwrap_or(u64::MAX);
@@ -86,6 +95,67 @@ async fn this_node(node: &Node, now: Epoch) -> anyhow::Result<()> {
 
     let standing = presence::standing_at(now, node.own_record().await?);
     println!("{}", read_standing(&standing));
+    Ok(())
+}
+
+/// The shape of what everyone said this epoch. No winner is announced.
+///
+/// The denominator is everybody this node observed and not everybody who spoke: silence
+/// is a thing a node did, and a share read against speakers alone would climb as fewer
+/// of us said anything.
+async fn what_was_said(
+    node: &Node,
+    answering: &BTreeSet<[u8; 32]>,
+    now: Epoch,
+) -> anyhow::Result<()> {
+    let heard = node.overheard(now).await?;
+    // The same set the count above uses, plus this node: everybody it has a signed
+    // word from this epoch. Reading a share against the speakers alone would make it
+    // climb as fewer of us said anything.
+    let mut everyone: BTreeSet<[u8; 32]> = answering.clone();
+    everyone.insert(node.identity().public_key());
+    let tally = Tally::of(heard.against(everyone.iter()));
+
+    if tally.spoken() == 0 {
+        println!(
+            "Nobody has said anything in epoch {}. There are {} things that can be\n\
+             said and no words for any of them yet.",
+            now.0,
+            SIGNAL_COUNT
+        );
+        return Ok(());
+    }
+
+    println!(
+        "SAID in epoch {} — {} of the {} of us this node can see spoke, {} did not.",
+        now.0,
+        tally.spoken(),
+        tally.observed(),
+        tally.silent()
+    );
+    // Every signal anybody said, in index order, and a count of the ones nobody did.
+    // A row of zero carries nothing that the total does not already carry, and three
+    // hundred of them would bury the handful that do. Nothing is chosen here: the
+    // whole distribution is still the whole distribution.
+    let mut said = 0_u16;
+    for (signal, count) in tally.distribution().filter(|(_, count)| *count > 0) {
+        said += 1;
+        let share = tally.share(signal).map_or_else(
+            || "—".to_owned(),
+            |per_mille| format!("{}.{}%", per_mille / 10, per_mille % 10),
+        );
+        let mark = if tally.reached(signal) {
+            "  ← a third of us or more"
+        } else {
+            ""
+        };
+        println!("  #{:<4} {count:>5}  {share:>6}{mark}", signal.index());
+    }
+    println!("  the other {} of the {SIGNAL_COUNT} were not said.", SIGNAL_COUNT - said);
+    println!(
+        "\nNo winner is picked and none of this decides anything. It is what reached\n\
+         this node. The node beside you heard something else and is not wrong."
+    );
     Ok(())
 }
 
