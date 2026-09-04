@@ -54,6 +54,34 @@ pub async fn write_frame<W: AsyncWrite + Unpin>(
     Ok(())
 }
 
+/// Write several frames, flushing once at the end.
+///
+/// [`write_frame`] flushes every time, which is right for one message and wrong for
+/// many: over a Tor stream each flush becomes its own partial cell, so handing over a
+/// few hundred records one call at a time is a few hundred cells carrying a few bytes
+/// each. Nothing sends more than one frame at a time today; this exists so that when
+/// something does, the shape it reaches for is the right one.
+///
+/// # Errors
+/// Fails if any frame is over the limit, or the stream fails. Frames before the
+/// failure may already have been written: this is not atomic and the caller must not
+/// assume it is.
+pub async fn write_frames<W: AsyncWrite + Unpin>(
+    stream: &mut W,
+    frames: &[&[u8]],
+) -> Result<(), Error> {
+    for frame in frames {
+        if frame.len() > MAX_FRAME_LEN {
+            return Err(Error::TooLong { got: frame.len() });
+        }
+        let length = u32::try_from(frame.len()).map_err(|_| Error::TooLong { got: frame.len() })?;
+        stream.write_all(&length.to_be_bytes()).await?;
+        stream.write_all(frame).await?;
+    }
+    stream.flush().await?;
+    Ok(())
+}
+
 /// The announced length, if this node agreed to read that much.
 ///
 /// Pulled out of [`read_frame`] so the bound is a pure function with its own test.
@@ -176,5 +204,32 @@ mod tests {
         let too_big = vec![0_u8; MAX_FRAME_LEN + 1];
         let err = write_frame(&mut client, &too_big).await.expect_err("refuses");
         assert!(matches!(err, Error::TooLong { .. }), "got {err:?}");
+    }
+
+    #[tokio::test]
+    async fn many_frames_arrive_as_many_frames() {
+        // One flush for the batch, and the reader still sees them one at a time.
+        let (a, b) = tokio::io::duplex(64 * 1024);
+        let (mut a, mut b) = (a.compat(), b.compat());
+        let sending = tokio::spawn(async move {
+            write_frames(&mut a, &[b"one".as_slice(), b"two".as_slice(), b"three"])
+                .await
+                .map_err(|e| e.to_string())
+        });
+        assert_eq!(read_frame(&mut b).await.expect("first"), b"one");
+        assert_eq!(read_frame(&mut b).await.expect("second"), b"two");
+        assert_eq!(read_frame(&mut b).await.expect("third"), b"three");
+        sending.await.expect("task").expect("sends");
+    }
+
+    #[tokio::test]
+    async fn a_batch_refuses_an_oversized_frame_like_a_single_one_does() {
+        let (a, _b) = tokio::io::duplex(64 * 1024);
+        let mut a = a.compat();
+        let too_big = vec![0_u8; MAX_FRAME_LEN + 1];
+        let refused = write_frames(&mut a, &[b"fine".as_slice(), &too_big])
+            .await
+            .expect_err("refuses");
+        assert!(matches!(refused, Error::TooLong { .. }), "{refused}");
     }
 }

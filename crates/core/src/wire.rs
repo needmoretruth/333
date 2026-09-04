@@ -43,10 +43,11 @@ pub const SIGNATURE_LEN: usize = 64;
 /// timestamp in 2109, the epoch in 3298. The rest of this limit is room for the
 /// message types that come after.
 ///
-/// Bulk transfers — a node handing over its attendance log — do not travel as one
-/// frame and are not bounded by this number; when they arrive they carry their own
-/// limit, because a stranger must never be able to make this node buffer more than
-/// it agreed to.
+/// This bounds one frame and nothing else. Handing over a whole attendance log means
+/// many frames, and how many a node will accept in one go is not decided here and is
+/// not decided yet — when it is, it belongs beside the code that asks for them, since
+/// only that code knows what it agreed to receive. Reading a promise into this
+/// constant that it does not keep would be worse than the gap.
 pub const MAX_FRAME_LEN: usize = 4096;
 
 /// The domain for heartbeats.
