@@ -13,7 +13,7 @@ use crate::identity_file;
 /// Fails if the identity cannot be read, Tor cannot start, the peer cannot be
 /// reached, or the answer does not check out.
 pub(crate) async fn run(common: &Common, address: &str, port: u16) -> anyhow::Result<()> {
-    let (identity, _origin) = identity_file::load_or_create(&common.paths.identity_file())?;
+    let (identity, _origin) = identity_file::load_or_create(&common.mistrust(), common.paths.root())?;
     println!("name     {}", identity.node_id());
 
     let client = bootstrap(common).await?;

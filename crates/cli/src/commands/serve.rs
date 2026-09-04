@@ -33,7 +33,7 @@ const MAX_CONCURRENT_EXCHANGES: usize = 64;
 /// Fails if the identity cannot be read, Tor cannot start, or the service stops
 /// accepting requests.
 pub(crate) async fn run(common: &Common) -> anyhow::Result<()> {
-    let (identity, _origin) = identity_file::load_or_create(&common.paths.identity_file())?;
+    let (identity, _origin) = identity_file::load_or_create(&common.mistrust(), common.paths.root())?;
     let identity = Arc::new(identity);
     println!("name     {}", identity.node_id());
 

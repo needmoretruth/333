@@ -8,8 +8,8 @@ use crate::identity_file::{self, Origin};
 /// # Errors
 /// Fails if the identity file cannot be read or written.
 pub(crate) fn run(common: &Common) -> anyhow::Result<()> {
-    let path = common.paths.identity_file();
-    let (identity, origin) = identity_file::load_or_create(&path)?;
+    let home = common.paths.root();
+    let (identity, origin) = identity_file::load_or_create(&common.mistrust(), home)?;
 
     match origin {
         Origin::Loaded => println!("name     {}", identity.node_id()),
@@ -18,6 +18,6 @@ pub(crate) fn run(common: &Common) -> anyhow::Result<()> {
             println!("search   {attempts} key pairs");
         }
     }
-    println!("key      {}", path.display());
+    println!("home     {}", home.display());
     Ok(())
 }

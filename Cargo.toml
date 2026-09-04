@@ -55,6 +55,19 @@ clap = { version = "4", features = ["derive"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
+# --- where a node keeps its files ---------------------------------------------
+# Both of these are already in the tree because arti uses them, so neither adds a
+# dependency, a build or a licence to check.
+# fs-mistrust is pinned exactly for the same reason the arti crates are: two copies
+# would mean this client and arti disagreed about whether one directory is private.
+# It checks the whole ancestry of a path, not just the file, which is the part a
+# hand-written mode check gets wrong — a world-writable parent lets anyone replace
+# the file inside it.
+fs-mistrust = "=0.15.1"
+# directories is what puts the node's home in the conventional place on each system
+# instead of assuming the XDG variables exist. It is data only: no unsafe, no C.
+directories = "6"
+
 n333-core = { path = "crates/core" }
 n333-net = { path = "crates/net" }
 

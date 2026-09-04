@@ -20,7 +20,26 @@ pub(crate) struct Common {
     /// How long to wait for a step that talks to the Tor network.
     pub(crate) timeout: Duration,
     /// Whether to accept state directories other users can read.
+    ///
+    /// One bool, not two policies: arti and this client have to agree about whether a
+    /// directory is private, or the client would write a seed into a directory arti
+    /// then refuses to start in.
     pub(crate) trust_directory_permissions: bool,
+}
+
+impl Common {
+    /// How strictly to judge the permissions on this node's directory.
+    ///
+    /// The default consults `$FS_MISTRUST_DISABLE_PERMISSIONS_CHECKS`, which is what
+    /// arti does with the same setting, so one variable governs both.
+    #[must_use]
+    pub(crate) fn mistrust(&self) -> fs_mistrust::Mistrust {
+        if self.trust_directory_permissions {
+            fs_mistrust::Mistrust::new_dangerously_trust_everyone()
+        } else {
+            fs_mistrust::Mistrust::new()
+        }
+    }
 }
 
 /// Start a Tor client, giving up after the shared timeout.

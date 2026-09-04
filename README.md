@@ -128,8 +128,21 @@ nodes on one machine are two directories:
 ./target/release/333 --data-dir ./node-b ping <node-a's address>.onion
 ```
 
+Without `--data-dir` a node lives in the conventional place for the system:
+
+| system | directory |
+|---|---|
+| Linux, BSD | `$XDG_DATA_HOME/333`, or `~/.local/share/333` |
+| macOS | `~/Library/Application Support/333` |
+| Windows | `%LOCALAPPDATA%\333\data` |
+
 Lose that directory and the node loses its name and its address for good. There is no
 recovery, no reset, and nobody to appeal to. That is not an oversight.
+
+The client refuses to start if that directory, or any directory above it, can be
+entered by other users on the machine, and tells you the one command that fixes it.
+`--dangerously-trust-directory-permissions` turns the check off and is named after
+what it does.
 
 ---
 
@@ -150,6 +163,11 @@ This matters more than what is claimed, so it gets its own section.
   by definition, one of the faithful.
 - **Clock disagreement is reported, never punished.** There is no authority here to
   decide whose clock is right.
+- **On Windows, nothing checks who else can read the node's directory.** The check is
+  real on Linux, the BSDs and macOS, where it walks the whole path and refuses to
+  start on a directory other users can enter. On Windows the library that performs
+  it — the same one Tor's own Rust client uses — accepts every permission and every
+  owner, and this client does not paper over that with a check of its own.
 
 ---
 

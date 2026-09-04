@@ -7,13 +7,35 @@
 //! An existing file is never overwritten. Losing the seed loses the identity, the
 //! name derived from it, and every attestation ever made about it, so the one thing
 //! this module must never do is replace one by accident.
+//!
+//! Permissions are checked by `fs-mistrust`, the same crate arti uses for its own
+//! keys, rather than by a mode comparison written here. Its model is that the
+//! DIRECTORY is the boundary, and it is worth stating because it is not the obvious
+//! one:
+//!
+//! * Every directory from the filesystem root down to the node's home is checked,
+//!   not just the home itself. A file at mode 600 inside a directory others can
+//!   write is not private — anyone who can write the directory can delete the file
+//!   and leave their own in its place. This is the case a mode check on the file
+//!   alone gets wrong, and it is why the check is not written here.
+//! * Inside a home that only its owner can enter, the mode of the file itself is not
+//!   the boundary, so fs-mistrust does not refuse a loosely permissioned one. Files
+//!   are still created at mode 600; nothing loosens them.
+//!
+//! On Windows it checks nothing at all. That is fs-mistrust's documented behaviour
+//! and arti's, so the client says so in the README rather than implying a check that
+//! does not run.
 
-use std::fs;
+use std::fs::OpenOptions;
 use std::io::Write as _;
 use std::path::Path;
 
 use anyhow::{Context as _, bail};
+use fs_mistrust::{CheckedDir, Mistrust};
 use n333_core::identity::{Identity, KeyClass};
+
+/// The name of the seed file inside the node's directory.
+const SEED_FILE: &str = "identity.key";
 
 /// How this node's identity came to be, for the caller to report.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -27,45 +49,54 @@ pub(crate) enum Origin {
     },
 }
 
-/// Read this node's identity, searching for one and writing it if the file is absent.
+/// Read this node's identity from `home`, searching for one and writing it if absent.
 ///
 /// # Errors
-/// Fails if the file exists but is unreadable, the wrong size, or readable by users
-/// other than its owner; and if the directory cannot be created.
-pub(crate) fn load_or_create(path: &Path) -> anyhow::Result<(Identity, Origin)> {
-    match fs::read(path) {
-        Ok(bytes) => {
-            refuse_loose_permissions(path)?;
-            let seed: [u8; 32] = bytes.as_slice().try_into().map_err(|_| {
-                anyhow::anyhow!(
-                    "identity file holds {} bytes; a seed is exactly 32",
-                    bytes.len()
-                )
-            })?;
-            let identity = Identity::from_seed(&seed);
-            if identity.class() != KeyClass::Eligible {
-                bail!(
-                    "the identity in this file is not eligible: its name is {}",
-                    identity.node_id()
-                );
-            }
-            Ok((identity, Origin::Loaded))
-        }
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => create(path),
-        Err(e) => Err(e).with_context(|| format!("reading {}", path.display())),
+/// Fails if `home` or any directory above it is reachable by other users, if the file
+/// exists but is unreadable or the wrong size, or if the identity in it is not
+/// eligible to take part.
+pub(crate) fn load_or_create(
+    mistrust: &Mistrust,
+    home: &Path,
+) -> anyhow::Result<(Identity, Origin)> {
+    let home = mistrust
+        .verifier()
+        .make_secure_dir(home)
+        .with_context(|| private_directory_advice(home))?;
+
+    match home.read(SEED_FILE) {
+        Ok(bytes) => Ok((from_seed_bytes(&bytes)?, Origin::Loaded)),
+        Err(fs_mistrust::Error::NotFound(_)) => create(&home),
+        Err(e) => Err(anyhow::Error::new(e).context(private_file_advice(&home))),
     }
 }
 
-/// Search for an eligible identity and write it, failing if one is already there.
-fn create(path: &Path) -> anyhow::Result<(Identity, Origin)> {
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)
-            .with_context(|| format!("creating {}", parent.display()))?;
-        restrict_directory(parent)?;
+/// Interpret the bytes of the seed file.
+fn from_seed_bytes(bytes: &[u8]) -> anyhow::Result<Identity> {
+    let seed: [u8; 32] = bytes.try_into().map_err(|_| {
+        anyhow::anyhow!(
+            "identity file holds {} bytes; a seed is exactly 32",
+            bytes.len()
+        )
+    })?;
+    let identity = Identity::from_seed(&seed);
+    if identity.class() != KeyClass::Eligible {
+        bail!(
+            "the identity in this file is not eligible: its name is {}",
+            identity.node_id()
+        );
     }
+    Ok(identity)
+}
+
+/// Search for an eligible identity and write it, failing if one is already there.
+fn create(home: &CheckedDir) -> anyhow::Result<(Identity, Origin)> {
     let (identity, attempts) = Identity::mine();
-    let mut file = open_new_private(path)
-        .with_context(|| format!("creating {}", path.display()))?;
+    // `create_new` is what stops a second process, or a second run, from replacing an
+    // identity that already exists. fs-mistrust supplies the mode on unix systems.
+    let mut file = home
+        .open(SEED_FILE, OpenOptions::new().write(true).create_new(true))
+        .context("creating the identity file")?;
     file.write_all(identity.seed().as_slice())?;
     // Without this the seed can still be in the page cache when the machine loses
     // power, and the node comes back with an address nobody can reach.
@@ -73,57 +104,26 @@ fn create(path: &Path) -> anyhow::Result<(Identity, Origin)> {
     Ok((identity, Origin::Created { attempts }))
 }
 
-#[cfg(unix)]
-fn open_new_private(path: &Path) -> std::io::Result<fs::File> {
-    use std::os::unix::fs::OpenOptionsExt as _;
-    // `create_new` is what stops a second process, or a second run, from replacing
-    // an identity that already exists.
-    fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .mode(0o600)
-        .open(path)
+/// What to tell someone whose node directory is not private.
+fn private_directory_advice(home: &Path) -> String {
+    format!(
+        "{} must be readable only by you: it holds this node's whole identity.\n\
+         Fix it with: chmod 700 {}\n\
+         Or, if you understand what you are giving up, pass \
+         --dangerously-trust-directory-permissions",
+        home.display(),
+        home.display()
+    )
 }
 
-#[cfg(not(unix))]
-fn open_new_private(path: &Path) -> std::io::Result<fs::File> {
-    fs::OpenOptions::new().write(true).create_new(true).open(path)
-}
-
-#[cfg(unix)]
-fn restrict_directory(dir: &Path) -> anyhow::Result<()> {
-    use std::os::unix::fs::PermissionsExt as _;
-    fs::set_permissions(dir, fs::Permissions::from_mode(0o700))
-        .with_context(|| format!("restricting {}", dir.display()))
-}
-
-#[cfg(not(unix))]
-fn restrict_directory(_dir: &Path) -> anyhow::Result<()> {
-    Ok(())
-}
-
-#[cfg(unix)]
-fn refuse_loose_permissions(path: &Path) -> anyhow::Result<()> {
-    use std::os::unix::fs::PermissionsExt as _;
-    let mode = fs::metadata(path)
-        .with_context(|| format!("reading permissions of {}", path.display()))?
-        .permissions()
-        .mode();
-    if mode & 0o077 != 0 {
-        bail!(
-            "{} is readable by other users (mode {:o}); this file is the node's whole \
-             identity. Fix it with: chmod 600 {}",
-            path.display(),
-            mode & 0o777,
-            path.display()
-        );
-    }
-    Ok(())
-}
-
-#[cfg(not(unix))]
-fn refuse_loose_permissions(_path: &Path) -> anyhow::Result<()> {
-    Ok(())
+/// What to tell someone whose identity file is not private.
+fn private_file_advice(home: &CheckedDir) -> String {
+    let path = home.as_path().join(SEED_FILE);
+    format!(
+        "cannot read {}\nIf the permissions are the problem: chmod 600 {}",
+        path.display(),
+        path.display()
+    )
 }
 
 #[cfg(test)]
@@ -132,52 +132,97 @@ mod tests {
 
     fn scratch(name: &str) -> std::path::PathBuf {
         let dir = std::env::temp_dir().join(format!("n333-identity-test-{name}"));
-        let _ = fs::remove_dir_all(&dir);
-        dir.join("identity.key")
+        let _ = std::fs::remove_dir_all(&dir);
+        dir
+    }
+
+    /// Create the scratch home the way the client would: enterable only by its owner.
+    fn make_private_dir(dir: &std::path::Path) {
+        std::fs::create_dir_all(dir).expect("creates dir");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt as _;
+            std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o700))
+                .expect("restricts dir");
+        }
+    }
+
+    /// A `Mistrust` that ignores the environment, so a developer's own
+    /// `FS_MISTRUST_DISABLE_PERMISSIONS_CHECKS` cannot quietly pass these tests.
+    fn strict() -> Mistrust {
+        Mistrust::builder()
+            .ignore_prefix(std::env::temp_dir())
+            .ignore_environment()
+            .build()
+            .expect("a buildable Mistrust")
     }
 
     #[test]
     fn a_created_identity_is_eligible_and_reloads_unchanged() {
-        let path = scratch("reload");
-        let (first, origin) = load_or_create(&path).expect("creates");
+        let home = scratch("reload");
+        let (first, origin) = load_or_create(&strict(), &home).expect("creates");
         assert!(matches!(origin, Origin::Created { .. }));
         assert_eq!(first.class(), KeyClass::Eligible);
 
-        let (second, origin) = load_or_create(&path).expect("loads");
+        let (second, origin) = load_or_create(&strict(), &home).expect("loads");
         assert_eq!(origin, Origin::Loaded);
         assert_eq!(first.node_id(), second.node_id());
-        let _ = fs::remove_dir_all(path.parent().expect("has a parent"));
+        let _ = std::fs::remove_dir_all(&home);
     }
 
     #[test]
     fn a_file_of_the_wrong_size_is_refused() {
-        let path = scratch("wrong-size");
-        fs::create_dir_all(path.parent().expect("has a parent")).expect("creates dir");
-        fs::write(&path, b"too short").expect("writes");
-        assert!(load_or_create(&path).is_err());
-        let _ = fs::remove_dir_all(path.parent().expect("has a parent"));
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn a_world_readable_identity_is_refused() {
-        use std::os::unix::fs::PermissionsExt as _;
-        let path = scratch("loose");
-        let (_identity, _) = load_or_create(&path).expect("creates");
-        fs::set_permissions(&path, fs::Permissions::from_mode(0o644)).expect("loosens");
-        let refused = load_or_create(&path).expect_err("refuses");
-        assert!(refused.to_string().contains("chmod 600"), "{refused}");
-        let _ = fs::remove_dir_all(path.parent().expect("has a parent"));
+        let home = scratch("wrong-size");
+        make_private_dir(&home);
+        std::fs::write(home.join(SEED_FILE), b"too short").expect("writes");
+        let refused = load_or_create(&strict(), &home).expect_err("refuses");
+        assert!(refused.to_string().contains("exactly 32"), "{refused}");
+        let _ = std::fs::remove_dir_all(&home);
     }
 
     #[cfg(unix)]
     #[test]
     fn a_created_identity_is_private() {
         use std::os::unix::fs::PermissionsExt as _;
-        let path = scratch("mode");
-        let (_identity, _) = load_or_create(&path).expect("creates");
-        let mode = fs::metadata(&path).expect("stats").permissions().mode();
-        assert_eq!(mode & 0o777, 0o600, "mode was {:o}", mode & 0o777);
-        let _ = fs::remove_dir_all(path.parent().expect("has a parent"));
+        let home = scratch("mode");
+        let (_identity, _) = load_or_create(&strict(), &home).expect("creates");
+        let file = std::fs::metadata(home.join(SEED_FILE)).expect("stats");
+        let dir = std::fs::metadata(&home).expect("stats");
+        assert_eq!(file.permissions().mode() & 0o777, 0o600);
+        assert_eq!(dir.permissions().mode() & 0o777, 0o700);
+        let _ = std::fs::remove_dir_all(&home);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn inside_a_private_home_the_file_mode_is_not_the_boundary() {
+        // Documenting the model rather than asserting a wish. A home only its owner
+        // can enter already makes the file unreachable, so a loose mode on the file
+        // is not refused. If fs-mistrust ever tightens this, the test says so.
+        use std::os::unix::fs::PermissionsExt as _;
+        let home = scratch("loose-file");
+        let (first, _) = load_or_create(&strict(), &home).expect("creates");
+        std::fs::set_permissions(home.join(SEED_FILE), std::fs::Permissions::from_mode(0o644))
+            .expect("loosens");
+        let (second, origin) = load_or_create(&strict(), &home).expect("still loads");
+        assert_eq!(origin, Origin::Loaded);
+        assert_eq!(first.node_id(), second.node_id());
+        let _ = std::fs::remove_dir_all(&home);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn the_escape_hatch_accepts_what_the_check_refuses() {
+        use std::os::unix::fs::PermissionsExt as _;
+        let home = scratch("trusting");
+        let (first, _) = load_or_create(&strict(), &home).expect("creates");
+        std::fs::set_permissions(&home, std::fs::Permissions::from_mode(0o777))
+            .expect("loosens");
+        let (second, origin) =
+            load_or_create(&Mistrust::new_dangerously_trust_everyone(), &home).expect("loads");
+        assert_eq!(origin, Origin::Loaded);
+        assert_eq!(first.node_id(), second.node_id());
+        let _ = std::fs::set_permissions(&home, std::fs::Permissions::from_mode(0o700));
+        let _ = std::fs::remove_dir_all(&home);
     }
 }
