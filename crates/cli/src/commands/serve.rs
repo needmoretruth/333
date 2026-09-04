@@ -61,6 +61,7 @@ pub(crate) async fn run(
         let listener = direct::Listener::bind(bind)
             .await
             .with_context(|| format!("listening on {bind}"))?;
+        // True the instant the socket is bound, which is why it is printed here.
         println!("answer   {}", listener.address()?);
         let (identity, gate) = (Arc::clone(&identity), Arc::clone(&gate));
         listening.spawn(async move { answer_direct(listener, identity, gate).await });
@@ -71,7 +72,8 @@ pub(crate) async fn run(
         listening.spawn(onion::answer(common.clone(), identity, gate));
     }
 
-    println!("the vigil has begun.");
+    // No line here saying the vigil has begun: with --no-direct it would not be true
+    // yet. Each listener announces itself at the moment it can actually answer.
     while let Some(finished) = listening.join_next().await {
         finished.context("a listener stopped unexpectedly")??;
     }
@@ -151,14 +153,16 @@ mod onion {
         let client = bootstrap(&common).await?;
         let mut host = OnionHost::launch(&client, SERVICE_NICKNAME, ONION_PORT)
             .context("launching the onion service")?;
-        println!("unseen   {}:{ONION_PORT}", host.address()?);
-
         println!("raising  the unseen address. this can take minutes.");
+
+        // The address is deliberately not shown until here. Handed to a peer before
+        // the network holds the descriptor, it produces a connection failure that
+        // looks like a bug in one of the two clients and is not one.
         tokio::time::timeout(common.timeout, host.wait_until_reachable())
             .await
             .with_context(|| format!("not reachable after {} s", common.timeout.as_secs()))?
             .context("waiting for the service to be reachable")?;
-        println!("raised   the unseen address is published.");
+        println!("unseen   {}:{ONION_PORT}", host.address()?);
 
         loop {
             let stream = host.accept().await.context("accepting a peer")?;
