@@ -1,0 +1,67 @@
+[workspace]
+resolver = "3"
+members = ["crates/core", "crates/net", "crates/cli"]
+
+[workspace.package]
+version = "0.0.1"
+edition = "2024"
+# Declared as the toolchain this is actually built and tested on. The arti crates
+# claim 1.91, but an MSRV nobody compiles is an untested claim.
+rust-version = "1.96"
+license = "Apache-2.0"
+repository = "https://github.com/needmoretruth/333"
+
+[workspace.dependencies]
+# --- protocol side -------------------------------------------------------------
+# Pinned to the versions the arti 0.46.0 release train already pulls in, so the
+# tree holds ONE copy of the dalek stack instead of two incompatible majors.
+# ed25519-dalek 3.x / sha2 0.11 exist and are newer; adopting them means a second
+# curve25519-dalek, a second sha2 and a second signature crate in every binary.
+ed25519-dalek = { version = "2.2.0", default-features = false, features = ["std", "rand_core", "zeroize"] }
+rand_core = { version = "0.6.4", features = ["getrandom"] }
+sha2 = { version = "0.10", default-features = false }
+zeroize = { version = "1", default-features = false }
+# postcard is the only serde binary format that documents a frozen wire format
+# (stable since 1.0.0). The heartbeat encoding can never change after 3.3.3.
+postcard = { version = "1.1", default-features = false, features = ["use-std"] }
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"
+
+# --- transport side ------------------------------------------------------------
+# Every arti crate is pinned to the exact same version. A caret range that resolves
+# to a different minor produces two incompatible copies of DataStream and Connected.
+arti-client = { version = "=0.46.0", features = ["onion-service-service", "onion-service-client", "vanguards"] }
+tor-hsservice = "=0.46.0"
+tor-cell = "=0.46.0"
+tor-proto = { version = "=0.46.0", features = ["hs-service"] }
+tor-rtcompat = "=0.46.0"
+tor-error = "=0.46.0"
+safelog = "0.9"
+futures = "0.3"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "signal"] }
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+n333-core = { path = "crates/core" }
+n333-net = { path = "crates/net" }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+unreachable_pub = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+panic = "warn"
+unwrap_used = "warn"
+expect_used = "warn"
+indexing_slicing = "warn"
+
+# Dependencies are compiled with optimization even in dev builds. Without this the
+# curve arithmetic runs unoptimized and one key pair costs milliseconds instead of
+# microseconds, which turns the identity search from under a second into over a
+# minute — and makes every test that touches a key look like a hang.
+[profile.dev.package."*"]
+opt-level = 3

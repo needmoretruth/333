@@ -1,0 +1,20 @@
+[package]
+name = "n333-core"
+description = "333 protocol core: epochs, identities, and the signed messages nodes exchange."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+ed25519-dalek.workspace = true
+rand_core.workspace = true
+sha2.workspace = true
+zeroize.workspace = true
+postcard.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true

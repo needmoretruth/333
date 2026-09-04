@@ -1,0 +1,29 @@
+[package]
+name = "n333-net"
+description = "333 transport: framing over a byte stream, and the Tor onion service that carries it."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+n333-core.workspace = true
+arti-client.workspace = true
+tor-hsservice.workspace = true
+tor-cell.workspace = true
+tor-proto.workspace = true
+tor-rtcompat.workspace = true
+tor-error.workspace = true
+safelog.workspace = true
+futures.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "io-util", "time"] }
+tokio-util = { version = "0.7", features = ["compat"] }
+
+[lints]
+workspace = true

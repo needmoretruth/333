@@ -1,0 +1,25 @@
+[package]
+name = "n333-cli"
+description = "333 command line client."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "333"
+path = "src/main.rs"
+
+[dependencies]
+n333-core.workspace = true
+n333-net.workspace = true
+anyhow.workspace = true
+clap.workspace = true
+futures.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[lints]
+workspace = true
