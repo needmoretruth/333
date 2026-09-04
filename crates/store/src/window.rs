@@ -90,6 +90,29 @@ impl Window {
         log.append(frame)
     }
 
+    /// Mark an epoch as one this node was awake for, without recording anything.
+    ///
+    /// The difference between "nobody spoke to me" and "I was not here" is the whole
+    /// of a node's right to say the network has ended, and nothing else on disk holds
+    /// it: an epoch in which nothing happened writes nothing, and an epoch the machine
+    /// was switched off for also writes nothing. So an epoch this node kept is given a
+    /// file whether or not anything went into it.
+    ///
+    /// # Errors
+    /// Fails if the file cannot be created.
+    pub fn touch(&self, epoch: Epoch) -> Result<(), Error> {
+        Log::open(&self.path_for(epoch)).map(|_| ())
+    }
+
+    /// Was this node keeping this epoch at all?
+    ///
+    /// False for every epoch before this node was first run, every epoch it was
+    /// switched off for, and every epoch already forgotten.
+    #[must_use]
+    pub fn kept(&self, epoch: Epoch) -> bool {
+        self.path_for(epoch).exists()
+    }
+
     /// Everything held for one epoch, in the order it arrived.
     ///
     /// An epoch nothing was ever recorded for reads as empty rather than missing:
@@ -204,6 +227,21 @@ mod tests {
             window.read(Epoch(11)).expect("reads"),
             vec![b"elsewhere".to_vec()]
         );
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn an_epoch_kept_is_told_from_an_epoch_nobody_was_here_for() {
+        // Both hold nothing. One of them is evidence of silence and the other is
+        // evidence of nothing at all, and a node may only claim the end from the
+        // first kind.
+        let root = scratch("kept");
+        let window = Window::open(&root).expect("opens");
+        window.touch(Epoch(7)).expect("touches");
+
+        assert!(window.kept(Epoch(7)), "watched, and heard nothing");
+        assert!(!window.kept(Epoch(6)), "not here for it");
+        assert!(window.read(Epoch(7)).expect("reads").is_empty());
         let _ = std::fs::remove_dir_all(&root);
     }
 

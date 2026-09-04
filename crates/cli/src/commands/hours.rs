@@ -68,6 +68,13 @@ pub(crate) async fn keep(
 ) -> anyhow::Result<()> {
     loop {
         let now = Epoch::now();
+        // Written first, and whether or not anything happens in this epoch. An epoch
+        // nobody spoke in and an epoch this node was switched off for leave the same
+        // empty disk otherwise, and telling them apart is the whole of this node's
+        // right to ever say the network ended.
+        if let Err(e) = node.keeping(now).await {
+            println!("failed   marking this epoch as kept: {e:#}");
+        }
         let address = announce_as.borrow().clone();
         if let Some(address) = address {
             say_where(&node, &address, now).await;

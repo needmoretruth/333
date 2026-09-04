@@ -8,6 +8,7 @@ pub(crate) mod id;
 pub(crate) mod join;
 pub(crate) mod ping;
 pub(crate) mod serve;
+pub(crate) mod status;
 
 use std::time::Duration;
 

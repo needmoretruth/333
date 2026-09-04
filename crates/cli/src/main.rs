@@ -103,6 +103,9 @@ enum Command {
         #[arg(long, value_name = "HOST:PORT")]
         announce: Option<PeerAddress>,
     },
+    /// Show what this node has seen: how many of us are answering, where this node
+    /// stands over the window, and how much of the silence is left if it has begun.
+    Status,
     /// Ask a node that has the file to hand it over. The only way to become one of
     /// us: a client carries the hash of the file and cannot make the file.
     Join {
@@ -149,6 +152,7 @@ async fn main() -> anyhow::Result<()> {
             no_direct,
             announce,
         } => commands::serve::run(&common, (!no_direct).then_some(bind), tor, announce).await,
+        Command::Status => commands::status::run(&common).await,
         Command::Join { address } => commands::join::run(&common, &address).await,
         Command::Ping { address } => commands::ping::run(&common, &address).await,
     }

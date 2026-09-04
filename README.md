@@ -200,6 +200,10 @@ cargo build --release --no-default-features  # without it
 # Ask somebody who has the file to hand it over. This is how you join, and there
 # is no other way: the client carries the hash of the file and cannot make one.
 ./target/release/333 join 333:node.example:3333
+
+# What this node has seen: how many of us are answering, where you stand over
+# the window, and how much of the silence is left if it has begun.
+./target/release/333 status
 ```
 
 Nobody can start a network alone. The first node's file was put in its directory by

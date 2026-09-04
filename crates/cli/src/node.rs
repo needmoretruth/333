@@ -22,7 +22,10 @@ use std::path::Path;
 
 use anyhow::Context as _;
 use fs_mistrust::Mistrust;
+use n333_core::attestation;
 use n333_core::chain::{self, Head};
+use n333_core::extinction::{Vigil, Watched};
+use n333_core::presence::{self, Attendance};
 use n333_core::roll::{Read, Roll};
 use n333_core::subject::{self, Subject};
 use n333_core::transfer::{self, Half};
@@ -396,6 +399,99 @@ impl Node {
             return Ok(None);
         };
         Ok(Some(chain::open(last).context("reading the last entry")?.entry.epoch()))
+    }
+
+    /// Mark this epoch as one this node was awake for.
+    ///
+    /// Written whether or not anything happens in it, because the difference between
+    /// an epoch nobody spoke in and an epoch this node was switched off for is the
+    /// whole of its right to say the network has ended.
+    ///
+    /// # Errors
+    /// Fails if the file cannot be created.
+    pub(crate) async fn keeping(&self, epoch: Epoch) -> anyhow::Result<()> {
+        self.state
+            .lock()
+            .await
+            .window
+            .touch(epoch)
+            .with_context(|| format!("marking epoch {} as kept", epoch.0))
+    }
+
+    /// This node's own record, epoch by epoch, the way anybody else would read it.
+    ///
+    /// # Errors
+    /// Fails if the record cannot be read, or an entry in it does not open.
+    pub(crate) async fn own_record(&self) -> anyhow::Result<Vec<(Epoch, Attendance)>> {
+        let mut state = self.state.lock().await;
+        let frames = state.chain.read_all().context("reading this node's record")?;
+        frames
+            .iter()
+            .map(|frame| {
+                let entry = chain::open(frame).context("reading an entry")?.entry;
+                Ok((entry.epoch(), entry.attendance))
+            })
+            .collect()
+    }
+
+    /// What this node watched, epoch by epoch, over everything it still holds.
+    ///
+    /// An epoch it was not running for is skipped, which breaks the run: a node cannot
+    /// vouch for what happened while it was not there.
+    ///
+    /// # Errors
+    /// Fails if the window cannot be listed or read.
+    pub(crate) async fn watched(&self, now: Epoch) -> anyhow::Result<Vigil> {
+        let state = self.state.lock().await;
+        let mut vigil = Vigil::new();
+        for number in presence::window(now).chain(std::iter::once(now.0)) {
+            let epoch = Epoch(number);
+            if !state.window.kept(epoch) {
+                continue;
+            }
+            let statements = state
+                .window
+                .read(epoch)
+                .with_context(|| format!("reading epoch {number}"))?;
+            vigil.watch(
+                epoch,
+                if statements.is_empty() {
+                    Watched::Nobody
+                } else {
+                    Watched::Someone
+                },
+            );
+        }
+        Ok(vigil)
+    }
+
+    /// Everyone this node holds signed evidence is answering, in this epoch or the last.
+    ///
+    /// Its own observation and nobody else's. Two nodes will not agree on this number
+    /// and are not meant to.
+    ///
+    /// # Errors
+    /// Fails if the window cannot be read.
+    pub(crate) async fn answering(&self, now: Epoch) -> anyhow::Result<BTreeSet<[u8; 32]>> {
+        let me = self.identity.public_key();
+        let state = self.state.lock().await;
+        let mut answering = BTreeSet::new();
+        for number in [now.0.saturating_sub(1), now.0] {
+            let epoch = Epoch(number);
+            for frame in state
+                .window
+                .read(epoch)
+                .with_context(|| format!("reading epoch {number}"))?
+            {
+                if let Ok(signed) = attestation::open(&frame)
+                    && signed.is_positive()
+                    && signed.attestation.prover != me
+                {
+                    answering.insert(signed.attestation.prover);
+                }
+            }
+        }
+        Ok(answering)
     }
 
     /// Forget statements about epochs that can no longer change anybody's standing.
