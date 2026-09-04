@@ -31,6 +31,7 @@ use futures::{AsyncRead, AsyncWrite};
 use n333_core::attestation::{self, Attestation, SignedAttestation};
 use n333_core::challenge::{self, Answer, Challenge, Exchange, SignedChallenge};
 use n333_core::chain::Head;
+use n333_core::epoch::MAX_CLOCK_SKEW_EPOCHS;
 use n333_core::{Epoch, Identity, draw};
 
 use crate::frame::{self, AsReceived};
@@ -63,6 +64,14 @@ pub enum Error {
     /// The peer's statement is about somebody else, or some other epoch.
     #[error("the statement handed back is not about this exchange")]
     NotOurs,
+    /// The question is about an epoch that is not now.
+    #[error("asked about epoch {asked} while it is epoch {now}")]
+    NotNow {
+        /// The epoch the question named.
+        asked: u64,
+        /// The epoch this node believes it is.
+        now: u64,
+    },
 }
 
 /// What the verifier ends a round holding.
@@ -93,27 +102,104 @@ pub async fn ask<S>(
 where
     S: AsyncRead + AsyncWrite + Unpin,
 {
-    let question = Challenge::new(verifier, prover, epoch);
-    let question_frame = question.seal(verifier)?;
-    frame::write_frame(stream, &question_frame).await?;
+    put(stream, verifier, prover, epoch)
+        .await?
+        .hear(stream, verifier)
+        .await
+}
 
-    // The answer's bytes are kept exactly as they arrived and go into the statement
-    // unchanged. Re-encoding them would make every later reader's signature check
-    // depend on this encoder still producing the same bytes.
-    let answer_frame = frame::read_frame(stream).await?;
-    let exchange = Exchange::assemble(
-        challenge::open_challenge(&question_frame)?,
-        challenge::open_answer(&answer_frame)?,
-    )?;
+/// A question that has gone out, and can still be answered for either way.
+///
+/// It exists because the two outcomes of asking are both statements somebody has to
+/// sign, and one of them is signed when nothing at all comes back. A verifier that
+/// simply gave up would leave no trace, and absence would be a thing nobody ever said —
+/// which is exactly what happens if the only path through this module is the happy one.
+#[derive(Debug, Clone)]
+pub struct Question {
+    /// The question, opened, so the answer can be checked against it.
+    challenge: SignedChallenge,
+    /// The nonce that has to appear in both the answer and the statement.
+    nonce: [u8; 32],
+    /// The question exactly as it went out.
+    pub frame: Vec<u8>,
+}
 
-    let sealed = Attestation::answered(verifier, prover, epoch, question.nonce, answer_frame)
-        .seal(verifier)?;
-    frame::write_frame(stream, &sealed).await?;
-
-    Ok(Witnessed {
-        attestation: sealed,
-        exchange,
+/// Put the question, and do not wait for anything.
+///
+/// # Errors
+/// Fails if the question cannot be sealed or the stream fails.
+pub async fn put<S>(
+    stream: &mut S,
+    verifier: &Identity,
+    prover: [u8; 32],
+    epoch: Epoch,
+) -> Result<Question, Error>
+where
+    S: AsyncWrite + Unpin,
+{
+    let challenge = Challenge::new(verifier, prover, epoch);
+    let frame = challenge.seal(verifier)?;
+    frame::write_frame(stream, &frame).await?;
+    Ok(Question {
+        challenge: challenge::open_challenge(&frame)?,
+        nonce: challenge.nonce,
+        frame,
     })
+}
+
+impl Question {
+    /// Read the answer, publish the statement, and keep both.
+    ///
+    /// # Errors
+    /// Fails if the stream fails, or the answer is not an answer to this question.
+    pub async fn hear<S>(&self, stream: &mut S, verifier: &Identity) -> Result<Witnessed, Error>
+    where
+        S: AsyncRead + AsyncWrite + Unpin,
+    {
+        // The answer's bytes are kept exactly as they arrived and go into the statement
+        // unchanged. Re-encoding them would make every later reader's signature check
+        // depend on this encoder still producing the same bytes.
+        let answer_frame = frame::read_frame(stream).await?;
+        let exchange =
+            Exchange::assemble(self.challenge.clone(), challenge::open_answer(&answer_frame)?)?;
+
+        let sealed = Attestation::answered(
+            verifier,
+            exchange.answer.answer.prover,
+            exchange.answer.answer.epoch(),
+            self.nonce,
+            answer_frame,
+        )
+        .seal(verifier)?;
+        // Handed straight back, because the node it is about is the one node that
+        // cannot obtain it any other way and the one that most needs it.
+        frame::write_frame(stream, &sealed).await?;
+
+        Ok(Witnessed {
+            attestation: sealed,
+            exchange,
+        })
+    }
+
+    /// Say that nothing came back.
+    ///
+    /// WHAT THIS IS WORTH, WHICH IS LESS THAN THE OTHER ONE. It carries no signature
+    /// from the node it is about, because there is none to carry: silence cannot be
+    /// signed. So it is only ever half of an accusation — a reader needs one of these
+    /// from every verifier that was drawn, and a single answer to any of them beats all
+    /// of them. See [`n333_core::attestation::judge`].
+    ///
+    /// # Errors
+    /// Fails if the statement cannot be sealed.
+    pub fn unanswered(&self, verifier: &Identity) -> Result<Vec<u8>, Error> {
+        Ok(Attestation::silent(
+            verifier,
+            self.challenge.challenge.prover,
+            self.challenge.challenge.epoch(),
+            self.nonce,
+        )
+        .seal(verifier)?)
+    }
 }
 
 /// Read whatever the peer says after the heartbeat, if anything.
@@ -158,11 +244,19 @@ pub struct Answered {
 /// not choose is refused, because otherwise one node could make this one sign as many
 /// statements as it liked.
 ///
+/// `now` is this node's own epoch, and a question about any other one is refused. The
+/// draw is computable for every epoch that will ever exist, so without this a node can
+/// be asked about a year from now, or a year ago, and made to sign an answer that says
+/// it was awake then. The only epoch a node can honestly answer for is the one it is
+/// in — with one epoch of slack, because boundaries pass mid-round on their own.
+///
 /// # Errors
-/// Fails if the stream fails, the question is malformed, or the asker was not drawn.
+/// Fails if the stream fails, the question is malformed, the asker was not drawn, or
+/// the question is about some other epoch.
 pub async fn answer<S>(
     stream: &mut S,
     prover: &Identity,
+    now: Epoch,
     head: Head,
     roll: &BTreeSet<[u8; 32]>,
     question: AsReceived<SignedChallenge>,
@@ -171,6 +265,12 @@ where
     S: AsyncRead + AsyncWrite + Unpin,
 {
     let epoch = question.message.challenge.epoch();
+    if epoch.0.abs_diff(now.0) > MAX_CLOCK_SKEW_EPOCHS {
+        return Err(Error::NotNow {
+            asked: epoch.0,
+            now: now.0,
+        });
+    }
     if !draw::is_entitled(
         epoch,
         &prover.public_key(),
@@ -255,7 +355,7 @@ mod tests {
 
         let answering = tokio::spawn(async move {
             let question = take_question(&mut b).await?.expect("a question arrives");
-            answer(&mut b, &prover, head, &roll, question).await
+            answer(&mut b, &prover, epoch, head, &roll, question).await
         });
         let asked = ask(&mut a, &verifier, prover_key, epoch).await;
         (asked, answering.await.expect("task"))
@@ -337,6 +437,101 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn a_verifier_that_reached_a_node_and_heard_nothing_says_so_and_it_binds() {
+        // The path that makes the two-thirds rule able to bind on anybody at all. If
+        // no negative is ever published, Attendance::Absent is unreachable and nobody
+        // can lose standing by not being there.
+        //
+        // A roll of exactly four draws all three of the others, so every verifier here
+        // is drawn and the judgement is not left to depend on the draw.
+        let epoch = Epoch(89_516);
+        let prover = identity(1);
+        let key = prover.public_key();
+        let others: Vec<Identity> = (2..=4).map(identity).collect();
+        let roll: BTreeSet<[u8; 32]> = std::iter::once(key)
+            .chain(others.iter().map(Identity::public_key))
+            .collect();
+        let drawn = draw::verifiers_for(epoch, &key, &roll);
+        assert_eq!(drawn.len(), 3, "a roll of four draws the other three");
+
+        let mut nothing = futures::io::Cursor::new(Vec::new());
+        let mut sealed = Vec::new();
+        for who in &others {
+            let question = put(&mut nothing, who, key, epoch).await.expect("puts");
+            sealed.push(question.unanswered(who).expect("seals"));
+        }
+        let opened: Vec<_> = sealed
+            .iter()
+            .map(|frame| attestation::open(frame).expect("opens"))
+            .collect();
+        for signed in &opened {
+            assert!(!signed.is_positive(), "silence is not an answer");
+            assert_eq!(signed.attestation.prover, key);
+            assert_eq!(signed.attestation.epoch, epoch.0);
+        }
+
+        let evidence = Evidence {
+            attestations: opened.iter().collect(),
+            receipt: None,
+        };
+        assert_eq!(judge(epoch, &key, &roll, &evidence), Attendance::Absent);
+
+        // And one of the three keeping quiet is enough to stop it, because a verifier
+        // that published nothing said nothing.
+        let two_of_three = Evidence {
+            attestations: opened.iter().take(2).collect(),
+            receipt: None,
+        };
+        assert_eq!(judge(epoch, &key, &roll, &two_of_three), Attendance::Excluded);
+    }
+
+    #[tokio::test]
+    async fn a_question_about_some_other_epoch_is_refused_however_it_was_drawn() {
+        // Without this, the draw being computable for every epoch that will ever exist
+        // means a node can be asked about next year and made to sign that it was awake
+        // then. One epoch of slack, because boundaries pass mid-round on their own.
+        let epoch = Epoch(89_516);
+        let (prover, verifier, roll) = cast(epoch);
+
+        // Two epochs away is refused before entitlement is even consulted.
+        let (_, answered) = round_asking(prover, verifier, roll, epoch, Epoch(epoch.0 + 2)).await;
+        assert!(matches!(
+            answered,
+            Err(Error::NotNow {
+                asked,
+                now
+            }) if asked == epoch.0 + 2 && now == epoch.0
+        ));
+    }
+
+    /// One round where the asker and the answerer disagree about what epoch it is.
+    async fn round_asking(
+        prover: Identity,
+        verifier: Identity,
+        roll: BTreeSet<[u8; 32]>,
+        prover_thinks: Epoch,
+        asked_about: Epoch,
+    ) -> (Result<Witnessed, Error>, Result<Answered, Error>) {
+        let prover_key = prover.public_key();
+        let (a, b) = tokio::io::duplex(64 * 1024);
+        let (mut a, mut b) = (a.compat(), b.compat());
+        let answering = tokio::spawn(async move {
+            let question = take_question(&mut b).await?.expect("a question arrives");
+            answer(
+                &mut b,
+                &prover,
+                prover_thinks,
+                Head::default(),
+                &roll,
+                question,
+            )
+            .await
+        });
+        let asked = ask(&mut a, &verifier, prover_key, asked_about).await;
+        (asked, answering.await.expect("task"))
+    }
+
+    #[tokio::test]
     async fn a_prover_whose_verifier_hangs_up_still_holds_its_receipt() {
         // The case the receipt exists for. No statement arrives, and the prover can
         // still show two signatures from two nodes.
@@ -348,7 +543,7 @@ mod tests {
         let (mut a, mut b) = (a.compat(), b.compat());
         let answering = tokio::spawn(async move {
             let question = take_question(&mut b).await?.expect("a question arrives");
-            answer(&mut b, &prover, Head::default(), &roll, question).await
+            answer(&mut b, &prover, epoch, Head::default(), &roll, question).await
         });
 
         let question = Challenge::new(&verifier, prover_key, epoch);

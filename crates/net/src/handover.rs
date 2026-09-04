@@ -50,12 +50,11 @@ use crate::frame::{self, AsReceived};
 
 /// How far apart two clocks may be and still complete a handover.
 ///
-/// One epoch. The two nodes have to sign the same number or the halves do not fit, so
-/// somebody's clock has to give way, and this is how far the asker will follow the
-/// giver. Wider would let a giver backdate a membership by as much as it liked;
-/// narrower would break a handover that straddles an epoch boundary, which is a thing
-/// that happens on its own every 333 minutes.
-pub const MAX_EPOCH_SKEW: u64 = 1;
+/// The same slack every other signed message allows — see
+/// [`n333_core::epoch::MAX_CLOCK_SKEW_EPOCHS`]. Here it decides how far the asker will
+/// follow the giver's clock: the two have to sign the same number or the halves do not
+/// fit, so somebody has to give way, and it is the one who was already a member.
+pub const MAX_EPOCH_SKEW: u64 = n333_core::epoch::MAX_CLOCK_SKEW_EPOCHS;
 
 /// Why a handover did not happen.
 #[derive(Debug, thiserror::Error)]

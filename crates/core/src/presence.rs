@@ -163,9 +163,10 @@ where
 /// itself.** Never peers that somebody else attested were present. The two look
 /// interchangeable and are not: an attestation is cheap to manufacture for anyone
 /// holding both the verifier's key and the prover's, so an attestation-sourced count
-/// can be inflated without bound by one person. [`Census::is_ended`] is exactly
-/// `active == 0`, so an inflatable count means the end can never be declared — and
-/// whether it has ended is the one question this protocol exists to answer.
+/// can be inflated without bound by one person. [`Census::sees_nobody`] is exactly
+/// `active == 0`, and although that is not the end by itself, it is the only door to
+/// it: an inflatable count means the end can never be reached at all — and whether it
+/// has ended is the one question this protocol exists to answer.
 ///
 /// Attestations are still worth keeping. They decide standing, which is a claim
 /// about a peer's record. They do not decide whether anybody is here, which is a
@@ -226,13 +227,19 @@ impl Census {
         self.active + self.inactive
     }
 
-    /// Has it ended?
+    /// Did this node hear from nobody?
     ///
-    /// The count that decides this is how many answered this node, not how many are
-    /// on the roll and not what anyone else reported. A roll of a thousand names with
-    /// nobody awake is over.
+    /// **THIS IS NOT THE END, and nothing may print the end from it.** A node with a
+    /// broken listener, an unpublished address or a cut cable sees exactly this, and it
+    /// is by far the likeliest reason to see it. Saying the network has ended takes an
+    /// unbroken watch of 333 epochs during which this node was running the whole time:
+    /// see [`crate::extinction::Vigil::verdict`], which is the only thing in this crate
+    /// entitled to answer that question.
+    ///
+    /// It is here because a census of nobody is worth showing on a screen, and for
+    /// nothing else.
     #[must_use]
-    pub const fn is_ended(&self) -> bool {
+    pub const fn sees_nobody(&self) -> bool {
         self.active == 0
     }
 }
@@ -411,11 +418,11 @@ mod tests {
     }
 
     #[test]
-    fn the_end_is_decided_by_who_is_answering_not_by_the_roll() {
+    fn seeing_nobody_is_about_who_answered_and_not_about_the_roll() {
         let census = Census::of(0, 0, 1447);
-        assert!(census.is_ended());
+        assert!(census.sees_nobody());
         assert_eq!(census.roll(), 1447);
-        assert!(!Census::of(1, 0, 1446).is_ended());
+        assert!(!Census::of(1, 0, 1446).sees_nobody());
     }
 
     #[test]
@@ -432,12 +439,12 @@ mod tests {
     }
 
     #[test]
-    fn an_empty_census_has_already_ended() {
+    fn a_fresh_node_sees_nobody_and_that_is_not_the_end() {
         // The default is not a neutral starting state: a node that has spoken to
-        // nobody yet is, by its own observation, looking at an ended network. That is
-        // correct and it is why the screen must show what was observed rather than a
-        // verdict a fresh node would announce on startup.
-        assert!(Census::default().is_ended());
+        // nobody yet sees nobody. It is exactly why this cannot be the end — a node
+        // that has just started, or whose listener is broken, sees the same thing as
+        // a node watching the last of us go, and only one of them is right.
+        assert!(Census::default().sees_nobody());
         assert_eq!(Census::default().roll(), 0);
     }
 }

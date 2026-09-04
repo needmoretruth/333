@@ -195,31 +195,46 @@ impl Roll {
 }
 
 /// What has to match for two halves to be about the same handover.
+///
+/// EVERY SIGNED FIELD IS IN HERE, and that is the point. A key that names only some of
+/// them lets one node overwrite its own half with a second, differently-worded frame —
+/// same author, same counterparty, same epoch, a different file — and whichever arrived
+/// last would occupy the slot. The good pair would then fail to assemble and be dropped
+/// in silence, so one key would have retracted a record that takes two keys to make,
+/// and two nodes reading the same frames in different orders would hold different rolls.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 struct Pairing {
+    /// Which version of the wire format said it.
+    protocol: u16,
     /// Who signed.
     author: [u8; 32],
     /// Who they named.
     counterparty: [u8; 32],
     /// When.
     epoch: u64,
+    /// What was handed over.
+    subject: [u8; 32],
 }
 
 impl Pairing {
     fn of(signed: &Signed) -> Self {
         Self {
+            protocol: signed.record.protocol,
             author: signed.record.author,
             counterparty: signed.record.counterparty,
             epoch: signed.record.epoch,
+            subject: signed.record.subject,
         }
     }
 
     /// The same handover, seen from the other side.
     const fn mirrored(self) -> Self {
         Self {
+            protocol: self.protocol,
             author: self.counterparty,
             counterparty: self.author,
             epoch: self.epoch,
+            subject: self.subject,
         }
     }
 }
@@ -258,6 +273,27 @@ mod tests {
                 .seal(Half::Received, taker)
                 .expect("seals"),
         ]
+    }
+
+    #[test]
+    fn one_key_cannot_retract_a_record_that_took_two_keys_to_make() {
+        // The giver signs a second, differently-worded half about the same handover:
+        // same counterparty, same epoch, a file that is not the file. If the pairing
+        // key ignored that field, whichever frame arrived last would occupy the slot,
+        // the good pair would fail to assemble, and one key would have undone a record
+        // that takes two. Fed in both orders, the roll must come out the same.
+        let (giver, newcomer) = (identity(1), identity(2));
+        let good = admission(&giver, &newcomer, 100);
+        let poison = transfer::Record::new(&giver, newcomer.public_key(), Epoch(100), [0_u8; 32])
+            .seal(Half::Gave, &giver)
+            .expect("seals");
+
+        for order in [vec![good[0].clone(), good[1].clone(), poison.clone()],
+                      vec![poison.clone(), good[0].clone(), good[1].clone()]] {
+            let (roll, read) = Roll::from_halves(&order);
+            assert_eq!(read.admitted, 1, "the good pair still assembles");
+            assert!(roll.member(&newcomer.public_key()).is_some());
+        }
     }
 
     #[test]

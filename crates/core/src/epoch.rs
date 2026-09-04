@@ -1,14 +1,33 @@
 //! Epochs.
 //!
 //! An epoch is 333 minutes of wall-clock time, counted from the Unix epoch. There is
-//! deliberately no external time source: no NTP requirement, no beacon, no chain. A
-//! node that disagrees about the time simply fails to be attested by the nodes that
-//! do agree, which is the only correction this protocol has.
+//! deliberately no external time source: no NTP requirement, no beacon, no chain.
+//!
+//! A NODE THAT DISAGREES ABOUT THE TIME IS NOT CORRECTED. There is nobody here to
+//! correct it: no majority a node can observe, no authority to appeal to, and no way
+//! to tell a wrong clock from a right one. Disagreement is reported and nothing is
+//! done about it. What is done instead is narrower and is the only thing that can be
+//! done locally: a node answers only for the hour it is in — see
+//! [`MAX_CLOCK_SKEW_EPOCHS`] — so a clock running fast can waste its own time and
+//! cannot make anybody else sign for an hour they have not lived.
 
 use std::time::{Duration, SystemTime, SystemTimeError, UNIX_EPOCH};
 
 /// 333 minutes, in seconds. Frozen by the specification.
 pub const EPOCH_SECONDS: u64 = 333 * 60;
+
+/// How far apart two nodes' clocks may be before they stop being about the same thing.
+///
+/// One epoch. Two nodes have to agree on the number written inside a signature for
+/// anything signed to fit together, and this is how much disagreement is tolerated
+/// before a message is refused rather than answered.
+///
+/// It cannot be zero: an epoch boundary passes every 333 minutes on its own, and a
+/// round that straddles one would fail for no reason anybody could act on. It must not
+/// be large: every epoch of slack is an epoch into the past or the future that somebody
+/// can ask to be answered for, and the draw is computable for every epoch that will
+/// ever exist.
+pub const MAX_CLOCK_SKEW_EPOCHS: u64 = 1;
 
 /// An epoch number: `unix_seconds / EPOCH_SECONDS`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
