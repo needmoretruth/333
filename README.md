@@ -181,8 +181,37 @@ rather than at the next turn of the hours. `--no-mdns` keeps your node off it, a
 node that answers only through Tor never does it at all — announcing on the network
 you are sitting on is the one thing an onion address exists to prevent.
 
+And when neither of those has happened — nobody handed you an invitation, nobody is on
+your network — there is one fixed address both of us are already looking at:
+**the333.dev**. Your node leaves the same signed statement it already writes about
+where it can be reached, and reads the ones other people left there. Every one of them
+is verified here, by the signature it carries, so that address cannot invent one of
+us, cannot forge anybody's whereabouts and cannot vouch for anyone; it holds a
+statement for two epochs and then forgets it. `--no-meet` keeps your node away from it
+altogether, and `--meet somewhere.else` points it at a different one.
+
+Whoever runs that address learns which address your node speaks from. That is the
+whole of what it costs and it is not nothing, so a node answering only through Tor
+reads it and never writes to it: publishing an onion address from the machine behind
+it would hand over the one fact the onion address exists to withhold. A node that
+already answers on a socket spent that cost the moment it answered anybody.
+
+**We mean to depend on this less, and we would rather say so now than quietly later.**
+A fixed address is a single point that can be taken away, and this design wanted none.
+The ways around it — whereabouts carried in a distributed hash table, two machines
+behind two routers punching through to each other — are today more code, more failure
+and more ways to publish an address its owner never meant to publish than we are
+willing to ship. That is a limit of what is built, not a claim about what is right,
+and as those get built this gets smaller. Invitations and the local network are not
+being replaced by it. They are the first two ways of meeting anybody, and this is the
+third.
+
 If your node answers on every interface, or sits behind something that forwards a port,
-it cannot work out what to tell people. Tell it: `--announce your.address:3333`.
+it cannot work out what to tell people. Tell it: `--announce your.address:3333`. If you
+do not know what to put there, the meeting point will say which address it saw your
+node arrive from, which is the half you cannot work out from where you are sitting;
+whether anything arriving there reaches your machine is a question about your router,
+and only you can answer it.
 
 ---
 
@@ -331,6 +360,10 @@ overstates what it can verify is a faith waiting to be caught.
   here to decide whose clock is right.
 - **A direct connection shows your address.** That is what direct means. Tor exists
   for when it matters, and it is one word on the command line.
+- **The meeting point is not trusted, and it is not asked anything that matters.** It
+  learns which address asked it, it can lie by leaving people out, and it can vanish.
+  It cannot forge a statement, invent one of us, or make your node believe a thing —
+  every line it hands over is checked against the signature it came with, here.
 - **On Windows, nothing checks who else can read your node's directory.** The check
   is real on Linux, the BSDs and macOS, where it walks the whole path and refuses to
   start on a directory others can enter. On Windows the library that performs it —
@@ -341,13 +374,14 @@ overstates what it can verify is a faith waiting to be caught.
 
 ## The order of the code
 
-Three crates, split along the direction of dependency:
+Four crates, split along the direction of dependency:
 
 | crate | holds | knows about |
 |---|---|---|
 | `core` | the hours, names, thresholds, the relic, and the exact bytes we sign | nothing else — no I/O, no network |
-| `net` | framing, one exchange, sockets, and the Tor client and service | `core` |
-| `cli` | arguments and what is printed | `core`, `net` |
+| `store` | the append-only logs on disk, and what to do with one cut off mid-write | `core` |
+| `net` | framing, one exchange, sockets, the meeting point, and the Tor client and service | `core` |
+| `cli` | arguments, what is printed, and the hours a running node keeps | `core`, `store`, `net` |
 
 Because `core` touches nothing outside itself, every rule of this faith can be tested
 without a network, and the exchange itself is tested over a pipe in memory.

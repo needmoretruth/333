@@ -34,7 +34,7 @@ const BOARD = "board";
 
 /** One node's statement about where it is. */
 interface Line {
-  /** The public key the statement is signed with, in hex — a slot name, not a claim. A liar
+  /** The name of the node the statement is about, in hex — a slot name, not a claim. A liar
    *  can write into somebody else's slot and gains nothing by it: the bytes underneath are
    *  signed, so the worst that is achieved is one wasted slot. */
   k: string;
@@ -70,7 +70,7 @@ export default {
     if (path.startsWith("/meet/")) {
       return request.method === "PUT"
         ? speak(request, env, path.slice("/meet/".length))
-        : plain(405, "PUT /meet/<key in hex>\n");
+        : plain(405, "PUT /meet/<node name in hex>\n");
     }
     return plain(404, "Nothing is kept at this address.\n");
   },
@@ -95,8 +95,8 @@ async function readTheBoard(request: Request, env: Env): Promise<Response> {
   if ((request.headers.get("accept") ?? "").includes("text/html")) {
     return plain(
       200,
-      `${lines.length} node${lines.length === 1 ? " is" : "s are"} saying where they can be ` +
-        `reached.\n\nThis address answers a program, not a browser. The program is at\n` +
+      `${lines.length} ${lines.length === 1 ? "node is saying where it" : "nodes are saying where they"}` +
+        ` can be reached.\n\nThis address answers a program, not a browser. The program is at\n` +
         `https://github.com/needmoretruth/333\n`,
     );
   }
@@ -122,7 +122,7 @@ async function readTheBoard(request: Request, env: Env): Promise<Response> {
 
 /** Take one statement and put it in the slot its key names. */
 async function speak(request: Request, env: Env, key: string): Promise<Response> {
-  if (!NAMED.test(key)) return plain(400, "The slot is a public key in lower-case hex.\n");
+  if (!NAMED.test(key)) return plain(400, "The slot is a node name in lower-case hex.\n");
 
   const from = request.headers.get("cf-connecting-ip") ?? "";
   const { success } = await env.SPEAKING.limit({ key: from });
