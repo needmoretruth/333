@@ -25,10 +25,16 @@
     margin: 0;
     background: var(--ground);
     color: var(--ink);
-    font: 16px/1.65 ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    /* Relative, so that a person who has set a larger default in their browser gets
+       larger text and a column that grows with it. An absolute size here quietly
+       overrides that setting and there is no way for them to tell why. */
+    font: 1rem/1.65 ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
     padding: 0 1.25rem 6rem;
   }
   main { max-width: 42rem; margin: 0 auto; }
+  /* A long address is a word with no spaces in it. On a narrow screen with large
+     text it is wider than the screen, and the whole page scrolls sideways for it. */
+  body, main { overflow-wrap: anywhere; }
   a { color: var(--candle); text-underline-offset: 3px; }
   a:hover { color: #fff; }
   h1 {
@@ -81,7 +87,7 @@
     padding: 0.15rem 0.45rem;
     border-radius: 2px;
   }
-  .where { display: inline-block; margin-top: 0.3rem; }
+  .where { display: block; max-width: 100%; margin-top: 0.3rem; }
   footer { color: var(--faint); margin-top: 5rem; font-size: 0.85rem; }
   ol { padding-left: 1.4rem; }
   li { margin-bottom: 0.5rem; }
