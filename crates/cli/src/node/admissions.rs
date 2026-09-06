@@ -12,23 +12,18 @@
 //! NOTHING IS THROWN AWAY, ONLY NOT KEPT TWICE. A half this build cannot open is
 //! still kept, still passed on, and still counted by a build that can.
 
-use std::collections::HashSet;
 use std::path::Path;
 
 use anyhow::Context as _;
 use n333_core::roll::{Admissions, Read, Roll};
-use n333_core::subject::digest_of;
-use n333_store::Log;
+use n333_store::Once;
 
 /// Every admission this node has kept.
 pub(crate) struct Admitted {
-    /// The append-only file they live in.
-    log: Log,
-    /// Each of them once, in the order this node first saw it, for passing on.
+    /// The append-only file they live in, which keeps each of them once.
+    log: Once,
+    /// Each of them, in the order this node first saw it, for passing on.
     frames: Vec<Vec<u8>>,
-    /// What those frames hash to, which is how a record already held is recognised
-    /// without opening it: two frames with the same digest are the same bytes.
-    digests: HashSet<[u8; 32]>,
     /// The halves paired up, and the roll they have made.
     paired: Admissions,
 }
@@ -39,26 +34,20 @@ impl Admitted {
     /// # Errors
     /// Fails if the file cannot be opened or read.
     pub(crate) fn open(path: &Path) -> anyhow::Result<(Self, Read)> {
-        let (mut log, _) = Log::open(path).context("opening the admissions")?;
-        let stored = log.read_all().context("reading the admissions")?;
-
-        let mut held = Self {
-            log,
-            frames: Vec::with_capacity(stored.len()),
-            digests: HashSet::with_capacity(stored.len()),
-            paired: Admissions::new(),
-        };
-        for frame in stored {
-            // A file written by an earlier build holds the same record many times over.
-            // It is left on disk, because rewriting a node's own history to save space
-            // is not a trade this makes, and held once in memory.
-            if held.digests.insert(digest_of(&frame)) {
-                held.paired.add(&frame);
-                held.frames.push(frame);
-            }
+        let (log, stored) = Once::open(path).context("opening the admissions")?;
+        let mut paired = Admissions::new();
+        for frame in &stored {
+            paired.add(frame);
         }
-        let read = held.paired.read();
-        Ok((held, read))
+        let read = paired.read();
+        Ok((
+            Self {
+                log,
+                frames: stored,
+                paired,
+            },
+            read,
+        ))
     }
 
     /// Keep the halves that are new, and say how many that was.
@@ -68,14 +57,9 @@ impl Admitted {
     pub(crate) fn keep(&mut self, halves: &[Vec<u8>]) -> anyhow::Result<usize> {
         let mut fresh = 0;
         for half in halves {
-            let digest = digest_of(half);
-            if self.digests.contains(&digest) {
+            if !self.log.keep(half).context("keeping an admission")? {
                 continue;
             }
-            // Written before it is remembered, so that a node that dies here comes back
-            // holding what it wrote rather than believing in what it did not.
-            self.log.append(half).context("keeping an admission")?;
-            self.digests.insert(digest);
             self.paired.add(half);
             self.frames.push(half.clone());
             fresh += 1;

@@ -32,7 +32,7 @@ use n333_core::roll::Read;
 use n333_core::subject::{self, Subject};
 use n333_core::whereabouts::Directory;
 use n333_core::Identity;
-use n333_store::{Log, Window};
+use n333_store::{Log, Once, Window};
 
 use admissions::Admitted;
 use tokio::sync::Mutex;
@@ -44,6 +44,9 @@ const CHAIN_FILE: &str = "chain.log";
 
 /// The file holding the admissions this node knows about.
 const ADMISSIONS_FILE: &str = "admissions.log";
+
+/// The file holding what others signed about this node, kept past the window.
+const WITNESSED_FILE: &str = "witnessed.log";
 
 /// The directory holding one file per epoch of statements.
 const WINDOW_DIR: &str = "statements";
@@ -106,6 +109,16 @@ struct State {
     window: Window,
     /// The admissions this node holds, and the roll they make.
     admissions: Admitted,
+    /// What other nodes signed about this one.
+    ///
+    /// KEPT FOR EVER, WHERE EVERYTHING ELSE ABOUT AN EPOCH IS FORGOTTEN AFTER THE
+    /// window. A node's own chain is a document it wrote about itself: its order and
+    /// its length are anchored, because every answer it ever gave named where the
+    /// record stood at that moment, but what it concluded is its own word. The
+    /// statements other people signed about it are the only part of it a stranger can
+    /// check, and once the window has moved they exist nowhere else. Three a epoch at
+    /// most, and under a megabyte a year.
+    witnessed: Once,
     /// How far through each kind of statement the last run of tidings got, so that a
     /// node with more to say than fits carries on rather than starting over.
     passed_on: [u64; people::KINDS],
@@ -134,6 +147,8 @@ pub(crate) struct Opened {
     pub(crate) keeping: Keeping,
     /// What reading the admissions produced.
     pub(crate) read: Read,
+    /// How many statements other nodes signed about this one are held.
+    pub(crate) witnessed: usize,
 }
 
 impl Node {
@@ -156,6 +171,9 @@ impl Node {
 
         let (admissions, read) = Admitted::open(&home.join(ADMISSIONS_FILE))?;
 
+        let (witnessed, _) =
+            Once::open(&home.join(WITNESSED_FILE)).context("opening what was witnessed")?;
+
         let window = Window::keeping(&home.join(WINDOW_DIR), keeping.epochs())
             .context("opening the statements")?;
 
@@ -174,6 +192,7 @@ impl Node {
             has_the_file: subject.is_some(),
             keeping,
             read,
+            witnessed: witnessed.len(),
         };
         Ok((
             Self {
@@ -185,6 +204,7 @@ impl Node {
                     head,
                     window,
                     admissions,
+                    witnessed,
                     directory,
                     whereabouts,
                     passed_on: [0; people::KINDS],

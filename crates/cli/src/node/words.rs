@@ -23,15 +23,36 @@ impl Node {
     /// read, which is what lets a statement this build does not understand still be
     /// passed on by a build that does.
     ///
+    /// A statement somebody signed ABOUT THIS NODE is kept twice: once with the epoch
+    /// it belongs to, which is forgotten when the window moves past it, and once in a
+    /// file that is never forgotten. It is the only part of this node's record that
+    /// somebody else's key is on, and after the window there is nowhere else it
+    /// survives. The negative ones are kept with the positive ones — a node that kept
+    /// only what suited it would be keeping an advertisement, and it would know that
+    /// about itself.
+    ///
     /// # Errors
     /// Fails if the file cannot be written.
     pub(crate) async fn keep(&self, epoch: Epoch, frame: &[u8]) -> anyhow::Result<()> {
-        self.state
-            .lock()
-            .await
+        let mut state = self.state.lock().await;
+        state
             .window
             .record(epoch, frame)
-            .with_context(|| format!("keeping a statement about epoch {}", epoch.0))
+            .with_context(|| format!("keeping a statement about epoch {}", epoch.0))?;
+        if attestation::open(frame)
+            .is_ok_and(|signed| signed.attestation.prover == self.identity.public_key())
+        {
+            state
+                .witnessed
+                .keep(frame)
+                .context("keeping what was witnessed of this node")?;
+        }
+        Ok(())
+    }
+
+    /// How many statements other nodes signed about this one are held.
+    pub(crate) async fn witnessed(&self) -> usize {
+        self.state.lock().await.witnessed.len()
     }
 
     /// Everything held about one epoch.
@@ -209,3 +230,76 @@ fn signers_of(frame: &[u8], epoch: Epoch) -> Vec<[u8; 32]> {
     Vec::new()
 }
 
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::node::Keeping;
+    use n333_core::Identity;
+    use n333_core::attestation::Attestation;
+
+    fn scratch(name: &str) -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!("n333-words-test-{name}"));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).expect("creates dir");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt as _;
+            std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o700))
+                .expect("restricts dir");
+        }
+        dir
+    }
+
+    fn mistrust() -> fs_mistrust::Mistrust {
+        fs_mistrust::Mistrust::builder()
+            .ignore_prefix(std::env::temp_dir())
+            .ignore_environment()
+            .build()
+            .expect("a buildable Mistrust")
+    }
+
+    /// A verifier's statement that somebody said nothing. The negative is used because
+    /// it needs no answer from the prover, and it is the one a node has least reason to
+    /// keep — which is the point.
+    fn said_of(prover: [u8; 32], epoch: Epoch) -> Vec<u8> {
+        let verifier = Identity::from_seed(&[7; 32]);
+        Attestation::silent(&verifier, prover, epoch, [3; 32])
+            .seal(&verifier)
+            .expect("seals")
+    }
+
+    #[tokio::test]
+    async fn what_others_signed_about_this_node_outlives_the_window() {
+        // Everything else about an epoch is forgotten when the window moves past it.
+        // These are the only part of a node's own record that somebody else's key is
+        // on, so after the window they exist nowhere, and the record stops meaning
+        // anything to a stranger.
+        let home = scratch("witnessed");
+        let (node, opened) =
+            Node::open(&mistrust(), &home, Keeping::TheWindow).expect("opens a node");
+        assert_eq!(opened.witnessed, 0);
+
+        let epoch = Epoch(1000);
+        let about_me = said_of(node.identity().public_key(), epoch);
+        let about_somebody_else = said_of([9; 32], epoch);
+        for frame in [&about_me, &about_me, &about_somebody_else] {
+            node.keep(epoch, frame).await.expect("keeps");
+        }
+        assert_eq!(
+            node.witnessed().await,
+            1,
+            "the one that names this node, and the same one twice is once"
+        );
+
+        let long_after = Epoch(epoch.0 + presence::WINDOW_EPOCHS + 4);
+        assert_eq!(node.forget_old(long_after).await.expect("forgets"), 1);
+        assert!(node.statements(epoch).await.expect("reads").is_empty());
+        assert_eq!(node.witnessed().await, 1, "and this is still here");
+
+        drop(node);
+        let (_, reopened) =
+            Node::open(&mistrust(), &home, Keeping::TheWindow).expect("opens again");
+        assert_eq!(reopened.witnessed, 1);
+    }
+}

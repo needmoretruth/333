@@ -93,6 +93,14 @@ pub(crate) fn report_opening(opened: &crate::node::Opened) {
         };
         println!("record   {epochs} already answered for, none of them open to revision");
     }
+    if opened.witnessed != 0 {
+        println!(
+            "witness  {} statements other keys signed about this node. They are kept\n\
+             \x20        after the epochs they belong to are gone, because nothing else of\n\
+             \x20        them survives the window.",
+            opened.witnessed
+        );
+    }
     if opened.members != 0 {
         let us = if opened.members == 1 {
             "1 of us, which is this node".to_owned()

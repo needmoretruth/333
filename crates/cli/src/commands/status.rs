@@ -122,6 +122,7 @@ async fn this_node(
         .unwrap_or(usize::MAX)
         .saturating_sub(written);
     writeln!(out, "{}", read_standing(&standing))?;
+    writeln!(out, "\n{}", what_the_record_is(node.witnessed().await))?;
     if missing != 0 {
         writeln!(
             out,
@@ -196,6 +197,29 @@ async fn what_was_said(
          this node. The node beside you heard something else and is not wrong."
     )?;
     Ok(())
+}
+
+/// What this node's own record is, and what part of it is not its own word.
+///
+/// It is a document a node wrote about itself. Its length and its order are anchored,
+/// because every answer it has ever given named where the record stood at that moment
+/// and was signed by somebody else's key. Its verdicts are not: a node that answered
+/// everything honestly can still write Present into an epoch it slept through, and
+/// nothing anywhere can tell the difference. Saying so is the whole of the rule
+/// against claiming to verify what cannot be verified — and the statements others
+/// signed about it, which is the part a stranger can check, are why they are kept
+/// after the window has forgotten everything else.
+fn what_the_record_is(witnessed: usize) -> String {
+    let checkable = if witnessed == 0 {
+        "Nobody has yet signed anything about you, so for now there is only your own\n         word for any of it.".to_owned()
+    } else {
+        format!(
+            "The part of it anybody else can check is what others signed about you.\n             {witnessed} of those are here, kept after the epochs they belong to are gone."
+        )
+    };
+    format!(
+        "Your record is what you wrote down about yourself, in order, signed as you\n         went. Every answer you have ever given named where it stood at that moment, so\n         its length and its order are not yours to change now. What it concludes is\n         still your own word. {checkable}"
+    )
 }
 
 /// The standing sentence: the ratio, and what it means right now.

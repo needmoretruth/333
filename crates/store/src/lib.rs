@@ -1,9 +1,11 @@
 //! Where a node keeps what it has to remember.
 //!
-//! Two shapes and nothing else:
+//! Three shapes and nothing else:
 //!
 //! - [`log`] is an append-only file of signed frames. A node's own record chain lives
 //!   in one of these, kept for ever.
+//! - [`once`] is one of those that keeps each record once, for the files a node fills
+//!   from what peers pass on — which is mostly what it already holds.
 //! - [`window`] holds what other nodes said, one file per epoch, and forgets the
 //!   epochs that have fallen out of the 333-epoch window.
 //!
@@ -29,7 +31,9 @@
 )]
 
 pub mod log;
+pub mod once;
 pub mod window;
 
 pub use log::{Log, Opened};
+pub use once::Once;
 pub use window::Window;
