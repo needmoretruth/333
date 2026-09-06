@@ -229,14 +229,72 @@ and Windows follow. Today both forms exist and have been run on Linux.
 
 ---
 
-## Build
+## Install
 
-Rust 1.96 or newer.
+There are no prebuilt binaries. You build it, which is one command and a few minutes, and
+which means the thing you run is the thing you can read.
+
+**Rust 1.96 or newer.** What a distribution packages is usually older than that, so take it
+from [rustup.rs](https://rustup.rs):
 
 ```sh
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+Then whatever your system needs to compile it. Standard carries Tor, and Tor brings TLS and
+SQLite with it. Light carries neither and needs only a C compiler.
+
+**Ubuntu, Debian, Mint, Pop, and the rest of that family**
+
+```sh
+sudo apt install -y git build-essential pkg-config libssl-dev libsqlite3-dev
+```
+
+**Fedora, RHEL, Rocky, Alma**
+
+```sh
+sudo dnf install -y git gcc pkgconf-pkg-config openssl-devel sqlite-devel
+```
+
+**Arch, Manjaro, EndeavourOS**
+
+```sh
+sudo pacman -S --needed git base-devel openssl sqlite
+```
+
+**macOS**
+
+```sh
+xcode-select --install
+```
+
+TLS and SQLite come with the system there, so that is the whole of it.
+
+**Windows**
+
+The rustup installer offers to fetch the Microsoft C++ build tools; accept, and you have
+everything the Light form needs.
+
+Then, on any of them:
+
+```sh
+git clone https://github.com/needmoretruth/333
+cd 333
 cargo build --release                        # Standard: the screen, and Tor
 cargo build --release --no-default-features  # Light: neither
 ```
+
+Standard comes out around 28 MB and links your system TLS and SQLite, both of which arrive
+with Tor. Light comes out around 8 MB and links nothing but the C library, which is why it is
+the form for a machine that is struggling and the form most likely to build somewhere nobody
+has tried yet.
+
+**What has actually been built and run.** Linux on x86-64, both forms: built, started, given
+a name, handed the file from one node to another over a socket, and asked for its standing
+afterwards. That is what the rest of this file describes. macOS and Windows have
+not been built yet. On Windows, expect Light to be the form that works today, because the Tor
+stack inside Standard wants a system SQLite that Windows does not ship. When either of them
+fails, that is worth an issue rather than a shrug.
 
 ## Run
 
