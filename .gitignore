@@ -104,3 +104,7 @@ desktop.ini
 *.swp
 *.swo
 *~
+
+# Cloudflare
+.wrangler/
+.dev.vars*

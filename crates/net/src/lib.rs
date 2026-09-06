@@ -14,6 +14,11 @@
 //!   which is the only way anybody ever becomes a member.
 //! - [`gossip`] is the third: trading signed statements, which is how a node learns
 //!   where the other members are and therefore how it can ask them anything at all.
+//! - [`nearby`] is how two nodes on one network find each other with nobody typing an
+//!   address: each announces itself over mDNS and knocks on whoever answers.
+//! - [`meeting`] is how two nodes on two networks do it. It is the one fixed address in
+//!   a design that wanted none, it is trusted by nothing that reads it, and a node that
+//!   has met anybody at all never needs it again.
 //! - [`direct`] supplies a stream by opening a socket. This is the ordinary case.
 //! - [`tor`] supplies one through an onion service, for a node that needs its address
 //!   not to be seen. Present unless the `tor` feature is turned off.
@@ -45,6 +50,7 @@ pub mod gossip;
 pub mod handover;
 pub mod invite;
 pub mod liveness;
+pub mod meeting;
 pub mod nearby;
 pub mod peer;
 pub mod session;
@@ -53,6 +59,7 @@ pub mod tor;
 
 pub use asked::{Asked, take_request};
 pub use invite::Invite;
+pub use meeting::Meeting;
 pub use nearby::Nearby;
 pub use peer::{DEFAULT_PORT, PeerAddress};
 pub use session::{Exchange, initiate, respond};

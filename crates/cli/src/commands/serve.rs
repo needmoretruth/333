@@ -29,7 +29,9 @@ use door::{Caller, Door, spawn_exchange};
 ///
 /// `bind` is the socket to listen on, or `None` to listen only through Tor. `tor`
 /// publishes an onion address as well. `announce` overrides what this node tells
-/// others to reach it at, for the ordinary case of a socket that cannot say.
+/// others to reach it at, for the ordinary case of a socket that cannot say. `meet`
+/// is the meeting point to use, or `None` to use none and be found only by whoever
+/// was handed an invitation or is on this network.
 ///
 /// # Errors
 /// Fails if the node cannot be opened, if neither way of listening was asked for, if
@@ -40,6 +42,7 @@ pub(crate) async fn run(
     tor: bool,
     announce: Option<PeerAddress>,
     nearby: bool,
+    meet: Option<String>,
     plain: bool,
 ) -> anyhow::Result<()> {
     if bind.is_none() && !tor {
@@ -131,9 +134,26 @@ pub(crate) async fn run(
         ));
     }
 
+    // A node that answers on no socket is hiding. It reads the meeting point, because
+    // reading tells the far end nothing except that somebody asked, and it leaves
+    // nothing there, because leaving an onion address would tie it to the machine the
+    // onion address exists to keep unnamed.
+    let board = meet.map(|place| hours::Board::at(&place, bind.is_some()));
+    if let Some(board) = &board {
+        aloud!(
+            "meet     {} is where this node looks for people nobody introduced it to.\n\
+             \x20        Everything read there is signed by whoever said it, and nothing\n\
+             \x20        there is believed. --no-meet keeps this node away from it.",
+            board.place()
+        );
+        if let Some(bind) = bind {
+            suggest_an_address(board.clone(), bind, announce.is_some());
+        }
+    }
+
     // The hours run alongside the listeners rather than after them: answering is what
     // this node owes others, and keeping the hours is what it owes itself.
-    listening.spawn(hours::keep(Arc::clone(&node), dialer, address));
+    listening.spawn(hours::keep(Arc::clone(&node), dialer, address, board));
 
     // No line here saying the vigil has begun: with --no-direct it would not be true
     // yet. Each listener announces itself at the moment it can actually answer.
@@ -236,6 +256,32 @@ async fn greet_the_neighbours(
         }
     }
     Ok(())
+}
+
+/// Work out what a stranger would have to type, for a node that cannot say itself.
+///
+/// A wildcard bind is the ordinary case, and the machine behind it has no way to know
+/// which of its addresses — if any — the rest of the world can reach. The meeting
+/// point saw one address arrive, so it can say that much. Whether anything arriving
+/// there reaches this machine depends on a router this node cannot see, which is why
+/// this is printed for a person to act on and never signed as a statement.
+fn suggest_an_address(board: hours::Board, bound: SocketAddr, already_said: bool) {
+    if already_said || !bound.ip().is_unspecified() {
+        return;
+    }
+    tokio::spawn(async move {
+        let Some(seen) = board.what_address_do_i_arrive_from().await else {
+            return;
+        };
+        aloud!(
+            "meet     {} sees this machine at {seen}. If port {} on your router goes\n\
+             \x20        to this machine, `--announce {}` is the invitation to hand out;\n\
+             \x20        if it does not, nobody can reach you and nothing here changes that.",
+            board.place(),
+            bound.port(),
+            PeerAddress::from(SocketAddr::new(seen, bound.port()))
+        );
+    });
 }
 
 /// Say what to hand somebody so they can find this node.
@@ -452,7 +498,7 @@ mod tests {
         ];
         for (node, common, where_it_is) in rounds {
             let dialer = Dialer::new(common.clone());
-            hours::one_round(node, &dialer, Some(where_it_is), now).await;
+            hours::one_round(node, &dialer, Some(where_it_is), None, now).await;
         }
 
         // The verifier's round ends when it has published; the node it asked is still

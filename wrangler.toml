@@ -1,0 +1,45 @@
+# How the333.dev is served: one Worker, the static pages beside it, and a small board of
+# signed statements about where nodes can be reached.
+#
+# The account this deploys into is not named here. It is passed in at deploy time, because an
+# account identifier is the one part of this file that is nobody else's business and this
+# repository is public.
+
+name = "the333"
+main = "meeting/index.ts"
+compatibility_date = "2026-09-06"
+workers_dev = false
+
+[observability]
+enabled = true
+
+# The pages are served straight from the edge; the Worker never sees a request for them. Only
+# the meeting point runs code, and it runs before assets so that a file called "meet" could
+# never quietly shadow it.
+[assets]
+directory = "site"
+not_found_handling = "404-page"
+run_worker_first = ["/meet", "/meet/*"]
+
+[[routes]]
+pattern = "the333.dev"
+custom_domain = true
+
+[[routes]]
+pattern = "www.the333.dev"
+custom_domain = true
+
+[[kv_namespaces]]
+binding = "BOARD"
+id = "9e6b5702d6114202900a4a26988d1331"
+
+# Three statements a minute from one address. A node has one thing to say and 333 minutes in
+# which to say it, so this is generous by two orders of magnitude and still keeps a single
+# machine from spending the whole day's writes in a second.
+[[ratelimits]]
+name = "SPEAKING"
+namespace_id = "333"
+
+[ratelimits.simple]
+limit = 3
+period = 60

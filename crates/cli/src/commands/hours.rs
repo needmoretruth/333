@@ -6,14 +6,16 @@
 //! keep answering.
 //!
 //! 1. Say where it is, if it has an address worth telling anybody.
-//! 2. Trade statements with every node it knows the whereabouts of.
-//! 3. Ask the nodes it was drawn to ask.
-//! 4. Judge the epoch that is now old enough to judge, and write the verdict down.
-//! 5. Forget the statements that can no longer change anything.
+//! 2. Leave that where a stranger could find it, and read what strangers left.
+//! 3. Trade statements with every node it knows the whereabouts of.
+//! 4. Ask the nodes it was drawn to ask.
+//! 5. Judge the epoch that is now old enough to judge, and write the verdict down.
+//! 6. Forget the statements that can no longer change anything.
 //!
-//! Trading comes before asking because it is what supplies the addresses asking needs.
-//! A node that has just started knows where exactly one member is — whoever handed it
-//! the file — and everything else it ever learns comes through that step.
+//! The two that find people come before asking because they are what supplies the
+//! addresses asking needs. A node that has just started knows where exactly one member
+//! is — whoever handed it the file — and everything else it ever learns arrives
+//! through one of them.
 //!
 //! NOTHING HERE DECIDES ANYTHING ABOUT ANYBODY ELSE'S STANDING. It writes down what
 //! this node concluded about **itself** from what it was given, which is the only
@@ -27,6 +29,7 @@
 
 mod asking;
 mod judging;
+mod meeting;
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -40,6 +43,7 @@ use crate::dial::Dialer;
 use crate::node::Node;
 
 pub(crate) use asking::trade_at_once;
+pub(crate) use meeting::Board;
 use asking::{ask_those_drawn, trade_news};
 pub(crate) use judging::judge_what_is_ready;
 
@@ -50,6 +54,8 @@ pub(crate) use judging::judge_what_is_ready;
 /// genuinely does not know which of its addresses a stranger can reach, and it fills
 /// in later for a node whose onion address took minutes to come up.
 ///
+/// `board` is the meeting point, if this node is using one.
+///
 /// # Errors
 /// Never, as written: it runs until the process is stopped. The result type is here
 /// because everything that could fail inside is reported and stepped over — a node
@@ -59,11 +65,12 @@ pub(crate) async fn keep(
     node: Arc<Node>,
     dialer: Dialer,
     announce_as: tokio::sync::watch::Receiver<Option<PeerAddress>>,
+    board: Option<Board>,
 ) -> anyhow::Result<()> {
     loop {
         let now = Epoch::now();
         let address = announce_as.borrow().clone();
-        one_round(&node, &dialer, address, now).await;
+        one_round(&node, &dialer, address, board.as_ref(), now).await;
         sleep_until_the_next_boundary(now).await;
     }
 }
@@ -78,6 +85,7 @@ pub(crate) async fn one_round(
     node: &Node,
     dialer: &Dialer,
     address: Option<PeerAddress>,
+    board: Option<&Board>,
     now: Epoch,
 ) {
     // Written first, and whether or not anything happens in this epoch. An epoch
@@ -87,8 +95,12 @@ pub(crate) async fn one_round(
     if let Err(e) = node.keeping(now).await {
         aloud!("failed   marking this epoch as kept: {e:#}");
     }
-    if let Some(address) = address {
-        say_where(node, &address, now).await;
+    let mine = match address {
+        Some(address) => say_where(node, &address, now).await,
+        None => None,
+    };
+    if let Some(board) = board {
+        board.visit(node, mine).await;
     }
     trade_news(node, dialer, now).await;
     ask_those_drawn(node, dialer, now).await;
@@ -97,7 +109,10 @@ pub(crate) async fn one_round(
 }
 
 /// Write down where this node can be reached, and keep it for others to pass on.
-async fn say_where(node: &Node, address: &PeerAddress, now: Epoch) {
+///
+/// Hands back the signed statement, because whoever wants to leave it somewhere else
+/// should be leaving the same bytes this node kept rather than signing a second copy.
+async fn say_where(node: &Node, address: &PeerAddress, now: Epoch) -> Option<Vec<u8>> {
     let statement = Whereabouts::of(node.identity(), address.to_string(), now);
     match statement
         .seal(node.identity())
@@ -107,8 +122,12 @@ async fn say_where(node: &Node, address: &PeerAddress, now: Epoch) {
             if let Err(e) = node.note_address(&frame).await {
                 aloud!("failed   keeping this node's own address: {e:#}");
             }
+            Some(frame)
         }
-        Err(e) => aloud!("failed   saying where this node is: {e:#}"),
+        Err(e) => {
+            aloud!("failed   saying where this node is: {e:#}");
+            None
+        }
     }
 }
 

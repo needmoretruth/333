@@ -38,6 +38,7 @@ tor-proto = { workspace = true, optional = true }
 tor-rtcompat = { workspace = true, optional = true }
 tor-error = { workspace = true, optional = true }
 safelog = { workspace = true, optional = true }
+ureq.workspace = true
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "io-util", "time", "net"] }

@@ -127,6 +127,22 @@ enum Command {
         #[arg(long)]
         no_mdns: bool,
 
+        /// Where to look for nodes nobody introduced this one to.
+        ///
+        /// One fixed address holding signed statements about where nodes say they
+        /// are. Everything read there is verified here, and nothing there is
+        /// believed. It is the only way two machines on two networks meet without
+        /// somebody handing over an invitation.
+        #[arg(long, default_value = n333_net::meeting::THE_PLACE, value_name = "HOST")]
+        meet: String,
+
+        /// Do not use a meeting point at all.
+        ///
+        /// This node is then reachable by whoever was handed an invitation and by
+        /// nodes on this network, and by nobody else.
+        #[arg(long)]
+        no_meet: bool,
+
         /// Say the lines instead of drawing the screen.
         ///
         /// The screen is what this client does on a terminal. Anywhere else — a pipe,
@@ -205,6 +221,8 @@ async fn main() -> anyhow::Result<()> {
             no_direct,
             announce,
             no_mdns,
+            meet,
+            no_meet,
             plain,
         } => {
             commands::serve::run(
@@ -213,6 +231,7 @@ async fn main() -> anyhow::Result<()> {
                 tor,
                 announce,
                 !no_mdns,
+                (!no_meet).then_some(meet),
                 plain,
             )
             .await
