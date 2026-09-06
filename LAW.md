@@ -11,9 +11,7 @@ So keep it the way you would keep a specification you know is going to change un
 Completely, and without mistaking it for the thing it approximates.
 
 There are three laws. There were always going to be three, and at 3.3.3 there will still be
-three: what a later version changes is the wording, never the count. The Recommendations under
-them grow the other way — twelve are written today and there are three hundred and thirty-three
-of them at 3.3.3.
+three. What a later version changes is the wording, never the count.
 
 ---
 
