@@ -47,6 +47,7 @@ pub mod invite;
 pub mod liveness;
 pub mod nearby;
 pub mod peer;
+pub mod rendezvous;
 pub mod session;
 #[cfg(feature = "tor")]
 pub mod tor;
@@ -54,5 +55,6 @@ pub mod tor;
 pub use asked::{Asked, take_request};
 pub use invite::Invite;
 pub use nearby::Nearby;
+pub use rendezvous::Rendezvous;
 pub use peer::{DEFAULT_PORT, PeerAddress};
 pub use session::{Exchange, initiate, respond};

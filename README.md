@@ -181,6 +181,15 @@ rather than at the next turn of the hours. `--no-mdns` keeps your node off it, a
 node that answers only through Tor never does it at all — announcing on the network
 you are sitting on is the one thing an onion address exists to prevent.
 
+If you have no invitation and nobody near you, there is one more way, and it is off
+until you ask for it. `--dht` puts your node's address into a public table anybody in
+the world can read, and asks that table who else is in it. Nothing else goes in: not
+your name, not your roll. What has been read cannot be unread, which is why it is a
+thing you turn on rather than a thing we turn on for you — and it is also the only
+thing that makes two halves of a network that have never met one network again. A few
+of us willing to be found is enough for all of us. A node that answers only through
+Tor cannot use it at all.
+
 If your node answers on every interface, or sits behind something that forwards a port,
 it cannot work out what to tell people. Tell it: `--announce your.address:3333`.
 

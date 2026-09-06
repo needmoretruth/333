@@ -79,6 +79,12 @@ directories = "6"
 # client has to say goes through its own voice, not through `log`.
 mdns-sd = { version = "0.21.2", default-features = false, features = ["async"] }
 
+# The public meeting place, for a node that has no invitation and no neighbours.
+# Pinned to 5.x on purpose: 6.0 and later moved to ed25519-dalek 3.0.0-pre, and taking
+# that would put a second, pre-release copy of the whole dalek stack in every binary
+# beside the one the signatures in this protocol are made with.
+mainline = { version = "5.4.0", default-features = false, features = ["async"] }
+
 # --- the screen ----------------------------------------------------------------
 # The Standard edition's screen. Pure Rust, and the only part of the client a person
 # looks at for hours, which is why it is a library rather than hand-rolled escape
