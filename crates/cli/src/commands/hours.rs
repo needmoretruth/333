@@ -43,7 +43,7 @@ use crate::dial::Dialer;
 use crate::node::Node;
 
 pub(crate) use asking::trade_at_once;
-use asking::{ask_those_drawn, trade_news};
+use asking::{ask_those_drawn, present_myself, trade_news};
 pub(crate) use judging::judge_what_is_ready;
 pub(crate) use meeting::Board;
 
@@ -110,6 +110,12 @@ pub(crate) async fn one_round(
     say_where_i_am(node, address.as_ref(), board, now).await;
     trade_news(node, dialer, now).await;
     ask_those_drawn(node, dialer, now).await;
+    // A node with no address a stranger could dial cannot be asked, and an epoch nobody
+    // asked it about is an epoch it is not in. So it goes to them instead. A node that
+    // can be reached does not do this: its verifiers are already on their way.
+    if !address.is_some_and(|address| address.worth_telling_a_stranger()) {
+        present_myself(node, dialer, now).await;
+    }
     judge_what_is_ready(node, now).await;
     forget_the_old(node, now).await;
 }

@@ -32,6 +32,7 @@ pub mod heartbeat;
 pub mod identity;
 pub mod plea;
 pub mod presence;
+pub mod presenting;
 pub mod ratio;
 pub mod roll;
 pub mod signal;

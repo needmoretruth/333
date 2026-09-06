@@ -1,15 +1,18 @@
 //! What a peer can ask for at the door, and what this node does about each.
 //!
-//! Three things, and none of them is a favour: a node that trades tells others what it
-//! knows, a node that answers a challenge is answering for its own record, and a node
-//! that hands over the file is doing the one thing that keeps the file alive. The
-//! fourth thing that can happen here is a heretic knocking, which is not a request.
+//! Four things, and none of them is a favour: a node that trades tells others what it
+//! knows, a node that answers a challenge is answering for its own record, a node that
+//! comes to be asked is saving this node a journey it could not have made, and a node
+//! that hands over the file is doing the one thing that keeps the file alive. The other
+//! thing that can happen here is a heretic knocking, which is not a request.
 
 use futures::{AsyncRead, AsyncWrite};
 use n333_core::Epoch;
 use n333_core::challenge::SignedChallenge;
+use n333_core::draw;
 use n333_core::enrollment::CURSE_PAUSE;
 use n333_core::plea::Signed as SignedPlea;
+use n333_core::presenting::Signed as SignedPresenting;
 use n333_core::tidings::Signed as SignedTidings;
 use n333_net::frame::AsReceived;
 use n333_net::{gossip, handover, liveness};
@@ -35,7 +38,7 @@ where
 }
 
 /// Answer a challenge, and keep everything the round produced.
-pub(super) async fn be_asked<S>(
+pub(crate) async fn be_asked<S>(
     stream: &mut S,
     node: &Node,
     question: AsReceived<SignedChallenge>,
@@ -124,4 +127,55 @@ async fn curse(name: &n333_core::NodeId) -> anyhow::Result<()> {
         CURSE_PAUSE.as_millis()
     );
     Ok(())
+}
+
+/// Put the question to somebody who came here to be asked it.
+///
+/// The other half of [`be_asked`], for the node that could not be dialled. It arrived,
+/// said which epoch it was offering itself for, and the draw is checked here exactly as
+/// it is checked when this node goes out asking: the epoch, this node's key and the
+/// caller's key, and nothing else. A caller this node was not drawn to ask is answered
+/// with a closed connection, which is what a verifier with no question has always
+/// looked like from the other end.
+///
+/// The statement this produces is the statement this node would have published had it
+/// dialled. Nothing in it records who opened the connection, because nothing in the
+/// protocol has ever turned on that.
+pub(super) async fn ask_since_they_came<S>(
+    stream: &mut S,
+    node: &Node,
+    presenting: &AsReceived<SignedPresenting>,
+) -> anyhow::Result<()>
+where
+    S: AsyncRead + AsyncWrite + Unpin,
+{
+    let epoch = presenting.message.presenting.epoch();
+    let prover = presenting.message.presenting.prover;
+    let now = Epoch::now();
+    // Only the epoch this node believes it is in. A challenge for an epoch already
+    // judged would be a statement about a question nobody can still answer, and a
+    // challenge for an epoch to come is a statement about a thing that has not
+    // happened.
+    if epoch != now {
+        aloud!(
+            "early    somebody came to be asked about epoch {}, and this node is in {}",
+            epoch.0,
+            now.0
+        );
+        return Ok(());
+    }
+    let me = node.identity().public_key();
+    let roll = node.roll().await;
+    if !draw::is_entitled(now, &prover, &me, &roll) {
+        // Not a refusal and not worth a line every time: most of us were not drawn to
+        // ask most of us, and this is the ordinary answer.
+        return Ok(());
+    }
+    let witnessed = liveness::ask(stream, node.identity(), prover, now).await?;
+    aloud!(
+        "witness  epoch {} answered by {}, who came here to be asked",
+        now.0,
+        witnessed.exchange.answer.prover
+    );
+    node.keep(now, &witnessed.attestation).await
 }

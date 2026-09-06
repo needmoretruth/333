@@ -13,7 +13,7 @@
 //! Each way in is its own door with its own places ([`door`]), and what a peer can ask
 //! for once it is through is [`answering`].
 
-mod answering;
+pub(crate) mod answering;
 mod door;
 mod reach;
 
@@ -531,6 +531,68 @@ mod tests {
             asked.witnessed().await,
             1,
             "and the statement that says so is kept, in somebody else's hand"
+        );
+    }
+
+    #[tokio::test]
+    async fn one_of_us_nobody_can_reach_goes_and_is_written_down_as_present() {
+        // The same loop for the node behind a router. Nobody can open a connection to
+        // it, so the verifier drawn to ask it never gets to; left there it would be
+        // absent from every epoch for ever while answering everything it was asked.
+        // Instead it works out who was drawn — the draw is the epoch and two keys and
+        // nothing else — goes to them, and the question comes back down the connection
+        // it opened.
+        let founder = Identity::from_seed(&[1; 32]);
+        let now = Epoch::now();
+        let joined = Epoch(now.0.saturating_sub(2));
+
+        // One answers on a socket. The other answers on nothing at all.
+        let (asker, asker_common, where_asker_is) = a_node_answering("goes-asker").await;
+        let hidden_home = scratch("goes-hidden");
+        let hidden_common = common(hidden_home.clone());
+        let (hidden, _) =
+            Node::open(&hidden_common.mistrust(), &hidden_home, Keeping::TheWindow).expect("opens");
+        let hidden = Arc::new(hidden);
+
+        let mut halves = admitted(&founder, &hidden, joined);
+        halves.extend(admitted(&founder, &asker, joined));
+        for node in [&hidden, &asker] {
+            assert_eq!(node.admit(&halves).await.expect("admits"), 2);
+        }
+
+        // Only one direction is known, which is the whole point: the hidden node has
+        // somewhere to knock and nobody has anywhere to knock for it.
+        hidden.found(where_asker_is.to_string()).await;
+
+        let asker_dialer = Dialer::new(asker_common.clone());
+        hours::one_round(&asker, &asker_dialer, Some(where_asker_is), None, now).await;
+        assert_eq!(
+            hidden.witnessed().await,
+            0,
+            "the one drawn to ask has no address to ask at, so nothing has been said"
+        );
+
+        // The hidden node's round: it trades first, which is how it learns which key is
+        // at the address it was told about, and then it goes.
+        let hidden_dialer = Dialer::new(hidden_common.clone());
+        hours::one_round(&hidden, &hidden_dialer, None, None, now).await;
+
+        let mut waited = Duration::ZERO;
+        while hidden.witnessed().await == 0 && waited < Duration::from_secs(5) {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+            waited += Duration::from_millis(10);
+        }
+
+        hours::judge_what_is_ready(&hidden, Epoch(now.0 + JUDGEMENT_DELAY_EPOCHS)).await;
+        assert_eq!(
+            hidden.own_record().await.expect("reads"),
+            vec![(now, Attendance::Present)],
+            "present, on a connection nobody could have opened to it"
+        );
+        assert_eq!(
+            hidden.witnessed().await,
+            1,
+            "and the verifier's statement says so, signed by the verifier"
         );
     }
 }

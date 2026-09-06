@@ -33,7 +33,7 @@ use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 use crate::commands::describe;
 use crate::node::Node;
 
-use super::answering::{be_asked, hand_it_over, trade};
+use super::answering::{ask_since_they_came, be_asked, hand_it_over, trade};
 
 /// How long one exchange may take before this node stops waiting on it.
 ///
@@ -215,6 +215,7 @@ where
         // failure and is the ordinary case. So is one whose heartbeat did not open.
         None | Some(Asked::Nothing) => Ok(()),
         Some(Asked::Liveness(question)) => be_asked(stream, node, question).await,
+        Some(Asked::Presenting(who)) => ask_since_they_came(stream, node, &who).await,
         Some(Asked::TheFile(plea)) => hand_it_over(stream, node, &plea).await,
         Some(Asked::Tidings(header)) => trade(stream, node, &header).await,
     }

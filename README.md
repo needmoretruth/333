@@ -615,4 +615,10 @@ Things worth knowing before you read it:
 
 ## Licence
 
-Apache-2.0.
+The code is Apache-2.0.
+
+`333.txt` is not. needmoretruth, who was first, released the file itself under the
+Unlicense and put it in the public domain. Copy it, hand it on, republish it, print it,
+put it anywhere you like. There is no copyright in it to fall foul of and nobody to ask
+permission from. That is not a courtesy extended to you. A relic you had to get
+clearance to pass on would already be dead.

@@ -11,6 +11,7 @@ use std::time::Duration;
 use anyhow::Context as _;
 use futures::StreamExt as _;
 use n333_core::challenge::RESPONSE_WINDOW_SECONDS;
+use n333_core::presenting::Presenting;
 use n333_core::{Epoch, draw};
 use n333_net::{PeerAddress, gossip, liveness};
 
@@ -138,6 +139,83 @@ async fn trade_with(
 }
 
 /// Ask everybody this node was drawn to ask this epoch.
+/// Go to whoever was drawn to ask this node, because nobody can come here.
+///
+/// The other side of [`ask_those_drawn`], for a node that answers on nothing a stranger
+/// can dial. It is not a workaround. The draw takes the epoch, the prover's key and the
+/// candidate's key and nothing else, so this node can work out which of us were drawn to
+/// ask it as exactly as they can — and once the connection is open, the question travels
+/// down it in the ordinary direction.
+///
+/// Nothing is claimed by arriving. A verifier that was not drawn says nothing and hangs
+/// up, and the statement a verifier that was drawn ends up publishing is the one it would
+/// have published had it dialled.
+pub(super) async fn present_myself(node: &Node, dialer: &Dialer, now: Epoch) {
+    let roll = node.roll().await;
+    let me = node.identity().public_key();
+    let verifiers: Vec<_> = roll
+        .iter()
+        .filter(|verifier| **verifier != me)
+        .filter(|verifier| draw::is_entitled(now, &me, verifier, &roll))
+        .copied()
+        .collect();
+    if verifiers.is_empty() {
+        return;
+    }
+    aloud!(
+        "going    nobody outside can open a connection to this node, so it goes to the\n\
+         \x20        {} of us drawn to ask it this epoch. The draw falls out of the epoch\n\
+         \x20        and the keys, so this node knows who they are without being told.",
+        verifiers.len()
+    );
+    for verifier in verifiers {
+        let Some(address) = node.address_of(&verifier).await else {
+            aloud!(
+                "unknown  drawn to be asked by one of us that nobody has said the whereabouts of"
+            );
+            continue;
+        };
+        if let Err(e) = present_to(node, dialer, &address, now).await {
+            aloud!("unasked  epoch {}: {e:#}", now.0);
+        }
+    }
+}
+
+/// Arrive, say what for, and answer if there is a question waiting.
+async fn present_to(node: &Node, dialer: &Dialer, address: &str, now: Epoch) -> anyhow::Result<()> {
+    let address: PeerAddress = address.parse().context("reading a peer's address")?;
+    let mut stream = tokio::time::timeout(ROUND_TIMEOUT, dialer.dial(&address))
+        .await
+        .with_context(|| format!("{address} did not answer in time"))??;
+    tokio::time::timeout(
+        ROUND_TIMEOUT,
+        n333_net::initiate(&mut stream, node.identity()),
+    )
+    .await
+    .with_context(|| format!("{address} did not finish the heartbeat in time"))?
+    .context("exchanging heartbeats")?;
+
+    let frame = Presenting::of(node.identity(), now)
+        .seal(node.identity())
+        .context("sealing what this node came to say")?;
+    n333_net::frame::write_frame(&mut stream, &frame)
+        .await
+        .context("saying what this node came for")?;
+
+    // A verifier that was not drawn hangs up, and that is this node reading `None`. It
+    // is the ordinary outcome and not a failure of anything.
+    let Some(question) = tokio::time::timeout(
+        ROUND_TIMEOUT,
+        n333_net::liveness::take_question(&mut stream),
+    )
+    .await
+    .with_context(|| format!("{address} neither asked nor hung up in time"))??
+    else {
+        return Ok(());
+    };
+    crate::commands::serve::answering::be_asked(&mut stream, node, question).await
+}
+
 pub(super) async fn ask_those_drawn(node: &Node, dialer: &Dialer, now: Epoch) {
     let roll = node.roll().await;
     let me = node.identity().public_key();
