@@ -17,6 +17,7 @@
 //! the alternative is discovering it is broken at the moment it has to be answered
 //! from, which is the moment it cannot be repaired.
 
+mod admissions;
 mod people;
 pub(crate) use people::Tidings;
 mod record;
@@ -27,11 +28,13 @@ use std::path::Path;
 use anyhow::Context as _;
 use fs_mistrust::Mistrust;
 use n333_core::chain::{self, Head};
-use n333_core::roll::{Read, Roll};
+use n333_core::roll::Read;
 use n333_core::subject::{self, Subject};
 use n333_core::whereabouts::Directory;
 use n333_core::Identity;
 use n333_store::{Log, Window};
+
+use admissions::Admitted;
 use tokio::sync::Mutex;
 
 use crate::identity_file::{self, Origin};
@@ -77,9 +80,6 @@ const WHEREABOUTS_FILE: &str = "whereabouts.log";
 pub(crate) struct Node {
     /// The directory everything of this node's lives in.
     home: std::path::PathBuf,
-    /// How many runs of statements this node has passed on, so that a node with more
-    /// to say than fits does not send the same frames every time.
-    passed_on: std::sync::atomic::AtomicU64,
     /// The key everything is signed with.
     identity: Identity,
     /// The file, if this node has been given it.
@@ -102,12 +102,13 @@ struct State {
     chain: Log,
     /// Where that chain currently ends: what every answer commits to.
     head: Head,
-    /// Who this node knows to be a member.
-    roll: Roll,
     /// Statements held, one file per epoch.
     window: Window,
-    /// The admissions the roll was built from, append-only.
-    admissions: Log,
+    /// The admissions this node holds, and the roll they make.
+    admissions: Admitted,
+    /// How far through each kind of statement the last run of tidings got, so that a
+    /// node with more to say than fits carries on rather than starting over.
+    passed_on: [u64; people::KINDS],
     /// Where nodes have said they can be found.
     directory: Directory,
     /// The statements that directory was built from, append-only.
@@ -153,9 +154,7 @@ impl Node {
         let entries = chain.read_all().context("reading this node's record")?;
         let head = chain::verify(&entries).context("this node's own record does not verify")?;
 
-        let (mut admissions, _) =
-            Log::open(&home.join(ADMISSIONS_FILE)).context("opening the admissions")?;
-        let (roll, read) = Roll::from_halves(&admissions.read_all().context("reading them")?);
+        let (admissions, read) = Admitted::open(&home.join(ADMISSIONS_FILE))?;
 
         let window = Window::keeping(&home.join(WINDOW_DIR), keeping.epochs())
             .context("opening the statements")?;
@@ -170,7 +169,7 @@ impl Node {
             origin,
             chain_length: head.length,
             chain_truncated: chain_opened.truncated,
-            members: roll.len(),
+            members: admissions.roll().len(),
             addresses: directory.len(),
             has_the_file: subject.is_some(),
             keeping,
@@ -179,17 +178,16 @@ impl Node {
         Ok((
             Self {
                 home: home.to_path_buf(),
-                passed_on: std::sync::atomic::AtomicU64::new(0),
                 identity,
                 subject: Mutex::new(subject),
                 state: Mutex::new(State {
                     chain,
                     head,
-                    roll,
                     window,
                     admissions,
                     directory,
                     whereabouts,
+                    passed_on: [0; people::KINDS],
                 }),
             },
             opened,

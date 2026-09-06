@@ -158,39 +158,114 @@ impl Roll {
     /// half is counted and left out.
     #[must_use]
     pub fn from_halves(frames: &[Vec<u8>]) -> (Self, Read) {
-        let mut read = Read::default();
-        let mut gave: BTreeMap<Pairing, Signed> = BTreeMap::new();
-        let mut received: BTreeMap<Pairing, Signed> = BTreeMap::new();
-
+        let mut held = Admissions::new();
         for frame in frames {
-            match open_either(frame) {
-                Some((Half::Gave, signed)) => {
-                    gave.insert(Pairing::of(&signed), signed);
-                }
-                Some((Half::Received, signed)) => {
-                    received.insert(Pairing::of(&signed), signed);
-                }
-                None => read.unreadable += 1,
-            }
+            held.add(frame);
         }
+        let read = held.read();
+        (held.roll, read)
+    }
+}
 
-        let mut roll = Self::new();
-        for (key, taken) in received {
-            // The giver's half names the same two nodes in the other order.
-            let Some(given) = gave.get(&key.mirrored()) else {
-                read.unpaired += 1;
-                continue;
-            };
-            match Transfer::assemble(given.clone(), taken) {
-                Ok(transfer) => {
-                    roll.admit(&transfer);
-                    read.admitted += 1;
-                }
-                Err(_) => read.unpaired += 1,
-            }
+/// Admission halves as they arrive, and the roll they have made so far.
+///
+/// WHY A NODE KEEPS THIS RATHER THAN READING EVERYTHING AGAIN. [`Roll::from_halves`]
+/// opens and checks every half it is handed, which is right for a pile of records and
+/// wrong for a node that is running: gossip hands a node the admissions it already
+/// holds several times an epoch, and rebuilding from the whole file each time makes
+/// the cost of one new member the cost of every member ever admitted. Kept here
+/// instead, a half that pairs is paired once and a half that arrives twice costs
+/// nothing.
+///
+/// PAIRED HALVES ARE DROPPED, THE HANDOVER THEY NAMED IS REMEMBERED. Once two halves
+/// have made a member there is nothing left for them to pair with, so what is kept is
+/// what they were about rather than the halves themselves: the ones still here are the
+/// ones still waiting for their other side, which is a handful in a network that is
+/// working rather than everything anybody was ever admitted by.
+#[derive(Debug, Clone, Default)]
+pub struct Admissions {
+    /// Givers' halves that have not found their other side.
+    gave: BTreeMap<Pairing, Signed>,
+    /// Receivers' halves that have not found their other side.
+    received: BTreeMap<Pairing, Signed>,
+    /// The handovers already made, each named the same way from either side.
+    done: BTreeSet<Pairing>,
+    /// Who has been admitted by a pair.
+    roll: Roll,
+    /// How many frames opened as nothing.
+    unreadable: usize,
+}
+
+impl Admissions {
+    /// Nothing admitted and nothing waiting.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Take one half, and admit somebody if it completes a pair.
+    ///
+    /// The same half twice is not an error and does nothing: whoever passed it on the
+    /// second time was doing the one thing that makes a record travel.
+    pub fn add(&mut self, frame: &[u8]) {
+        let Some((half, signed)) = open_either(frame) else {
+            self.unreadable += 1;
+            return;
+        };
+        let key = Pairing::of(&signed);
+        let mirror = key.mirrored();
+        let handover = key.min(mirror);
+        if self.done.contains(&handover) {
+            return;
         }
-        read.unpaired += gave.len().saturating_sub(read.admitted);
-        (roll, read)
+        let paired = {
+            let (mine, theirs) = match half {
+                Half::Gave => (&mut self.gave, &mut self.received),
+                Half::Received => (&mut self.received, &mut self.gave),
+            };
+            // A pairing already held is already accounted for, whether it paired or is
+            // still waiting. Keeping the first is what makes two nodes that were handed
+            // the same records in different orders hold the same roll.
+            if mine.insert(key, signed.clone()).is_some() {
+                return;
+            }
+            let Some(other) = theirs.get(&mirror).cloned() else {
+                return;
+            };
+            let (given, taken) = match half {
+                Half::Gave => (signed, other),
+                Half::Received => (other, signed),
+            };
+            match Transfer::assemble(given, taken) {
+                Ok(transfer) => {
+                    mine.remove(&key);
+                    theirs.remove(&mirror);
+                    transfer
+                }
+                // Two halves that name the same handover and do not agree about it
+                // admit nobody, and both stay where they are. One of them is a lie and
+                // nothing here can say which, so dropping either would be choosing.
+                Err(_) => return,
+            }
+        };
+        self.done.insert(handover);
+        self.roll.admit(&paired);
+    }
+
+    /// Who these halves have admitted.
+    #[must_use]
+    pub const fn roll(&self) -> &Roll {
+        &self.roll
+    }
+
+    /// What has been made of everything taken so far.
+    #[must_use]
+    pub fn read(&self) -> Read {
+        Read {
+            admitted: self.done.len(),
+            unreadable: self.unreadable,
+            unpaired: self.gave.len() + self.received.len(),
+        }
     }
 }
 
@@ -459,5 +534,47 @@ mod tests {
             crate::draw::verifier_count(&identity(2).public_key(), &keys),
             1
         );
+    }
+
+    #[test]
+    fn the_same_admission_told_twice_costs_nothing_and_changes_nothing() {
+        // Gossip hands a node what it already holds every round, which is the mechanism
+        // working. Taking it again must not admit anybody twice, must not leave a half
+        // waiting, and must not depend on how many times anybody passed it on.
+        let both = admission(&identity(1), &identity(2), 100);
+        let mut held = Admissions::new();
+        for frame in &both {
+            held.add(frame);
+        }
+        let once = held.read();
+        for _ in 0..3 {
+            for frame in &both {
+                held.add(frame);
+            }
+        }
+        assert_eq!(held.read(), once);
+        assert_eq!(once.admitted, 1);
+        assert_eq!(once.unpaired, 0, "a pair that completed is not still waiting");
+        let (whole, read) = Roll::from_halves(&both);
+        assert_eq!(held.roll(), &whole);
+        assert_eq!(once, read);
+    }
+
+    #[test]
+    fn a_half_that_arrives_long_after_its_other_side_still_pairs() {
+        let (sponsor, newcomer) = (identity(1), identity(2));
+        let both = admission(&sponsor, &newcomer, 100);
+        let mut held = Admissions::new();
+        held.add(&both[0]);
+        for other in [admission(&identity(3), &identity(4), 50), admission(&identity(5), &identity(6), 60)] {
+            for frame in &other {
+                held.add(frame);
+            }
+        }
+        assert!(held.roll().member(&newcomer.public_key()).is_none());
+        held.add(&both[1]);
+        assert!(held.roll().member(&newcomer.public_key()).is_some());
+        assert_eq!(held.read().admitted, 3);
+        assert_eq!(held.read().unpaired, 0);
     }
 }

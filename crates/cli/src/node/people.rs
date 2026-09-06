@@ -5,11 +5,9 @@
 //! that can.
 
 use std::collections::BTreeSet;
-use std::sync::atomic::Ordering;
 
 use anyhow::Context as _;
 use n333_core::attestation;
-use n333_core::roll::Roll;
 use n333_core::transfer::{self, Half};
 use n333_core::whereabouts::{self};
 use n333_core::{Epoch, utterance};
@@ -19,31 +17,25 @@ use super::{Heard, Node};
 impl Node {
     /// The members this node knows of, in the shape the draw takes.
     pub(crate) async fn roll(&self) -> BTreeSet<[u8; 32]> {
-        self.state.lock().await.roll.keys()
+        self.state.lock().await.admissions.roll().keys()
     }
 
     /// Keep halves of admissions, and put anyone they complete on the roll.
     ///
     /// Unreadable halves are kept too. A half this build cannot open may still pair up
-    /// for a build that can, and the roll is rebuilt from the file every time anyway.
+    /// for a build that can, and passing it on costs nothing.
+    ///
+    /// A half already held is not written down again. Every peer offers what it has
+    /// every round, and most of what arrives is what this node handed that peer in the
+    /// first place — so an admission that has travelled a thousand times has to cost a
+    /// thousandth of nothing, or a network where nobody is joining still fills a disk.
     ///
     /// # Errors
-    /// Fails if the file cannot be written or read back.
+    /// Fails if the file cannot be written.
     pub(crate) async fn admit(&self, halves: &[Vec<u8>]) -> anyhow::Result<usize> {
         let mut state = self.state.lock().await;
-        for half in halves {
-            state
-                .admissions
-                .append(half)
-                .context("keeping an admission")?;
-        }
-        let frames = state
-            .admissions
-            .read_all()
-            .context("reading the admissions")?;
-        let (roll, _) = Roll::from_halves(&frames);
-        state.roll = roll;
-        Ok(state.roll.len())
+        state.admissions.keep(halves)?;
+        Ok(state.admissions.roll().len())
     }
 
     /// Everything this node is willing to pass on to a peer.
@@ -81,8 +73,6 @@ impl Node {
     /// Fails if the logs cannot be read.
     pub(crate) async fn tidings(&self, now: Epoch) -> anyhow::Result<Tidings> {
         let mut state = self.state.lock().await;
-        let addresses: Vec<Vec<u8>> = state.directory.frames().map(<[u8]>::to_vec).collect();
-
         let oldest = now.0.saturating_sub(n333_core::attestation::JUDGEMENT_DELAY_EPOCHS);
         let mut about_epochs = Vec::new();
         for number in oldest..=now.0 {
@@ -98,15 +88,23 @@ impl Node {
                 utterance::open(frame).is_ok() || attestation::open(frame).is_ok()
             }));
         }
-        let admissions = state
-            .admissions
-            .read_all()
-            .context("reading the admissions")?;
-
-        Ok(share_the_room(
-            [addresses, about_epochs, admissions],
-            self.passed_on.fetch_add(1, Ordering::Relaxed),
-        ))
+        let offsets = state.passed_on;
+        let (tidings, taken) = share_the_room(
+            [
+                state.directory.frames().collect(),
+                about_epochs.iter().map(Vec::as_slice).collect(),
+                state.admissions.frames().iter().map(Vec::as_slice).collect(),
+            ],
+            offsets,
+        );
+        // Where each kind stopped is where it starts next time. Advancing by one
+        // instead — which is what this did — means a node holding more than fits sends
+        // almost the same run for ever, and a genuinely new admission waits behind
+        // every old one, once per round, for as many rounds as there are records.
+        for (offset, took) in state.passed_on.iter_mut().zip(taken) {
+            *offset = offset.wrapping_add(took as u64);
+        }
+        Ok(tidings)
     }
 
     /// File what a peer passed on, each statement by what it opens as.
@@ -146,7 +144,7 @@ impl Node {
             }
         }
         if !admissions.is_empty() {
-            let before = self.state.lock().await.roll.len();
+            let before = self.state.lock().await.admissions.roll().len();
             heard.were = before;
             heard.members = self.admit(&admissions).await?.saturating_sub(before);
         }
@@ -202,7 +200,8 @@ impl Node {
         self.state
             .lock()
             .await
-            .roll
+            .admissions
+            .roll()
             .member(&key)
             .map(|member| member.received_in)
     }
@@ -226,16 +225,23 @@ pub(crate) struct Tidings {
     pub(crate) left_behind: usize,
 }
 
+/// How many kinds of statement travel in one run.
+pub(crate) const KINDS: usize = 3;
+
 /// Fit several kinds of statement into one run without letting any kind starve.
 ///
 /// Each kind gets an equal share; a kind that does not use its share gives it back to
-/// the others. `offset` rotates where each kind starts, so a node that permanently has
+/// the others. `offsets` say where each kind starts, so a node that permanently has
 /// more to say than fits does not send the same frames every single round and never
-/// the rest.
-fn share_the_room<const N: usize>(kinds: [Vec<Vec<u8>>; N], offset: u64) -> Tidings {
+/// the rest. What comes back with the run is how many of each kind it took, which is
+/// how far that kind's next run begins.
+fn share_the_room<const N: usize>(
+    kinds: [Vec<&[u8]>; N],
+    offsets: [u64; N],
+) -> (Tidings, [usize; N]) {
     let room = n333_net::frame::MAX_BATCH_FRAMES;
     let held: usize = kinds.iter().map(Vec::len).sum();
-    let mut taken = vec![0_usize; N];
+    let mut taken = [0_usize; N];
     let mut left = room;
 
     // Hand out the room a round at a time. A kind with nothing more to give is simply
@@ -255,16 +261,81 @@ fn share_the_room<const N: usize>(kinds: [Vec<Vec<u8>>; N], offset: u64) -> Tidi
     }
 
     let mut frames = Vec::with_capacity(room.min(held));
-    for (n, kind) in kinds.into_iter().enumerate() {
+    for (n, kind) in kinds.iter().enumerate() {
         let want = taken.get(n).copied().unwrap_or_default();
         if kind.is_empty() {
             continue;
         }
-        let start = usize::try_from(offset % kind.len() as u64).unwrap_or_default();
-        frames.extend(kind.iter().cycle().skip(start).take(want).cloned());
+        let from = offsets.get(n).copied().unwrap_or_default();
+        let start = usize::try_from(from % kind.len() as u64).unwrap_or_default();
+        frames.extend(
+            kind.iter()
+                .cycle()
+                .skip(start)
+                .take(want)
+                .map(|frame| frame.to_vec()),
+        );
     }
-    Tidings {
-        left_behind: held.saturating_sub(frames.len()),
-        frames,
+    (
+        Tidings {
+            left_behind: held.saturating_sub(frames.len()),
+            frames,
+        },
+        taken,
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// `count` frames of one kind, each one distinguishable from the others.
+    fn kind(mark: u8, count: usize) -> Vec<Vec<u8>> {
+        (0..count)
+            .map(|n| {
+                let mut frame = vec![mark];
+                frame.extend(n.to_be_bytes());
+                frame
+            })
+            .collect()
+    }
+
+    #[test]
+    fn a_node_with_more_to_say_than_fits_gets_all_of_it_out_in_a_few_rounds() {
+        // The rotation used to move by one frame a round. A node holding four times
+        // what fits would then need four times as many rounds as it holds records
+        // before the last one had been offered to anybody once — at a few thousand
+        // records that is years, and what waits at the back is every new member.
+        let room = n333_net::frame::MAX_BATCH_FRAMES;
+        let all = kind(b'a', room * 4);
+        let borrowed: Vec<&[u8]> = all.iter().map(Vec::as_slice).collect();
+
+        let mut offsets = [0_u64; 1];
+        let mut seen = std::collections::BTreeSet::new();
+        let mut rounds = 0;
+        while seen.len() < all.len() {
+            let (run, took) = share_the_room([borrowed.clone()], offsets);
+            seen.extend(run.frames);
+            offsets[0] = offsets[0].wrapping_add(took[0] as u64);
+            rounds += 1;
+            assert!(rounds <= 8, "a full pass is taking rounds it should not");
+        }
+        assert_eq!(rounds, 4, "each round carries a roomful nobody has had yet");
+    }
+
+    #[test]
+    fn no_kind_is_starved_by_a_kind_that_has_more_to_say() {
+        let room = n333_net::frame::MAX_BATCH_FRAMES;
+        let (many, few) = (kind(b'a', room * 2), kind(b'b', 4));
+        let (run, took) = share_the_room(
+            [
+                many.iter().map(Vec::as_slice).collect(),
+                few.iter().map(Vec::as_slice).collect(),
+            ],
+            [0, 0],
+        );
+        assert_eq!(took[1], few.len(), "the small kind is sent whole");
+        assert_eq!(run.frames.len(), room);
+        assert_eq!(took[0], room - few.len(), "and gives the rest back");
     }
 }
