@@ -75,7 +75,16 @@ pub enum Error {
     #[error("the record handed over is about somebody else")]
     NotUs,
     /// The two clocks are too far apart to sign the same epoch.
-    #[error("this node is in epoch {ours} and the other is in {theirs}")]
+    ///
+    /// The one refusal here that is nobody's fault, so it says so: a handover is
+    /// signed into one epoch by both hands, and two machines in different hours have
+    /// no epoch to sign into.
+    #[error(
+        "this node keeps epoch {ours} and that one keeps {theirs}. Neither of us is \
+         wrong; we are simply not in the same hour, and a handover has to be signed \
+         into one by both hands. Set your own clock, or find somebody whose hour is \
+         yours"
+    )]
     Apart {
         /// The epoch this node believes it is in.
         ours: u64,

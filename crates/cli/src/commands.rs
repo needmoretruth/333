@@ -32,6 +32,23 @@ pub(crate) struct Common {
     pub(crate) trust_directory_permissions: bool,
 }
 
+/// Say so when this machine's clock makes the node unusable.
+///
+/// A clock that reads before 1970 gives epoch 0, which is honest — there is no
+/// authority here to appeal to about what time it is — and leaves a node that is
+/// refused by everybody with nothing to go on. Every handover it attempts is turned
+/// away for being in the wrong hour, and the word it is given for that is "refused".
+pub(crate) fn check_the_clock(now: n333_core::Epoch) {
+    if now.0 != 0 {
+        return;
+    }
+    aloud!(
+        "epoch    0. This machine's clock says it is 1970, so this node believes it is\n\
+         \x20        at the beginning of time. Nobody will hand it anything and nobody will\n\
+         \x20        witness it until the clock is set."
+    );
+}
+
 /// A name, short enough to sit in a column and long enough to be that name.
 ///
 /// Ten from the front, six from the back. The front is where the `333` is and where
@@ -264,9 +281,39 @@ pub(crate) fn describe(exchange: &Exchange) -> String {
         "spoke first, which proves only that it spoke"
     };
     format!(
-        "witness  {}  epoch {}  skew {:+}  ({liveness})",
-        exchange.peer.node_id, exchange.peer.heartbeat.epoch, exchange.epoch_skew
+        "witness  {}  epoch {}  {}  ({liveness})",
+        exchange.peer.node_id,
+        exchange.peer.heartbeat.epoch,
+        clocks(exchange.clocks_apart_ms)
     )
+}
+
+/// How far apart two clocks are, said at a scale somebody can act on.
+///
+/// A minute is nothing to this protocol and everything to the person reading it: it is
+/// the difference between a machine that is fine and a machine whose owner is about to
+/// stop being witnessed by everybody whose clock agrees with everybody else's. Under a
+/// few seconds is the trip the message made and is not worth a word.
+fn clocks(apart_ms: i64) -> String {
+    const NOT_WORTH_SAYING: i64 = 5_000;
+    if apart_ms.abs() < NOT_WORTH_SAYING {
+        return "clocks together".to_owned();
+    }
+    let (which, apart) = if apart_ms > 0 {
+        ("ahead of", apart_ms)
+    } else {
+        ("behind", -apart_ms)
+    };
+    let seconds = apart / 1_000;
+    let (hours, minutes) = (seconds / 3_600, (seconds % 3_600) / 60);
+    let said = if hours != 0 {
+        format!("{hours}h {minutes:02}m")
+    } else if minutes != 0 {
+        format!("{minutes}m {:02}s", seconds % 60)
+    } else {
+        format!("{seconds}s")
+    };
+    format!("their clock {said} {which} ours")
 }
 
 #[cfg(test)]

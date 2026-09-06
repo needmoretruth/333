@@ -46,6 +46,14 @@ pub struct Exchange {
     /// Peer's epoch minus ours. Reported for a human to look at; the protocol takes
     /// no action on it, because it has no authority to decide whose clock is right.
     pub epoch_skew: i64,
+    /// The peer's own clock minus this node's, in milliseconds, as of the heartbeat.
+    ///
+    /// The same disagreement as `epoch_skew` at a resolution a person can act on: two
+    /// clocks five hours apart and two clocks a second apart both read as one epoch or
+    /// none, and only one of them is worth getting up to fix. It includes the trip the
+    /// heartbeat made to get here, which is milliseconds directly and can be seconds
+    /// through Tor — it is a reading, not a measurement, and nothing is decided on it.
+    pub clocks_apart_ms: i64,
     /// True when the peer quoted back a nonce this node had just chosen, which is
     /// the only thing in this exchange that could not have been recorded earlier.
     pub proves_peer_was_live: bool,
@@ -54,8 +62,11 @@ pub struct Exchange {
 impl Exchange {
     fn new(peer: Verified, proves_peer_was_live: bool) -> Self {
         let observed_at = Epoch::now();
+        let theirs = i64::try_from(peer.heartbeat.sent_at_ms).unwrap_or(i64::MAX);
+        let ours = i64::try_from(n333_core::epoch::unix_now_millis()).unwrap_or(i64::MAX);
         Self {
             epoch_skew: peer.heartbeat.epoch().skew_from(observed_at),
+            clocks_apart_ms: theirs.saturating_sub(ours),
             peer,
             observed_at,
             proves_peer_was_live,

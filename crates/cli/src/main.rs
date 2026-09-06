@@ -192,6 +192,11 @@ async fn main() -> anyhow::Result<()> {
         trust_directory_permissions: cli.dangerously_trust_directory_permissions,
     };
 
+    // Before anything is attempted, because everything that follows is stamped with an
+    // epoch and a node whose clock is wrong is refused everywhere without being told
+    // why.
+    commands::check_the_clock(n333_core::Epoch::now());
+
     let done = match cli.command {
         Command::Id => commands::id::run(&common),
         Command::Serve {

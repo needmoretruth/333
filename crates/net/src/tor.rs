@@ -17,12 +17,6 @@ use arti_client::config::CfgPath;
 use arti_client::{DataStream, TorClient, TorClientConfig};
 use tor_rtcompat::PreferredRuntime;
 
-/// The virtual port heartbeats are exchanged on.
-///
-/// FROZEN. Onion-service ports are virtual, so this collides with nothing on the
-/// host, but it is part of the address a peer is told and cannot move afterwards.
-pub const HEARTBEAT_PORT: u16 = 333;
-
 /// The nickname arti files this node's onion-service keys under.
 ///
 /// FROZEN in effect: the nickname is a path component in the keystore, so changing

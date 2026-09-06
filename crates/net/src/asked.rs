@@ -1,4 +1,4 @@
-//! What a peer says after the heartbeat, and which of the two things it is.
+//! What a peer says after the heartbeat, and which of the three things it is.
 //!
 //! A node that has just exchanged heartbeats can want one of exactly three things: to
 //! ask whether this node is awake, to be given the file, or to trade what each of them
@@ -23,7 +23,7 @@ pub enum Error {
     /// The stream failed mid-frame.
     #[error("frame: {0}")]
     Frame(#[from] frame::Error),
-    /// The frame opened as neither of the two things a peer may ask for.
+    /// The frame opened as none of the three things a peer may ask for.
     #[error("this node was sent something it does not understand")]
     Unrecognised,
 }
@@ -42,10 +42,10 @@ pub enum Asked {
     Tidings(AsReceived<SignedTidings>),
 }
 
-/// Read whatever the peer says next, and say which of the two it is.
+/// Read whatever the peer says next, and say which of the three it is.
 ///
 /// # Errors
-/// Fails if the stream fails mid-frame, or the frame is neither of the two.
+/// Fails if the stream fails mid-frame, or the frame is none of the three.
 pub async fn take_request<S>(stream: &mut S) -> Result<Asked, Error>
 where
     S: AsyncRead + Unpin,
