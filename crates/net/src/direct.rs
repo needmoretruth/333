@@ -27,14 +27,29 @@ pub type Stream = Compat<TcpStream>;
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     /// The socket refused, timed out, or the name did not resolve.
-    #[error("{0}")]
-    Io(#[from] std::io::Error),
+    ///
+    /// The reason is in the message and deliberately not behind `source()`. This
+    /// wrapper adds nothing to what the operating system already said, and an error
+    /// that both says a sentence and hands the same sentence to whoever walks the
+    /// chain gets printed twice — which is what an operator sees on the one line they
+    /// read most often.
+    #[error("{cause}")]
+    Io {
+        /// What the operating system said.
+        cause: std::io::Error,
+    },
     /// An onion address was handed to the direct transport.
     ///
     /// Not an oversight to be worked around: onion addresses have no meaning outside
     /// Tor, and resolving one as a hostname would leak the lookup to a resolver.
     #[error("{0} can only be reached through Tor")]
     NeedsTor(String),
+}
+
+impl From<std::io::Error> for Error {
+    fn from(cause: std::io::Error) -> Self {
+        Self::Io { cause }
+    }
 }
 
 /// Open a stream to a peer.

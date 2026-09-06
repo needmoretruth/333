@@ -32,12 +32,12 @@ pub(super) async fn judge_what_is_ready(node: &Node, now: Epoch) {
         Ok(Some(last)) if last.0 >= ready.0 => return,
         Ok(_) => {}
         Err(e) => {
-            println!("failed   reading this node's own record: {e:#}");
+            aloud!("failed   reading this node's own record: {e:#}");
             return;
         }
     }
     if let Err(e) = judge_one(node, ready).await {
-        println!("failed   judging epoch {}: {e:#}", ready.0);
+        aloud!("failed   judging epoch {}: {e:#}", ready.0);
     }
 }
 
@@ -60,8 +60,8 @@ async fn judge_one(node: &Node, epoch: Epoch) -> anyhow::Result<()> {
     let head = node
         .record(epoch, verdict.attendance, evidence_digest(&frames))
         .await?;
-    println!("judged   epoch {}: {}", epoch.0, said(verdict.because));
-    println!("record   {}", super::epochs(head.length));
+    aloud!("judged   epoch {}: {}", epoch.0, said(verdict.because));
+    aloud!("record   {}", super::epochs(head.length));
     Ok(())
 }
 

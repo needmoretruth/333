@@ -72,6 +72,14 @@ fs-mistrust = "=0.15.1"
 # instead of assuming the XDG variables exist. It is data only: no unsafe, no C.
 directories = "6"
 
+# --- the screen ----------------------------------------------------------------
+# The Standard edition's screen. Pure Rust, and the only part of the client a person
+# looks at for hours, which is why it is a library rather than hand-rolled escape
+# codes: cursor handling, resizing and restoring a terminal after a crash are exactly
+# the things a hand-rolled version gets wrong on somebody else's terminal.
+# The calendar widget and the macros are left out; nothing here uses them.
+ratatui = { version = "0.30.2", default-features = false, features = ["crossterm", "layout-cache", "underline-color"] }
+
 n333-core = { path = "crates/core" }
 # default-features off at the root so each edition names what it wants; the CLI
 # turns "tor" back on through its own feature of the same name.

@@ -25,11 +25,16 @@
     )
 )]
 
+// First, so that everything below it can say something out loud.
+#[macro_use]
+mod aloud;
 mod commands;
 mod dial;
 mod identity_file;
 mod node;
 mod paths;
+#[cfg(feature = "screen")]
+mod screen;
 
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -111,6 +116,14 @@ enum Command {
         /// answer whoever finds it and can never be found.
         #[arg(long, value_name = "HOST:PORT")]
         announce: Option<PeerAddress>,
+
+        /// Say the lines instead of drawing the screen.
+        ///
+        /// The screen is what this client does on a terminal. Anywhere else — a pipe,
+        /// a service manager's log, a file — it says the lines instead, and this flag
+        /// asks for that on a terminal too.
+        #[arg(long)]
+        plain: bool,
     },
     /// Speak one of the 333, once in this epoch. What travels is the number.
     Say {
@@ -146,7 +159,11 @@ fn default_bind() -> SocketAddr {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // Everything the libraries under this say goes where everything this client says
+    // goes. Otherwise arti writes a warning straight into a terminal the screen is
+    // drawing on, and what a person sees is a bootstrap message wearing a border.
     tracing_subscriber::fmt()
+        .with_writer(aloud::Voice)
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
                 .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("warn")),
@@ -172,7 +189,10 @@ async fn main() -> anyhow::Result<()> {
             tor,
             no_direct,
             announce,
-        } => commands::serve::run(&common, (!no_direct).then_some(bind), tor, announce).await,
+            plain,
+        } => {
+            commands::serve::run(&common, (!no_direct).then_some(bind), tor, announce, plain).await
+        }
         Command::Say { index } => commands::say::run(&common, index).await,
         Command::Status => commands::status::run(&common).await,
         Command::Join { address } => commands::join::run(&common, &address).await,

@@ -66,7 +66,7 @@ pub(crate) async fn keep(
         // empty disk otherwise, and telling them apart is the whole of this node's
         // right to ever say the network ended.
         if let Err(e) = node.keeping(now).await {
-            println!("failed   marking this epoch as kept: {e:#}");
+            aloud!("failed   marking this epoch as kept: {e:#}");
         }
         let address = announce_as.borrow().clone();
         if let Some(address) = address {
@@ -89,10 +89,10 @@ async fn say_where(node: &Node, address: &PeerAddress, now: Epoch) {
     {
         Ok(frame) => {
             if let Err(e) = node.note_address(&frame).await {
-                println!("failed   keeping this node's own address: {e:#}");
+                aloud!("failed   keeping this node's own address: {e:#}");
             }
         }
-        Err(e) => println!("failed   saying where this node is: {e:#}"),
+        Err(e) => aloud!("failed   saying where this node is: {e:#}"),
     }
 }
 
@@ -100,10 +100,10 @@ async fn say_where(node: &Node, address: &PeerAddress, now: Epoch) {
 async fn forget_the_old(node: &Node, now: Epoch) {
     match node.forget_old(now).await {
         Ok(0) => {}
-        Ok(dropped) => println!(
+        Ok(dropped) => aloud!(
             "forgot   {dropped} epochs. nothing said about them now could change a verdict."
         ),
-        Err(e) => println!("failed   forgetting old statements: {e:#}"),
+        Err(e) => aloud!("failed   forgetting old statements: {e:#}"),
     }
 }
 

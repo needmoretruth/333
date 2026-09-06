@@ -14,8 +14,11 @@ path = "src/main.rs"
 [features]
 # Arti is bundled by default, and nothing starts it unless an address asks for Tor.
 # The smallest edition builds with --no-default-features, which drops it entirely.
-default = ["tor"]
+default = ["tor", "screen"]
 tor = ["n333-net/tor"]
+# The Standard edition's screen. Dropping it leaves the client saying the same
+# things in lines, which is what a machine with no terminal to look at wants.
+screen = ["dep:ratatui"]
 
 [dependencies]
 n333-core.workspace = true
@@ -24,6 +27,7 @@ n333-store.workspace = true
 anyhow.workspace = true
 clap.workspace = true
 directories.workspace = true
+ratatui = { workspace = true, optional = true }
 fs-mistrust.workspace = true
 futures.workspace = true
 tokio.workspace = true

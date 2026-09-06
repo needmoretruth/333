@@ -24,6 +24,19 @@ use crate::node::Node;
 /// has already spoken this epoch, or if the utterance cannot be written.
 pub(crate) async fn run(common: &Common, index: u16) -> anyhow::Result<()> {
     let (node, _opened) = Node::open(&common.mistrust(), common.paths.root(), common.keeping)?;
+    speak(&node, index).await
+}
+
+/// Say one of the 333, on a node that is already open.
+///
+/// Shared with the screen, where saying something is the one act of taking part a
+/// person performs by hand. Both paths refuse for the same reasons and in the same
+/// words: a rule that reads differently depending on where you typed it is two rules.
+///
+/// # Errors
+/// Fails if the index is not one of the 333, if this node is on nobody's roll, if it
+/// has already spoken this epoch, or if the utterance cannot be written.
+pub(crate) async fn speak(node: &Node, index: u16) -> anyhow::Result<()> {
     let now = Epoch::now();
 
     let Some(signal) = Signal::new(index) else {
@@ -54,8 +67,8 @@ pub(crate) async fn run(common: &Common, index: u16) -> anyhow::Result<()> {
         .context("sealing what you said")?;
     node.keep_utterance(&frame).await?;
 
-    println!("said     #{index} in epoch {}", now.0);
-    println!(
+    aloud!("said     #{index} in epoch {}", now.0);
+    aloud!(
         "         It goes out to everyone this node reaches, and they pass it on.\n\
          \x20        Nobody will tell you what it means. There is no table yet, and when\n\
          \x20        there is one it will be the same table for all of us, untranslated."

@@ -174,7 +174,7 @@ where
     S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
     let Some(slot) = door.place_for(caller) else {
-        println!("turned away {caller}: this door is full");
+        aloud!("turned away {caller}: this door is full");
         return;
     };
     let node = Arc::clone(node);
@@ -185,8 +185,8 @@ where
         let _slot: Slot = slot;
         match tokio::time::timeout(EXCHANGE_TIMEOUT, greet_then_listen(&mut stream, &node)).await {
             Ok(Ok(())) => {}
-            Ok(Err(e)) => println!("refused  {e:#}"),
-            Err(_elapsed) => println!(
+            Ok(Err(e)) => aloud!("refused  {e:#}"),
+            Err(_elapsed) => aloud!(
                 "silence  {} s of it, so we let go",
                 EXCHANGE_TIMEOUT.as_secs()
             ),
@@ -202,7 +202,7 @@ where
     let asked = match tokio::time::timeout(GREETING_TIMEOUT, greeting(stream, node)).await {
         Ok(asked) => asked?,
         Err(_elapsed) => {
-            println!(
+            aloud!(
                 "silence  {} s and not a word said, so the door is free again",
                 GREETING_TIMEOUT.as_secs()
             );
@@ -226,7 +226,7 @@ where
     S: AsyncRead + AsyncWrite + Unpin,
 {
     match respond(stream, node.identity()).await {
-        Ok(exchange) => println!("{}", describe(&exchange)),
+        Ok(exchange) => aloud!("{}", describe(&exchange)),
         Err(e) => {
             report(&e);
             return Ok(None);
@@ -240,8 +240,8 @@ where
 /// connection, while a bad signature is someone doing it on purpose.
 fn report(error: &session::Error) {
     match error {
-        session::Error::Frame(e) => println!("broken   the connection failed mid-message: {e}"),
-        other => println!("refused  {other}"),
+        session::Error::Frame(e) => aloud!("broken   the connection failed mid-message: {e}"),
+        other => aloud!("refused  {other}"),
     }
 }
 

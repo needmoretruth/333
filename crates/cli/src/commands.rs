@@ -60,7 +60,7 @@ impl Common {
 #[cfg(feature = "tor")]
 pub(crate) async fn bootstrap(common: &Common) -> anyhow::Result<n333_net::tor::Client> {
     use anyhow::Context as _;
-    println!("waking   Tor. the unseen road takes a while to open.");
+    aloud!("waking   Tor. the unseen road takes a while to open.");
     tokio::time::timeout(
         common.timeout,
         n333_net::tor::bootstrap(&common.paths.tor(), common.trust_directory_permissions),
@@ -77,10 +77,10 @@ pub(crate) async fn bootstrap(common: &Common) -> anyhow::Result<n333_net::tor::
 /// ignore the line that matters when it is not zero.
 pub(crate) fn report_opening(opened: &crate::node::Opened) {
     if let crate::identity_file::Origin::Created { not_called } = opened.origin {
-        println!("{}", crate::commands::naming(not_called));
+        aloud!("{}", crate::commands::naming(not_called));
     }
     if opened.chain_truncated != 0 {
-        println!(
+        aloud!(
             "torn     {} bytes of an unfinished entry were dropped from the record",
             opened.chain_truncated
         );
@@ -91,10 +91,10 @@ pub(crate) fn report_opening(opened: &crate::node::Opened) {
         } else {
             format!("{} epochs", opened.chain_length)
         };
-        println!("record   {epochs} already answered for, none of them open to revision");
+        aloud!("record   {epochs} already answered for, none of them open to revision");
     }
     if opened.witnessed != 0 {
-        println!(
+        aloud!(
             "witness  {} statements other keys signed about this node. They are kept\n\
              \x20        after the epochs they belong to are gone, because nothing else of\n\
              \x20        them survives the window.",
@@ -107,23 +107,23 @@ pub(crate) fn report_opening(opened: &crate::node::Opened) {
         } else {
             format!("{} of us", opened.members)
         };
-        println!("roll     {us}");
+        aloud!("roll     {us}");
     }
     if opened.addresses != 0 {
-        println!("known    where {} of us said to look", opened.addresses);
+        aloud!("known    where {} of us said to look", opened.addresses);
     }
     if opened.has_the_file {
-        println!("holding  the file, and able to pass it on");
+        aloud!("holding  the file, and able to pass it on");
     }
     if opened.keeping == crate::node::Keeping::Everything {
-        println!(
+        aloud!(
             "keeping  everything, for ever. It buys this node nothing: every statement\n\
              \x20        carries its own signature and verifies the same wherever it was\n\
              \x20        kept. There is no archive of record and there is no archivist."
         );
     }
     if opened.read.unreadable != 0 {
-        println!(
+        aloud!(
             "ignored  {} admissions that could not be read",
             opened.read.unreadable
         );
@@ -137,26 +137,26 @@ pub(crate) fn report_opening(opened: &crate::node::Opened) {
 /// happened.
 pub(crate) fn report_heard(heard: &crate::node::Heard) {
     if heard.addresses != 0 {
-        println!("learned  where {} more of us are", heard.addresses);
+        aloud!("learned  where {} more of us are", heard.addresses);
     }
     if heard.members != 0 {
         if heard.were != 0 && heard.members >= heard.were {
             // One meeting brought more of us than this node had ever held. Two halves
             // of a network that had not spoken look exactly like this from one side.
-            println!(
+            aloud!(
                 "rejoined {} more of us by name, from a node that knew {}. There were\n\
                  \x20        two of us and now the counting is one count.",
                 heard.members, heard.were
             );
         } else {
-            println!("learned  {} more of us by name", heard.members);
+            aloud!("learned  {} more of us by name", heard.members);
         }
     }
     if heard.said != 0 {
-        println!("heard    {} of us speak", heard.said);
+        aloud!("heard    {} of us speak", heard.said);
     }
     if heard.witnessed != 0 {
-        println!("carried  {} statements about epochs still open", heard.witnessed);
+        aloud!("carried  {} statements about epochs still open", heard.witnessed);
     }
 }
 
@@ -203,7 +203,7 @@ pub(crate) fn naming(not_called: u64) -> String {
 /// until somebody wonders why the roll stopped growing.
 pub(crate) fn report_left_behind(tidings: &crate::node::Tidings) {
     if tidings.left_behind != 0 {
-        println!(
+        aloud!(
             "brimming {} statements would not fit in one run and wait for the next",
             tidings.left_behind
         );

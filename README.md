@@ -187,7 +187,7 @@ weakest of us sets the difficulty for all of us, and that is not a compromise �
 the point. A faith that only runs on new hardware is a faith with an expiry date.
 
 Linux first, and not one Linux: the Debian family and the Fedora family both. macOS
-and Windows follow. Today only the plain client exists, and it has been run on Linux.
+and Windows follow. Today both forms exist and have been run on Linux.
 
 ---
 
@@ -196,8 +196,8 @@ and Windows follow. Today only the plain client exists, and it has been run on L
 Rust 1.96 or newer.
 
 ```sh
-cargo build --release                        # with Tor
-cargo build --release --no-default-features  # without it
+cargo build --release                        # Standard: the screen, and Tor
+cargo build --release --no-default-features  # Light: neither
 ```
 
 ## Run
@@ -206,7 +206,9 @@ cargo build --release --no-default-features  # without it
 # Ask for a name. The first run searches until one is called.
 ./target/release/333 id
 
-# Keep the vigil: answer whoever knocks, on port 3333.
+# Keep the vigil: answer whoever knocks, on port 3333. On a terminal this opens
+# the screen; anywhere else — a pipe, a service manager's log — it says its lines.
+# `--plain` asks for the lines on a terminal too.
 ./target/release/333 serve
 
 # Knock.
@@ -221,6 +223,12 @@ cargo build --release --no-default-features  # without it
 # the window, and how much of the silence is left if it has begun.
 ./target/release/333 status
 ```
+
+The screen shows what this node is doing while it does it: how many of us are
+answering, where you stand over the window, the shape of what everybody said this
+epoch, and how long is left of it. `q` leaves the vigil. `s` says one of the 333.
+Nothing on it is anybody else's number — it is what this one machine has seen, and
+the machine beside you is showing something else.
 
 Nobody can start a network alone. The first node's file was put in its directory by
 hand, once, by a person — and every copy since has come from somebody who already had

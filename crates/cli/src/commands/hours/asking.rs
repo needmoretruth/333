@@ -48,7 +48,7 @@ pub(super) async fn trade_news(node: &Node, dialer: &Dialer, now: Epoch) {
     let mine = match node.tidings(now).await {
         Ok(mine) => mine,
         Err(e) => {
-            println!("failed   gathering what this node could pass on: {e:#}");
+            aloud!("failed   gathering what this node could pass on: {e:#}");
             return;
         }
     };
@@ -70,13 +70,13 @@ pub(super) async fn trade_news(node: &Node, dialer: &Dialer, now: Epoch) {
         .map(|address| async move {
             match trade_with(node, dialer, &address, now, mine).await {
                 Ok(heard) => crate::commands::report_heard(&heard),
-                Err(e) => println!("quiet    {address}: {e:#}"),
+                Err(e) => aloud!("quiet    {address}: {e:#}"),
             }
         })
         .buffer_unordered(AT_ONCE)
         .collect::<()>();
     if tokio::time::timeout(TRADING_BUDGET, round).await.is_err() {
-        println!(
+        aloud!(
             "unfinished  the trading did not finish within {} of this epoch, and the\n\
              \x20           rest of the hours will not wait for it",
             super::minutes(TRADING_BUDGET)
@@ -125,12 +125,12 @@ pub(super) async fn ask_those_drawn(node: &Node, dialer: &Dialer, now: Epoch) {
         let Some(address) = node.address_of(&peer).await else {
             // Drawn to ask somebody nobody has said the whereabouts of. Not their
             // fault and not a silence worth publishing: this node simply cannot ask.
-            println!("unknown  drawn to ask one of us that nobody has said the whereabouts of");
+            aloud!("unknown  drawn to ask one of us that nobody has said the whereabouts of");
             continue;
         };
         match ask_one(node, dialer, &address, peer, now).await {
             Ok(()) => {}
-            Err(e) => println!("unheard  epoch {}: {e:#}", now.0),
+            Err(e) => aloud!("unheard  epoch {}: {e:#}", now.0),
         }
     }
 }
@@ -169,7 +169,7 @@ async fn ask_one(
         .context("putting the question")?;
     match tokio::time::timeout(ROUND_TIMEOUT, question.hear(&mut stream, node.identity())).await {
         Ok(Ok(witnessed)) => {
-            println!(
+            aloud!(
                 "witness  epoch {} answered by {}",
                 now.0, witnessed.exchange.answer.prover
             );
@@ -198,7 +198,7 @@ async fn unanswered(
     let sealed = question
         .unanswered(node.identity())
         .context("sealing what did not happen")?;
-    println!("silence  epoch {}: {why}", now.0);
+    aloud!("silence  epoch {}: {why}", now.0);
     node.keep(now, &question.frame).await?;
     node.keep(now, &sealed).await
 }

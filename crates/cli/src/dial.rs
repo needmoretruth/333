@@ -10,7 +10,6 @@
 //! anybody dials or hosts, and never at all by a node that does neither. That is what
 //! makes Tor a thing this client carries rather than a thing it costs.
 
-use anyhow::Context as _;
 use futures::{AsyncRead, AsyncWrite};
 use n333_net::{PeerAddress, direct};
 
@@ -85,21 +84,24 @@ impl Dialer {
                  to {address}, which would show it"
             );
         }
+        // Neither of these names the address. Every caller that prints one of these
+        // has already said which peer it was reaching, and a line that says the
+        // address three times is a line nobody reads to the end.
         let stream = tokio::time::timeout(self.common.timeout, direct::connect(address))
             .await
-            .with_context(|| self.gave_up_on(address))?
-            .with_context(|| format!("connecting to {address}"))?;
+            .map_err(|_| anyhow::Error::msg(self.gave_up_on()))??;
         Ok(Box::new(stream))
     }
 
     /// The sentence both transports use when the peer never answers.
-    fn gave_up_on(&self, address: &PeerAddress) -> String {
-        format!(
-            "no answer from {address} after {} s",
-            self.common.timeout.as_secs()
-        )
+    fn gave_up_on(&self) -> String {
+        format!("no answer after {} s", self.common.timeout.as_secs())
     }
 }
+
+/// What a build with arti in it can do.
+#[cfg(feature = "tor")]
+use anyhow::Context as _;
 
 /// What a build with arti in it can do.
 #[cfg(feature = "tor")]
@@ -132,7 +134,7 @@ impl Dialer {
             n333_net::tor::connect(&client, address.host(), address.port()),
         )
         .await
-        .with_context(|| self.gave_up_on(address))?
+        .with_context(|| self.gave_up_on())?
         .with_context(|| format!("connecting to {address}"))?;
         Ok(Box::new(stream))
     }

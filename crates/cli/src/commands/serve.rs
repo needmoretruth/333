@@ -38,15 +38,23 @@ pub(crate) async fn run(
     bind: Option<SocketAddr>,
     tor: bool,
     announce: Option<PeerAddress>,
+    plain: bool,
 ) -> anyhow::Result<()> {
     if bind.is_none() && !tor {
         bail!("nothing would be listening: --no-direct needs --tor");
     }
+    // Claimed before anything is said, so that the first lines — the name, the
+    // invitation — are in the screen's own pane rather than printed underneath it and
+    // wiped by the first drawing. The smallest edition has no screen to take.
+    #[cfg(feature = "screen")]
+    let watching = the_screen(plain);
+    #[cfg(not(feature = "screen"))]
+    let _ = plain;
     let (node, opened) = Node::open(&common.mistrust(), common.paths.root(), common.keeping)?;
     let node = Arc::new(node);
-    println!("name     {}", node.identity().node_id());
+    aloud!("name     {}", node.identity().node_id());
     crate::commands::report_opening(&opened);
-    println!(
+    aloud!(
         "hand     an invitation names a place, not a person. it swears to nothing;\n\
          \x20        whoever answers there proves themselves by holding a key."
     );
@@ -68,9 +76,13 @@ pub(crate) async fn run(
     // not be, so the one that arrives last is the one worth publishing.
     let (found_address, address) = watch::channel(announce.clone());
     if let Some(announce) = &announce {
-        println!("invite   {}", Invite::to(announce.clone()));
+        aloud!("invite   {}", Invite::to(announce.clone()));
     }
     let mut listening = tokio::task::JoinSet::new();
+    #[cfg(feature = "screen")]
+    if let Some(lines) = watching {
+        listening.spawn(crate::screen::keep(Arc::clone(&node), lines));
+    }
 
     if let Some(bind) = bind {
         let listener = direct::Listener::bind(bind)
@@ -78,7 +90,7 @@ pub(crate) async fn run(
             .with_context(|| format!("listening on {bind}"))?;
         // True the instant the socket is bound, which is why it is printed here.
         let bound = listener.address()?;
-        println!("answer   {bound}");
+        aloud!("answer   {bound}");
         if announce.is_none() {
             say_the_invitation(bound, &found_address);
         }
@@ -104,28 +116,48 @@ pub(crate) async fn run(
 
     // No line here saying the vigil has begun: with --no-direct it would not be true
     // yet. Each listener announces itself at the moment it can actually answer.
-    loop {
-        tokio::select! {
-            finished = listening.join_next() => match finished {
-                Some(finished) => finished.context("a listener stopped unexpectedly")??,
-                None => return Ok(()),
-            },
-            // Ctrl-C and nothing else. A service being stopped by its manager has
-            // nobody at the terminal to read this, and one arm is one arm on every
-            // system rather than a second unix-only path.
-            _ = tokio::signal::ctrl_c() => {
-                println!(
-                    "vigil    ended in epoch {}. Whoever is drawn to ask for you while this\n\
-                     \x20        is not running signs that they asked and heard nothing, and\n\
-                     \x20        that is what your window reads. It is {} epochs long, and it\n\
-                     \x20        moves.",
-                    Epoch::now().0,
-                    n333_core::presence::WINDOW_EPOCHS
-                );
-                return Ok(());
-            }
-        }
+    tokio::select! {
+        // Nothing here is supposed to finish: the listeners loop, and so do the hours.
+        // The screen does, when the person watching leaves, and that is the end of the
+        // vigil rather than the end of one part of it.
+        finished = listening.join_next() => match finished {
+            Some(finished) => finished.context("a listener stopped unexpectedly")??,
+            None => return Ok(()),
+        },
+        // Ctrl-C and nothing else. A service being stopped by its manager has nobody
+        // at the terminal to read this, and one arm is one arm on every system rather
+        // than a second unix-only path.
+        () = async { tokio::signal::ctrl_c().await.ok(); } => {}
     }
+    farewell();
+    Ok(())
+}
+
+/// Take the terminal for a screen, if there is a terminal and it was not refused.
+///
+/// Everything said from here on goes to the screen instead of to standard output. A
+/// build without the screen in it has nothing to decide.
+#[cfg(feature = "screen")]
+fn the_screen(plain: bool) -> Option<tokio::sync::mpsc::UnboundedReceiver<String>> {
+    if plain || !crate::screen::wanted() {
+        return None;
+    }
+    crate::aloud::into_screen()
+}
+
+/// What is true the moment this node stops answering.
+///
+/// Printed rather than said, because by the time this runs the screen has given the
+/// terminal back and there is nobody left listening to what the node says.
+fn farewell() {
+    println!(
+        "vigil    ended in epoch {}. Whoever is drawn to ask for you while this\n\
+         \x20        is not running signs that they asked and heard nothing, and\n\
+         \x20        that is what your window reads. It is {} epochs long, and it\n\
+         \x20        moves.",
+        Epoch::now().0,
+        n333_core::presence::WINDOW_EPOCHS
+    );
 }
 
 /// Say what to hand somebody so they can find this node.
@@ -137,14 +169,14 @@ pub(crate) async fn run(
 /// instead.
 fn say_the_invitation(bound: SocketAddr, found_address: &watch::Sender<Option<PeerAddress>>) {
     if bound.ip().is_unspecified() {
-        println!(
+        aloud!(
             "invite   333:<an address others can reach>:{}",
             bound.port()
         );
         return;
     }
     let address = PeerAddress::from(bound);
-    println!("invite   {}", Invite::to(address.clone()));
+    aloud!("invite   {}", Invite::to(address.clone()));
     // Only an address this node can actually stand behind is signed and handed on.
     let _ = found_address.send(Some(address));
 }
@@ -191,7 +223,7 @@ mod onion {
         let client = dialer.tor().await?;
         let mut host = OnionHost::launch(&client, SERVICE_NICKNAME, ONION_PORT)
             .context("launching the onion service")?;
-        println!("raising  the unseen address. this can take minutes.");
+        aloud!("raising  the unseen address. this can take minutes.");
 
         // The address is deliberately not shown until here. Handed to a peer before
         // the network holds the descriptor, it produces a connection failure that
@@ -205,8 +237,8 @@ mod onion {
             host: host.address()?,
             port: ONION_PORT,
         };
-        println!("unseen   {address}");
-        println!("invite   {}", Invite::to(address.clone()));
+        aloud!("unseen   {address}");
+        aloud!("invite   {}", Invite::to(address.clone()));
         // Written after the network holds the descriptor, so nobody is ever sent to an
         // address that does not answer yet.
         let _ = found_address.send(Some(address));

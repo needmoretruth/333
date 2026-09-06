@@ -50,7 +50,7 @@ where
 
     let answered =
         liveness::answer(stream, node.identity(), Epoch::now(), head, &roll, question).await?;
-    println!("asked    epoch {} by {asked_by}", epoch.0);
+    aloud!("asked    epoch {} by {asked_by}", epoch.0);
 
     // All of it is kept as the bytes that travelled. The challenge and the answer
     // together are what shows this node answered even if the verifier publishes
@@ -77,7 +77,7 @@ where
     S: AsyncRead + AsyncWrite + Unpin,
 {
     let Some(subject) = node.subject().await else {
-        println!("empty    somebody asked for the file. this node has nothing to give.");
+        aloud!("empty    somebody asked for the file. this node has nothing to give.");
         return Ok(());
     };
     let tidings = node.tidings(Epoch::now()).await?;
@@ -96,14 +96,14 @@ where
         Err(e) => return Err(e.into()),
     };
 
-    println!(
+    aloud!(
         "gave     the file to {} in epoch {}",
         given.transfer.receiver(),
         given.transfer.epoch().0
     );
-    println!("{}", crate::commands::what_was_signed(&given.transfer, true));
+    aloud!("{}", crate::commands::what_was_signed(&given.transfer, true));
     let members = node.admit(&[given.gave, given.received]).await?;
-    println!("roll     {members} of us");
+    aloud!("roll     {members} of us");
     Ok(())
 }
 
@@ -115,7 +115,7 @@ where
 /// themselves; nobody has to point.
 async fn curse(name: &n333_core::NodeId) -> anyhow::Result<()> {
     tokio::time::sleep(CURSE_PAUSE).await;
-    println!(
+    aloud!(
         "cursed   {name} asked. 333 took {} milliseconds off their life, as it does at\n\
          \x20        every door.",
         CURSE_PAUSE.as_millis()
