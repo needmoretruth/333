@@ -127,18 +127,6 @@ enum Command {
         #[arg(long)]
         no_mdns: bool,
 
-        /// Meet nodes you have no invitation to and share no network with.
-        ///
-        /// This node's address goes into a public table anybody in the world can read,
-        /// and what has been read cannot be unread. Nothing else goes in it — not this
-        /// node's name, not its roll. It is the only way in for somebody nobody has
-        /// invited, and the only thing that makes two halves of a split network one
-        /// again, and it is off unless you ask for it. A node listening only through
-        /// Tor cannot use it: publishing the address is the one thing it exists to
-        /// prevent.
-        #[arg(long)]
-        dht: bool,
-
         /// Say the lines instead of drawing the screen.
         ///
         /// The screen is what this client does on a terminal. Anywhere else — a pipe,
@@ -212,7 +200,6 @@ async fn main() -> anyhow::Result<()> {
             no_direct,
             announce,
             no_mdns,
-            dht,
             plain,
         } => {
             commands::serve::run(
@@ -221,7 +208,6 @@ async fn main() -> anyhow::Result<()> {
                 tor,
                 announce,
                 !no_mdns,
-                dht,
                 plain,
             )
             .await

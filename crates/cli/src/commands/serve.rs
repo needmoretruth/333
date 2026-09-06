@@ -40,7 +40,6 @@ pub(crate) async fn run(
     tor: bool,
     announce: Option<PeerAddress>,
     nearby: bool,
-    meeting: bool,
     plain: bool,
 ) -> anyhow::Result<()> {
     if bind.is_none() && !tor {
@@ -114,25 +113,6 @@ pub(crate) async fn run(
                     listening.spawn(greet_the_neighbours(node, dialer, nearby));
                 }
                 Err(e) => aloud!("nearby   this network would not carry the announcement: {e}"),
-            }
-        }
-        // Asked for by name and never assumed: it publishes this node's address to a
-        // table anybody in the world can read, and whoever is watching it has written
-        // the address down before this node could change its mind.
-        if meeting {
-            match n333_net::Rendezvous::open(bound.port()) {
-                Ok(meeting) => {
-                    aloud!(
-                        "meeting  telling the public table that this address answers 333, and\n\
-                         \x20        asking it who else is there. Anyone in the world can read\n\
-                         \x20        it, this node's address is what goes in it, and what is read\n\
-                         \x20        cannot be unread. It is also how two halves of a split\n\
-                         \x20        network find each other again."
-                    );
-                    let (node, dialer) = (Arc::clone(&node), dialer.clone());
-                    listening.spawn(meet_strangers(node, dialer, meeting));
-                }
-                Err(e) => aloud!("meeting  the public table could not be joined: {e}"),
             }
         }
         let node = Arc::clone(&node);
@@ -256,54 +236,6 @@ async fn greet_the_neighbours(
         }
     }
     Ok(())
-}
-
-/// How often this node says again that it is there, and looks for who else is.
-///
-/// An announcement in that table is forgotten in well under an hour, so this is not a
-/// setting so much as the shortest rhythm that keeps one alive. It is not the rhythm
-/// of the hours and does not touch them.
-const SAY_AGAIN: Duration = Duration::from_secs(20 * 60);
-
-/// How many strangers to knock on in one turn.
-///
-/// Whoever answers hands over what they know, and what they know includes everybody
-/// else — so a way in is what is wanted here, not a list.
-const A_FEW: usize = 8;
-
-/// How long a stranger across the world gets before this node moves on to the next.
-const STRANGER_PATIENCE: Duration = Duration::from_secs(60);
-
-/// Announce this node in the public table, and knock on whoever else is in it.
-async fn meet_strangers(
-    node: Arc<Node>,
-    dialer: Dialer,
-    meeting: n333_net::Rendezvous,
-) -> anyhow::Result<()> {
-    let mut greeted = std::collections::BTreeSet::new();
-    loop {
-        if let Err(e) = meeting.say_we_are_here().await {
-            aloud!("meeting  nobody in the table took the announcement: {e}");
-        }
-        let mut knocked = 0;
-        for address in meeting.who_else_is_there().await {
-            let address = address.to_string();
-            if knocked >= A_FEW || !greeted.insert(address.clone()) {
-                continue;
-            }
-            knocked += 1;
-            aloud!("meeting  a stranger says they are at {address}");
-            let answered = tokio::time::timeout(
-                STRANGER_PATIENCE,
-                hours::trade_at_once(&node, &dialer, &address),
-            )
-            .await;
-            if answered == Ok(true) {
-                node.found(address).await;
-            }
-        }
-        tokio::time::sleep(SAY_AGAIN).await;
-    }
 }
 
 /// Say what to hand somebody so they can find this node.
