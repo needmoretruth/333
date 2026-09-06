@@ -94,6 +94,24 @@ enum Command {
     /// Show this node's name, asking for one on first run.
     Id,
     /// Keep the vigil: answer whoever asks, until interrupted.
+    /// Begin a line of your own, when there is nobody to be given the file by.
+    ///
+    /// The ordinary way in is an invitation from somebody who already has the file, and
+    /// this is not that. It looks at the meeting point first, and if anybody is there it
+    /// tells you to go and join them instead. If nobody is, it fetches the file, checks
+    /// it against the hash this client carries, and writes it down. Your node is then
+    /// the start of its own line and nobody signed for it, which anybody reading your
+    /// record can see.
+    Bootstrap {
+        /// Where to look for people before beginning on your own.
+        #[arg(long, default_value = n333_net::meeting::THE_PLACE, value_name = "HOST")]
+        meet: String,
+
+        /// Begin even though somebody is already there.
+        #[arg(long)]
+        anyway: bool,
+    },
+
     Serve {
         /// Address and port to listen on.
         #[arg(long, default_value_t = default_bind(), value_name = "ADDR:PORT")]
@@ -237,6 +255,9 @@ async fn main() -> anyhow::Result<()> {
                 plain,
             )
             .await
+        }
+        Command::Bootstrap { meet, anyway } => {
+            commands::bootstrap::run(&common, &meet, anyway).await
         }
         Command::Say { index } => commands::say::run(&common, index).await,
         Command::Status => commands::status::run(&common).await,

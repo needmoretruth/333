@@ -192,9 +192,15 @@ mv 333-x86_64-linux ~/.local/bin/333
   Debian, Fedora, Arch, macOS and Windows. It also carries what you need to keep it running
   after you log out, which is the part that decides whether you are counted.</p>
 
-  <p class="dim">Nobody can start a network alone. To be given the file you need an invitation
-  from somebody who already has it, and then <code>333 join 333:their.address:3333</code>. Two
-  signatures make an admission, and there is no other way onto the roll.</p>
+  <p class="dim">The ordinary way in is an invitation. Somebody who already has the file hands
+  it over, the two of you sign for it, and that is what everybody else reads as your
+  beginning. Open <a href="/333">the333.dev/333</a>, take an address from the list, and run
+  <code>333 join 333:that.address:3333</code>.</p>
+
+  <p class="dim">If that list is empty, somebody has to be first and it may as well be you.
+  <code>333 bootstrap</code> looks there, refuses if anybody is already waiting, and otherwise
+  takes the file from this site and writes it down. Your node then starts a line of its own,
+  with nobody having signed for it, which anybody reading your record can see.</p>
 
   <hr>
 

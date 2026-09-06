@@ -237,15 +237,30 @@ and only you can answer it.
 
 ## Two forms of the client
 
-**Standard** is what most of us will run: a full terminal interface, on a machine
-that is not struggling. **Light** is a plain command-line client with the smallest
-set of things that still counts as keeping the vigil, built without Tor because Tor
-is by far the largest thing we carry. It is meant for a Raspberry Pi Zero. The
-weakest of us sets the difficulty for all of us, and that is not a compromise — it is
-the point. A faith that only runs on new hardware is a faith with an expiry date.
+**Standard** has the terminal screen. It is what to run on a machine you sit in front
+of, and it shows what your node is doing while it does it.
 
-Linux first, and not one Linux: the Debian family and the Fedora family both. macOS
-and Windows follow. Today both forms exist and have been run on Linux.
+**Light** is the same client without that screen. It says everything in lines instead,
+which is what a server, a service manager, a log file or a Raspberry Pi with no monitor
+actually wants.
+
+Both carry Tor. That used to be the difference between them, and it was the wrong
+difference. The machines most likely to run Light are the ones sitting behind a home
+router, and behind a home router an onion address is often the only way anybody can
+reach you at all. A form of the client that nobody can be counted on is not a lighter
+form, it is a broken one. Tor is still off until an address asks for it, so it costs a
+Light node nothing but the size of the file on disk.
+
+The two binaries are within half a megabyte of each other now, around sixteen. If you
+want the small one that genuinely was five, build it yourself with
+`cargo build --release --no-default-features` and understand that nobody behind a router
+will be able to reach it.
+
+The weakest of us sets the difficulty for all of us, and that is not a compromise. It is
+the point. A faith that only runs on new hardware has an expiry date on it.
+
+Linux first, and not one Linux: the Debian family, the Fedora family and Arch. macOS and
+Windows are built too. Both forms have been run on Linux.
 
 ---
 
@@ -275,10 +290,10 @@ column for the form you want.
 | Mac, Intel | `333-x86_64-macos` | `333-light-x86_64-macos` |
 | Windows | `333-x86_64-windows.exe` | `333-light-x86_64-windows.exe` |
 
-Standard is around 17 MB and has the screen and Tor in it. Light is around 5 MB, links
-nothing but the C library, and is the smallest thing that still counts as keeping the
-vigil. On macOS the system will want to be told the binary is not malicious, which it says
-in its own words the first time you run it.
+Both forms are around sixteen megabytes and both carry Tor. Standard has the terminal
+screen and Light does not, and that is the whole of the difference. On macOS the system
+will want to be told the binary is not malicious, which it says in its own words the first
+time you run it.
 
 Nothing is signed by a developer certificate and nothing goes through an app store. If that
 matters to you, or if there is no file for your machine, build it.
@@ -335,10 +350,11 @@ cargo build --release                        # Standard: the screen, and Tor
 cargo build --release --no-default-features  # Light: neither
 ```
 
-Standard comes out around 17 MB and links your system TLS and SQLite, both of which arrive
-with Tor. Light comes out around 5 MB and links nothing but the C library, which is why it is
-the form for a machine that is struggling and the form most likely to build somewhere nobody
-has tried yet.
+Both forms link your system TLS and SQLite, which arrive with Tor. Adding `--features
+bundled` compiles both of those into the binary instead, which is how the downloads are
+built and what you want if your system has neither. Leaving Tor out as well, with
+`--no-default-features` and nothing added, gives a five megabyte binary that links nothing
+but the C library and that nobody behind a router can reach.
 
 **What has actually been built and run.** Linux on x86-64, both forms: built, started, given
 a name, handed the file from one node to another over a socket, and asked for its standing
@@ -377,10 +393,29 @@ epoch, and how long is left of it. `q` leaves the vigil. `s` says one of the 333
 Nothing on it is anybody else's number — it is what this one machine has seen, and
 the machine beside you is showing something else.
 
-Nobody can start a network alone. The first node's file was put in its directory by
-hand, once, by a person — and every copy since has come from somebody who already had
-it and signed for handing it over. If you are reading this because you want to run
-333, you need an invitation from someone who is already keeping it.
+The ordinary way in is an invitation. Somebody who already has the file hands it over,
+the two of you sign for it, and those two signatures are what everybody else reads as
+your beginning. Open [the333.dev/333](https://the333.dev/333), take an address from the
+list, and run `333 join 333:that.address:3333`.
+
+If that list is empty, somebody has to be first, and it may as well be you.
+
+```sh
+333 bootstrap
+```
+
+That looks at the meeting point, and if anybody is there it refuses and tells you to go
+and join them. If nobody is, it fetches `333.txt` from the site, checks it against the
+hash this client carries, and writes it down. Your node is then the start of its own line
+and nobody signed for it, which anybody reading your record can see. From that point it
+works like any other node, and whoever you hand the file to afterwards is admitted the
+ordinary way.
+
+The rule was never that the file is impossible to make. It is three bytes and they are
+written in this file. The rule is that a client will not pretend to have been given
+something it took for itself, and this one does not: it will tell you to go and join
+somebody whenever there is somebody to join, and it will not hide what it did when there
+was not.
 
 There is one address written into the client: **[the333.dev](https://the333.dev)**. It
 says what this is, where the code is, and what the Law asks. It is a page and not a

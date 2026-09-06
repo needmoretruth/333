@@ -12,15 +12,20 @@ name = "333"
 path = "src/main.rs"
 
 [features]
-# Arti is bundled by default, and nothing starts it unless an address asks for Tor.
-# The smallest edition builds with --no-default-features, which drops it entirely.
+# Both editions carry Tor. Nothing starts it unless an address asks for it, and the
+# machines most likely to run the small edition are the ones behind a router that
+# cannot be reached any other way, so leaving it out of that edition would have made
+# the small edition the one nobody can be counted on.
+#
+# The screen is what actually separates them. --no-default-features drops both, for
+# anybody who wants the smallest possible build and knows what they are giving up.
 default = ["tor", "screen"]
 tor = ["n333-net/tor"]
 # The Standard edition's screen. Dropping it leaves the client saying the same
 # things in lines, which is what a machine with no terminal to look at wants.
 screen = ["dep:ratatui"]
 # Carry TLS and SQLite inside the binary. See the same feature on n333-net.
-bundled = ["n333-net/bundled"]
+bundled = ["tor", "n333-net/bundled"]
 
 [dependencies]
 n333-core.workspace = true

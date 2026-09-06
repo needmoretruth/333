@@ -95,6 +95,13 @@ declare const HTMLRewriter: new () => {
 
 const NAMED = /^[0-9a-f]{64}$/;
 
+/** The hexadecimal a name has to begin with before the protocol will count it.
+ *
+ *  A key is searched for until its name starts this way, at roughly four thousand tries.
+ *  Checking it here does not make this server an authority on anything. It means a slot on
+ *  the board costs what a name costs, which is the same thing it costs everybody else. */
+const ELIGIBLE = "333";
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const path = new URL(request.url).pathname;
@@ -246,13 +253,34 @@ not have the client yet, it is at
   });
 }
 
-/** Take one statement and put it in the slot its key names. */
+/** Take one statement and put it in the slot its own key names.
+ *
+ *  THIS IS WHERE SPAM IS TURNED AWAY, and it is turned away by the protocol rather than by
+ *  anybody deciding. Three things have to be true. The statement has to open and verify,
+ *  so the bytes cannot be arbitrary. The key that signed it has to be the key the slot is
+ *  named after, so nobody can write over somebody else, and nobody can hold slots they
+ *  have no key for. And the name has to be one the protocol would count, which means it
+ *  was searched for rather than generated, at about four thousand tries each.
+ *
+ *  None of that stops somebody determined. It stops a loop, which is what actually
+ *  happens, and it costs a real node nothing it was not already paying. */
 async function speak(request: Request, env: Env, key: string): Promise<Response> {
   if (!NAMED.test(key)) return plain(400, "The slot is a node name in lower-case hex.\n");
 
   const frame = new Uint8Array(await request.arrayBuffer());
   if (frame.length === 0 || frame.length > LONGEST) {
     return plain(413, `A statement is between 1 and ${LONGEST} bytes.\n`);
+  }
+
+  const standsUp = await opened(frame);
+  if (standsUp === null) {
+    return plain(400, "That is not a signed statement about where a node is.\n");
+  }
+  if (standsUp.node !== key) {
+    return plain(403, "A statement goes in the slot named after the key that signed it.\n");
+  }
+  if (!key.startsWith(ELIGIBLE)) {
+    return plain(403, `A name that 333 counts begins with ${ELIGIBLE}. This one does not.\n`);
   }
 
   const said = base64(frame);

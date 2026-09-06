@@ -3,6 +3,7 @@
 //! One file per command. Each one owns its own output text, because the words a
 //! person reads are part of the command, not a detail of it.
 
+pub(crate) mod bootstrap;
 pub(crate) mod hours;
 pub(crate) mod id;
 pub(crate) mod join;

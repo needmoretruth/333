@@ -57,6 +57,12 @@ const PATIENCE: Duration = Duration::from_secs(20);
 /// The most of the board this node will read.
 const LONGEST_BOARD: usize = MAX_BATCH_FRAMES * (LENGTH_PREFIX_LEN + LONGEST_STATEMENT);
 
+/// The most that will be read when asking for the file.
+///
+/// The file is three bytes. This is far above that and far below anything that could
+/// cost this node something, which is all a limit here has to be.
+const LONGEST_FILE: u64 = 64;
+
 /// Reasons a visit to the meeting point came to nothing.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -85,6 +91,7 @@ pub enum Error {
 /// Blocking, because it is a handful of requests an epoch and an async HTTP stack is thirty
 /// crates to save a thread that is asleep anyway. Callers inside a runtime hand it to a
 /// blocking worker.
+#[derive(Clone)]
 pub struct Meeting {
     /// The host, without a scheme.
     place: String,
@@ -181,17 +188,55 @@ impl Meeting {
         Ok(unframe(&board))
     }
 
+    /// Fetch the file itself, for a node that has nobody to be given it by.
+    ///
+    /// WHY THIS IS NOT THE CLIENT MAKING THE FILE. It still cannot. It carries the hash
+    /// and not the bytes, so what comes back here is checked against that hash and
+    /// anything else is refused. The bytes arrive from outside, the same as they do in a
+    /// handover, and the only difference is that nobody signed for them, which is exactly
+    /// what a node starting on its own has to live with.
+    ///
+    /// # Errors
+    /// Fails if the meeting point cannot be reached, refuses, or answers with more bytes
+    /// than the file could possibly be.
+    pub fn the_file(&self) -> Result<Vec<u8>, Error> {
+        let mut answer = self
+            .agent
+            .get(self.whole("/333.txt"))
+            .call()
+            .map_err(went_wrong)?;
+        let mut bytes = Vec::new();
+        answer
+            .body_mut()
+            .as_reader()
+            .take(LONGEST_FILE)
+            .read_to_end(&mut bytes)
+            .map_err(|cause| Error::Unreachable(cause.to_string()))?;
+        Ok(bytes)
+    }
+
+    /// The address a person would open in a browser to see the board.
+    #[must_use]
+    pub fn browse(&self) -> String {
+        self.whole("/333")
+    }
+
     /// The address of one part of the meeting point.
+    fn url(&self, tail: &str) -> String {
+        self.whole(&format!("/333{tail}"))
+    }
+
+    /// One path at this meeting point.
     ///
     /// A place given with a scheme in front of it is taken as written. That is for
     /// pointing a node at a meeting point running on the same machine while somebody
     /// works on one, and it is the only way to reach one over plain HTTP: a bare host
     /// is always https, so nobody arrives there by accident or by being told to.
-    fn url(&self, tail: &str) -> String {
+    fn whole(&self, path: &str) -> String {
         if self.place.starts_with("http://") || self.place.starts_with("https://") {
-            format!("{}/333{tail}", self.place.trim_end_matches('/'))
+            format!("{}{path}", self.place.trim_end_matches('/'))
         } else {
-            format!("https://{}/333{tail}", self.place)
+            format!("https://{}{path}", self.place)
         }
     }
 }
@@ -298,5 +343,6 @@ mod tests {
         let meeting = Meeting::at("http://127.0.0.1:8787/");
         assert_eq!(meeting.url(""), "http://127.0.0.1:8787/333");
         assert_eq!(meeting.url("/where"), "http://127.0.0.1:8787/333/where");
+        assert_eq!(meeting.whole("/333.txt"), "http://127.0.0.1:8787/333.txt");
     }
 }
