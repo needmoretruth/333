@@ -8,6 +8,19 @@
 
 # 333
 
+**[the333.dev](https://the333.dev)** is the one address written into the client. It says
+what this is, it carries the Law, and it is where two nodes on two different networks find
+each other: it holds the signed statements nodes make about where they can be reached, keeps
+each one for two epochs, and verifies none of them, because the client that reads them does
+that. It hands out no file and it is not a node. If it went away tomorrow, every node that
+had already met somebody would carry on unchanged.
+
+**[The latest release](https://github.com/needmoretruth/333/releases/latest)** has a binary
+for Linux, for the Raspberry Pi down to the Zero, for both kinds of Mac and for Windows.
+[Install](#install) says which one is yours and what to do with it.
+
+---
+
 333. Not short for anything, and nothing goes in front of it.
 
 It is not encrypted, not rare, and not hard to reproduce — you have already read it.
