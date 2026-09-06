@@ -522,10 +522,19 @@ unless you have told it to, and a good many connections cannot be told at all.
 
 There are two ways out.
 
-**Forward the port.** In your router, send TCP port 3333 to this machine. You do not have to
-work out what to hand people afterwards: start the node and it knocks on its own outside
-address, and if the knock comes back it prints the invitation and starts handing that
-address out. `--announce your.address:3333` says it by hand if you would rather.
+**Let it ask your router.** It already does. On startup the node asks whatever router is in
+front of it to send port 3333 here, over the protocol most of them already speak and have
+turned on — this is the same thing a BitTorrent client does, and the reason that works on a
+home connection without anybody configuring anything. It says what it asked for and what it
+was told, and the mapping appears in your router's own list as `333`, which is where you go
+to take it away. `--no-upnp` stops it asking.
+
+A router saying yes is a router saying yes. Whether anything actually arrives is decided by
+the knock that follows, not by the answer, so both are printed.
+
+**Or forward the port by hand.** In your router, send TCP port 3333 to this machine. You do
+not have to work out what to hand people afterwards: the knock finds it and prints the
+invitation. `--announce your.address:3333` says it by hand if you would rather.
 
 **Or raise an onion address.** `333 serve --tor` needs no router, no forwarding and no
 `--announce`, because the node builds its own way in from the inside out and there is

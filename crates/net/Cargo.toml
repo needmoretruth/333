@@ -37,6 +37,7 @@ bundled = [
 ]
 
 [dependencies]
+igd-next = { workspace = true }
 n333-core.workspace = true
 futures.workspace = true
 mdns-sd.workspace = true

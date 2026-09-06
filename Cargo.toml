@@ -53,6 +53,11 @@ tor-hsservice = "=0.46.0"
 tor-cell = "=0.46.0"
 tor-proto = { version = "=0.46.0", features = ["hs-service"] }
 tor-rtcompat = "=0.46.0"
+
+# Asking the router to send a port to this machine, which is what a BitTorrent client
+# does and the reason it works on a home connection without anybody configuring
+# anything. Only the tokio half is taken; the crate's own HTTP stack comes with it.
+igd-next = { version = "0.17.1", default-features = false, features = ["aio_tokio"] }
 tor-error = "=0.46.0"
 safelog = "0.9"
 futures = "0.3"

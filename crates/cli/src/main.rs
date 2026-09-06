@@ -165,6 +165,16 @@ enum Command {
         #[arg(long)]
         no_mdns: bool,
 
+        /// Do not ask the router to send the port to this machine.
+        ///
+        /// Asking is what makes a socket on a home connection answer anybody: the
+        /// router in front of it drops what nobody inside asked for until a program on
+        /// the inside asks it not to, over a protocol most of them already speak. It is
+        /// a real change to somebody's network, so it is said out loud when it is made
+        /// and this refuses it outright.
+        #[arg(long)]
+        no_upnp: bool,
+
         /// Where to look for nodes nobody introduced this one to.
         ///
         /// One fixed address holding signed statements about where nodes say they
@@ -265,6 +275,7 @@ async fn main() -> anyhow::Result<()> {
             no_direct,
             announce,
             no_mdns,
+            no_upnp,
             meet,
             no_meet,
             plain,
@@ -277,6 +288,7 @@ async fn main() -> anyhow::Result<()> {
                 !no_mdns,
                 (!no_meet).then_some(meet),
                 plain,
+                !no_upnp,
             )
             .await
         }

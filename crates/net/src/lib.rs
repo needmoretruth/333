@@ -46,6 +46,7 @@
 pub mod asked;
 pub mod bridges;
 pub mod direct;
+pub mod doorway;
 pub mod frame;
 pub mod gossip;
 pub mod handover;

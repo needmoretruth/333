@@ -19,6 +19,7 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
 
+use n333_net::doorway::{self, Asked};
 use n333_net::{Invite, PeerAddress, initiate};
 use tokio::sync::watch;
 
@@ -38,8 +39,12 @@ pub(super) fn tell_them(
     node: Arc<Node>,
     bound: SocketAddr,
     found_address: watch::Sender<Option<PeerAddress>>,
+    ask_the_router: bool,
 ) {
     tokio::spawn(async move {
+        if ask_the_router {
+            ask(bound.port()).await;
+        }
         let Some(seen) = board.what_address_do_i_arrive_from().await else {
             return;
         };
@@ -76,6 +81,26 @@ pub(super) fn tell_them(
             ),
         }
     });
+}
+
+/// Ask the router to send this port here, and say what it said.
+///
+/// Said and not acted on: the knock that follows is what decides, and a router that
+/// says yes and is wrong looks exactly like a router that says yes and is right.
+async fn ask(port: u16) {
+    match doorway::ask_the_router(port).await {
+        Asked::Forwarded { outside, port } => aloud!(
+            "opened   the router says port {port} on {outside} now comes to this machine. It\n\
+             \x20        is listed there as `333` if you want to take it away again. Whether\n\
+             \x20        anything arrives is the next line."
+        ),
+        Asked::NobodyAnswered => aloud!(
+            "closed   no router here answered the request to open a port. That is ordinary:\n\
+             \x20        plenty have it turned off, and a machine with an address of its own\n\
+             \x20        has nothing to ask. `--no-upnp` stops this node asking at all."
+        ),
+        Asked::Refused(why) => aloud!("closed   the router would not open port {port}: {why}"),
+    }
 }
 
 /// What knocking on this node's own outside address found.

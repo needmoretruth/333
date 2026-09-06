@@ -35,6 +35,9 @@ use door::{Caller, Door, spawn_exchange};
 
 /// Run until interrupted, answering everyone who arrives.
 ///
+/// `ask_the_router` asks whatever router is in front of this machine to send the port
+/// here, which is what makes a socket on a home connection answer anybody at all.
+///
 /// `bind` is the socket to listen on, or `None` to listen only through Tor. `tor`
 /// publishes an onion address as well. `announce` overrides what this node tells
 /// others to reach it at, for the ordinary case of a socket that cannot say. `meet`
@@ -52,6 +55,7 @@ pub(crate) async fn run(
     nearby: bool,
     meet: Option<String>,
     plain: bool,
+    ask_the_router: bool,
 ) -> anyhow::Result<()> {
     if bind.is_none() && !tor {
         bail!("nothing would be listening: --no-direct needs --tor");
@@ -184,6 +188,7 @@ pub(crate) async fn run(
                 Arc::clone(&node),
                 bound,
                 found_address.clone(),
+                ask_the_router,
             );
         }
     }
