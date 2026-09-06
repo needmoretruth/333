@@ -3,7 +3,7 @@ resolver = "3"
 members = ["crates/core", "crates/net", "crates/store", "crates/cli"]
 
 [workspace.package]
-version = "0.4.0"
+version = "0.5.0"
 edition = "2024"
 # Declared as the toolchain this is actually built and tested on. The arti crates
 # claim 1.91, but an MSRV nobody compiles is an untested claim.
