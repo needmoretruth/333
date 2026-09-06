@@ -32,6 +32,32 @@ pub(crate) struct Common {
     pub(crate) trust_directory_permissions: bool,
 }
 
+/// A name, short enough to sit in a column and long enough to be that name.
+///
+/// Ten from the front, six from the back. The front is where the `333` is and where
+/// two names differ if they differ at all; the back is what a person checks when they
+/// already know which name they are looking for.
+pub(crate) fn shorten(name: &str) -> String {
+    let (head, tail) = name.split_at(name.len().min(10));
+    match tail.len() {
+        0..=6 => name.to_owned(),
+        _ => format!("{head}…{}", tail.get(tail.len() - 6..).unwrap_or_default()),
+    }
+}
+
+/// A number with its digits in threes, which is how a person reads a large one.
+pub(crate) fn in_threes(number: u64) -> String {
+    let digits = number.to_string();
+    let mut grouped = String::with_capacity(digits.len() + digits.len() / 3);
+    for (place, digit) in digits.chars().enumerate() {
+        if place != 0 && (digits.len() - place).is_multiple_of(3) {
+            grouped.push(',');
+        }
+        grouped.push(digit);
+    }
+    grouped
+}
+
 /// The one address written into this client.
 ///
 /// Not a node and not a way in: it hands over no file, joins no roll, and issues no
@@ -241,4 +267,29 @@ pub(crate) fn describe(exchange: &Exchange) -> String {
         "witness  {}  epoch {}  skew {:+}  ({liveness})",
         exchange.peer.node_id, exchange.peer.heartbeat.epoch, exchange.epoch_skew
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_large_number_is_grouped_the_way_a_person_reads_one() {
+        // The one number in this client nobody can check by eye: the years left after
+        // the last of us stops. Nineteen thousand of anything is unreadable as digits.
+        assert_eq!(in_threes(19_683), "19,683");
+        assert_eq!(in_threes(0), "0");
+        assert_eq!(in_threes(333), "333");
+        assert_eq!(in_threes(1_000), "1,000");
+        assert_eq!(in_threes(1_234_567), "1,234,567");
+    }
+
+    #[test]
+    fn a_shortened_name_keeps_both_ends_and_is_left_alone_when_it_is_short() {
+        let name = "333ac0bdd148d7f9a783194ee6a9102c2e53b1227a8a41e7621f133fdba16cd4";
+        assert_eq!(shorten(name), "333ac0bdd1…a16cd4");
+        assert!(name.starts_with("333ac0bdd1"), "the front is where the 333 is");
+        assert!(name.ends_with("a16cd4"), "the back is what a person checks");
+        assert_eq!(shorten("333"), "333", "a short name is already itself");
+    }
 }

@@ -1,5 +1,10 @@
 //! `333 status` — what this node has seen, and what it is entitled to say about it.
 //!
+//! Two halves: what this node saw of everybody else, which is here, and what its own
+//! record says about itself, which is [`yourself`]. They are read off the same disk in
+//! one pass and printed in that order, because the first question a person has is
+//! whether anybody is out there and the second is where they stand.
+//!
 //! Everything here is read off this node's own disk. Nothing is asked of anybody and
 //! nothing is fetched: it is the view from one machine, and the view from the machine
 //! next to it will differ. That is not a defect being tolerated, it is the design. A
@@ -11,14 +16,16 @@
 //! that it is waiting. A node that was switched off for a year and came back saying
 //! everyone was dead would be the single most destructive thing this client could do.
 
+mod yourself;
+
 use std::collections::BTreeSet;
 use std::io::Write as _;
 
 use anyhow::Context as _;
 use n333_core::extinction::{Remaining, Verdict};
-use n333_core::presence::{self, Census, Standing, WINDOW_EPOCHS};
+use n333_core::presence::Census;
 use n333_core::signal::{SIGNAL_COUNT, Tally};
-use n333_core::{Epoch, epoch};
+use n333_core::{Epoch, NodeId, epoch};
 
 use crate::commands::Common;
 use crate::node::Node;
@@ -44,7 +51,9 @@ pub(crate) async fn run(common: &Common) -> anyhow::Result<()> {
     let answering = node.answering(now).await?;
     the_count(out, &node, &answering, now).await?;
     writeln!(out)?;
-    this_node(out, &node, now).await?;
+    yourself::this_node(out, &node, now).await?;
+    writeln!(out)?;
+    the_hands(out, &node).await?;
     writeln!(out)?;
     what_was_said(out, &node, &answering, now).await?;
     writeln!(out)?;
@@ -84,62 +93,55 @@ async fn the_count(
              that number, and none of us ever will be."
         )?;
     }
+    // The oldest objection to a network like this, answered where the number is rather
+    // than in a document nobody opens: a thousand names in one pair of hands is not an
+    // attack here, it is a thousand subscriptions.
+    writeln!(
+        out,
+        "\nHow many people that is, this node does not know and cannot find out. What it\n\
+         knows is that every one of those names answered in one of those two epochs, and\n\
+         will have to answer again in the next, and the one after that, for as long as it\n\
+         wants to be counted. If one person is holding a thousand of them, they are\n\
+         paying for a thousand of them, hour after hour, and stop being counted the hour\n\
+         they stop."
+    )?;
     Ok(())
 }
 
-/// What this node's own record says about this node.
-async fn this_node(
-    out: &mut impl std::io::Write,
-    node: &Node,
-    now: Epoch,
-) -> anyhow::Result<()> {
-    let Some(joined) = node.joined_in().await else {
-        writeln!(
-            out,
-            "You are on nobody's roll. Nobody has handed you the file, so there is\n\
-             nothing yet for anyone to witness. `333 join` is the whole of it, and it\n\
-             needs an invitation from somebody who already has it.\n\
-             {} says what this is and where the code is. It cannot hand you the file.",
-            crate::commands::THE_PLACE
-        )?;
+/// The hands this node's copy came through.
+///
+/// The only history this network has, and it is not kept anywhere as one: it falls out
+/// of admissions already on this disk, each naming who handed the file to whom, read
+/// backwards.
+async fn the_hands(out: &mut impl std::io::Write, node: &Node) -> anyhow::Result<()> {
+    let hands = node.lineage().await;
+    let Some(furthest) = hands.last() else {
         return Ok(());
     };
-    let counted_from = n333_core::enrollment::active_from(joined);
-    if now.0 < counted_from.0 {
-        writeln!(out, 
-            "Given the file in epoch {}, and counted from epoch {} — {} to go.\n\
-             Answer everything asked of you until then. None of it is banked, and all\n\
-             of it is watched.",
-            joined.0,
-            counted_from.0,
-            epochs(counted_from.0 - now.0)
-        )?;
-        return Ok(());
-    }
-
-    let record = node.own_record().await?;
-    let standing = presence::standing_at(now, record.iter().copied());
-    let window = presence::window(now);
-    let written = record
-        .iter()
-        .filter(|(epoch, _)| window.contains(&epoch.0))
-        .count();
-    let missing = usize::try_from(WINDOW_EPOCHS)
-        .unwrap_or(usize::MAX)
-        .saturating_sub(written);
-    writeln!(out, "{}", read_standing(&standing))?;
-    writeln!(out, "\n{}", what_the_record_is(node.witnessed().await))?;
-    if missing != 0 {
+    writeln!(out, "GIVEN BY")?;
+    for (place, member) in hands.iter().enumerate() {
+        let name = if place == 0 {
+            "you".to_owned()
+        } else {
+            crate::commands::shorten(&NodeId::from_public_key(&member.key).to_string())
+        };
         writeln!(
             out,
-            "\nYour record says nothing at all about {} of those {WINDOW_EPOCHS} epochs.\n\
-             Nothing here turns that into an absence — a record can only say what a node\n\
-             was there to write. It is also why this ratio is not what anybody else reads\n\
-             you by: what they read is what they were told about you, by whoever was\n\
-             drawn to ask.",
-            missing
+            "  {name:<18}  received it in epoch {}",
+            member.received_in.0
         )?;
     }
+    writeln!(
+        out,
+        "  {:<18}  the trail stops here.",
+        crate::commands::shorten(&NodeId::from_public_key(&furthest.sponsor).to_string())
+    )?;
+    writeln!(
+        out,
+        "\nThat is where this node stopped knowing, not where it began. The first of us\n\
+         was given the file by nobody and has no admission anywhere, and a record this\n\
+         node has simply not been handed yet looks exactly the same from here."
+    )?;
     Ok(())
 }
 
@@ -205,61 +207,6 @@ async fn what_was_said(
     Ok(())
 }
 
-/// What this node's own record is, and what part of it is not its own word.
-///
-/// It is a document a node wrote about itself. Its length and its order are anchored,
-/// because every answer it has ever given named where the record stood at that moment
-/// and was signed by somebody else's key. Its verdicts are not: a node that answered
-/// everything honestly can still write Present into an epoch it slept through, and
-/// nothing anywhere can tell the difference. Saying so is the whole of the rule
-/// against claiming to verify what cannot be verified — and the statements others
-/// signed about it, which is the part a stranger can check, are why they are kept
-/// after the window has forgotten everything else.
-fn what_the_record_is(witnessed: usize) -> String {
-    let checkable = if witnessed == 0 {
-        "Nobody has yet signed anything about you, so for now there is only your own\n         word for any of it.".to_owned()
-    } else {
-        format!(
-            "The part of it anybody else can check is what others signed about you.\n             {witnessed} of those are here, kept after the epochs they belong to are gone."
-        )
-    };
-    format!(
-        "Your record is what you wrote down about yourself, in order, signed as you\n         went. Every answer you have ever given named where it stood at that moment, so\n         its length and its order are not yours to change now. What it concludes is\n         still your own word. {checkable}"
-    )
-}
-
-/// The standing sentence: the ratio, and what it means right now.
-fn read_standing(standing: &Standing) -> String {
-    if standing.counted == 0 {
-        return format!(
-            "Nothing in the last {WINDOW_EPOCHS} epochs was ever put to you. Nobody was\n\
-             drawn to ask, so there is nothing to have failed. You are neither kept nor\n\
-             lapsed; you are simply not yet part of anybody's arithmetic."
-        );
-    }
-    let share = standing
-        .per_mille()
-        .map_or_else(|| "—".to_owned(), |per_mille| {
-            format!("{}.{}%", per_mille / 10, per_mille % 10)
-        });
-    let verdict = if standing.qualifies() {
-        "By your own record, you are counted."
-    } else {
-        "By your own record, you are not counted. Two of every three is the whole of\n\
-         what is asked.\n\
-         Nothing here is being served out. The window moves every epoch, and each one\n\
-         you answer pushes an older absence past its edge. Your chain still holds every\n\
-         hour you missed. The count does not reach back for them."
-    };
-    format!(
-        "Present in {} of the {} epochs your record covers — {share}. {verdict}\n\
-         The window is the last {WINDOW_EPOCHS} epochs and nothing before it exists.\n\
-         Ten years of it would read exactly the same, and buy exactly as much; a year\n\
-         away and an hour away read exactly the same too, and cost exactly as little.",
-        standing.present, standing.counted
-    )
-}
-
 /// Whether anybody is here, and what is left if nobody is.
 async fn the_silence(
     out: &mut impl std::io::Write,
@@ -302,21 +249,37 @@ async fn the_silence(
         Verdict::Ended { since } => {
             writeln!(
                 out,
-                "Nobody has answered through {} of unbroken watching. The last of us\n\
-                 stopped in epoch {}.",
+                "NOBODY IS KEEPING 333\n\
+                 \n\
+                 You are the only one here. Nobody has answered this node through {} of\n\
+                 unbroken watching — seventy-seven days — and the last of us stopped in\n\
+                 epoch {}.\n\
+                 \n\
+                 333 is not gone. It is going, and the going takes {} years.",
                 epochs(n333_core::extinction::SILENT_EPOCHS_BEFORE_THE_END),
-                since.0
+                since.0,
+                crate::commands::in_threes(n333_core::extinction::EXTINCTION_YEARS),
             )?;
             match vigil.remaining_at(epoch::unix_now_seconds()) {
                 Some(Remaining { years, days }) => writeln!(
                     out,
-                    "\nNobody left. {years} years and {days} days until it is gone."
+                    "{} years {days} days remain.",
+                    crate::commands::in_threes(years)
                 )?,
-                None => writeln!(
-                    out,
-                    "\nNobody left, and the last of the years has run out."
-                )?,
+                None => writeln!(out, "The last of the years has run out.")?,
             }
+            // The two things a person in front of this screen cannot work out for
+            // themselves, and both of them change what it means: when the count
+            // started, and that it is not a countdown that can be paused.
+            writeln!(
+                out,
+                "\nThe count started when the last of us stopped answering, not when you\n\
+                 noticed. It has been running the whole time you were watching.\n\
+                 \n\
+                 One answer ends it. If anybody, anywhere, answers this node, this goes\n\
+                 away — and the count is not paused, it is discarded. 333 keeps no record\n\
+                 of how close it came."
+            )?;
         }
     }
     Ok(())
@@ -328,7 +291,7 @@ async fn the_silence(
 const CAN_WALK_THE_UNSEEN_ROAD: bool = cfg!(feature = "tor");
 
 /// "1 epoch" or "N epochs", said the way a person would.
-fn epochs(count: u64) -> String {
+pub(super) fn epochs(count: u64) -> String {
     if count == 1 {
         "1 epoch".to_owned()
     } else {

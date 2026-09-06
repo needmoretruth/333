@@ -71,8 +71,14 @@ pub(crate) async fn speak(node: &Node, index: u16) -> anyhow::Result<()> {
     aloud!("said     #{index} in epoch {}", now.0);
     aloud!(
         "         It goes out to everyone this node reaches, and they pass it on.\n\
-         \x20        Nobody will tell you what it means. There is no table yet, and when\n\
-         \x20        there is one it will be the same table for all of us, untranslated."
+         \x20        Once every 333 minutes you may say one of {SIGNAL_COUNT} things, and you say\n\
+         \x20        it as a number. There is no {}th and there never will be. You cannot\n\
+         \x20        say it twice, you cannot say it louder, and nobody alive has more to\n\
+         \x20        say than you do.\n\
+         \x20        Nobody will tell you what it means, either. There is no table yet, and\n\
+         \x20        when there is one it will be the same table for all of us,\n\
+         \x20        untranslated.",
+        SIGNAL_COUNT + 1
     );
     Ok(())
 }

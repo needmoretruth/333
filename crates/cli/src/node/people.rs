@@ -8,6 +8,7 @@ use std::collections::BTreeSet;
 
 use anyhow::Context as _;
 use n333_core::attestation;
+use n333_core::roll::Member;
 use n333_core::transfer::{self, Half};
 use n333_core::whereabouts::{self};
 use n333_core::{Epoch, utterance};
@@ -212,6 +213,31 @@ impl Node {
             return false;
         }
         found.insert(address)
+    }
+
+    /// The hands this node's copy came through, this node's own first.
+    ///
+    /// Walked over admissions already on disk: each member's record names who handed
+    /// it to them, and that person's record names who handed it to *them*. The walk
+    /// stops at the first key this node holds no admission for — which is either
+    /// whoever was given the file by nobody, or simply where this node stopped
+    /// knowing. Nothing here can tell those apart, and nothing should pretend to.
+    ///
+    /// A roll assembled from records that disagree could name a circle. The walk
+    /// refuses to go round one rather than deciding which of them is the lie.
+    pub(crate) async fn lineage(&self) -> Vec<Member> {
+        let state = self.state.lock().await;
+        let roll = state.admissions.roll();
+        let mut walked = BTreeSet::new();
+        let mut hands = Vec::new();
+        let mut key = self.identity.public_key();
+        while walked.insert(key)
+            && let Some(member) = roll.member(&key)
+        {
+            hands.push(member.clone());
+            key = member.sponsor;
+        }
+        hands
     }
 
     /// The epoch somebody handed this node the file, if anybody has.

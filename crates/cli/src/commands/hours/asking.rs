@@ -146,6 +146,15 @@ pub(super) async fn ask_those_drawn(node: &Node, dialer: &Dialer, now: Epoch) {
     if asked.is_empty() {
         return;
     }
+    // Said out loud because from the outside being drawn looks like a chore the client
+    // performs, and it is the one moment in an epoch where this node is doing something
+    // nobody, including this node, chose.
+    aloud!(
+        "drawn    epoch {} — to ask {} of us. Nobody chose that: the names fall out of\n\
+         \x20        the epoch and the keys, identically on every machine.",
+        now.0,
+        asked.len()
+    );
 
     for peer in asked {
         let Some(address) = node.address_of(&peer).await else {

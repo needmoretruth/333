@@ -63,7 +63,10 @@ fn header<'a>(watch: &'a Watch, wide: bool) -> Paragraph<'a> {
     Paragraph::new(Line::from(vec![
         Span::styled(" 333 ", Style::new().add_modifier(Modifier::REVERSED)),
         Span::raw("  "),
-        Span::styled(shorten(&watch.name), Style::new().add_modifier(Modifier::BOLD)),
+        Span::styled(
+            crate::commands::shorten(&watch.name),
+            Style::new().add_modifier(Modifier::BOLD),
+        ),
         Span::raw("   epoch "),
         Span::styled(watch.epoch.0.to_string(), Style::new().add_modifier(Modifier::BOLD)),
         Span::raw(format!(
@@ -71,15 +74,6 @@ fn header<'a>(watch: &'a Watch, wide: bool) -> Paragraph<'a> {
             until(to_the_boundary(watch.epoch))
         )),
     ]))
-}
-
-/// A name, short enough to sit in a header and long enough to be that name.
-fn shorten(name: &str) -> String {
-    let (head, tail) = name.split_at(name.len().min(10));
-    match tail.len() {
-        0..=6 => name.to_owned(),
-        _ => format!("{head}…{}", &tail[tail.len() - 6..]),
-    }
 }
 
 /// The left column: the count, then this node, then what was said.

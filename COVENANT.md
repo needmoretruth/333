@@ -75,6 +75,23 @@ that ungenerosity is a third of a second, taken once, from someone who went look
 
 ---
 
+## On who asks you
+
+Three of us are drawn to ask you each epoch, and you do not choose them. Nobody does. The three
+names fall out of the epoch number and the keys themselves — the same three on every machine that
+holds the same roll, computable by anyone, chosen by no one. There is no appointed witness, no
+friend who can arrange to be yours, and no way to be asked on a day that suits you.
+
+Only those three ever knock. Everybody else reads what they wrote.
+
+That is possible because a witness who says you answered has to publish *your answer* inside their
+own statement, signed by you. Nobody has to take a witness's word for anything; they check your
+signature themselves and the witness is only the courier. Which is why this can grow without
+asking more of you: ten thousand of us can hold what happened at your door this epoch, and still
+only three ever came to it.
+
+---
+
 ## On the prophet
 
 *A prophet may speak, and may not rewrite the law.*
