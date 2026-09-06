@@ -14,6 +14,7 @@
 //! for once it is through is [`answering`].
 
 pub(crate) mod answering;
+#[cfg(feature = "screen")]
 mod carrying;
 mod door;
 mod reach;
@@ -125,15 +126,19 @@ pub(crate) async fn run(common: &Common, how: Vigil) -> anyhow::Result<()> {
     // when the port was left to the system to choose.
     let mut bound_at: Option<SocketAddr> = None;
     let mut listening = tokio::task::JoinSet::new();
-    // What the person types into the screen, carried out where the dialler is. A node
-    // with no screen never sends anything down it and the task simply waits.
+    // What the person types into the screen, carried out where the dialler is. The
+    // smallest edition has no screen, so it has nothing that could type an order and
+    // none of this is built into it.
+    #[cfg(feature = "screen")]
     let (asked, orders) = tokio::sync::mpsc::unbounded_channel();
+    #[cfg(feature = "screen")]
     let (order_node, order_common, order_dialer) =
         (Arc::clone(&node), common.clone(), dialer.clone());
     #[cfg(feature = "screen")]
     if let Some(lines) = watching {
         listening.spawn(crate::screen::keep(Arc::clone(&node), lines, asked.clone()));
     }
+    #[cfg(feature = "screen")]
     drop(asked);
 
     if let Some(bind) = bind {
@@ -209,6 +214,7 @@ pub(crate) async fn run(common: &Common, how: Vigil) -> anyhow::Result<()> {
     // What the screen asked for, done where the dialler is. Spawned before the hours
     // so that a person who opens the screen and types at once is answered rather than
     // queued behind a round.
+    #[cfg(feature = "screen")]
     listening.spawn(async move {
         carrying::until_the_screen_goes(
             orders,

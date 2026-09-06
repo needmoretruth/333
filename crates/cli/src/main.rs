@@ -32,6 +32,7 @@ mod commands;
 mod dial;
 mod identity_file;
 mod node;
+#[cfg(feature = "screen")]
 mod orders;
 mod paths;
 #[cfg(feature = "screen")]
