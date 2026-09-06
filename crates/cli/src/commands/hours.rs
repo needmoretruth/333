@@ -41,7 +41,7 @@ use crate::node::Node;
 
 pub(crate) use asking::trade_at_once;
 use asking::{ask_those_drawn, trade_news};
-use judging::judge_what_is_ready;
+pub(crate) use judging::judge_what_is_ready;
 
 /// Run the hours until the process is stopped.
 ///
@@ -62,23 +62,38 @@ pub(crate) async fn keep(
 ) -> anyhow::Result<()> {
     loop {
         let now = Epoch::now();
-        // Written first, and whether or not anything happens in this epoch. An epoch
-        // nobody spoke in and an epoch this node was switched off for leave the same
-        // empty disk otherwise, and telling them apart is the whole of this node's
-        // right to ever say the network ended.
-        if let Err(e) = node.keeping(now).await {
-            aloud!("failed   marking this epoch as kept: {e:#}");
-        }
         let address = announce_as.borrow().clone();
-        if let Some(address) = address {
-            say_where(&node, &address, now).await;
-        }
-        trade_news(&node, &dialer, now).await;
-        ask_those_drawn(&node, &dialer, now).await;
-        judge_what_is_ready(&node, now).await;
-        forget_the_old(&node, now).await;
+        one_round(&node, &dialer, address, now).await;
         sleep_until_the_next_boundary(now).await;
     }
+}
+
+/// Everything a node does at one boundary, in order.
+///
+/// One function rather than five calls in the loop, so that what a node does in an
+/// epoch is a thing that can be run — from the loop with the clock's answer, and from
+/// a test with an epoch of its own. A round that only ever exists inside a loop that
+/// sleeps for 333 minutes is a round nobody watches from beginning to end.
+pub(crate) async fn one_round(
+    node: &Node,
+    dialer: &Dialer,
+    address: Option<PeerAddress>,
+    now: Epoch,
+) {
+    // Written first, and whether or not anything happens in this epoch. An epoch
+    // nobody spoke in and an epoch this node was switched off for leave the same
+    // empty disk otherwise, and telling them apart is the whole of this node's right
+    // to ever say the network ended.
+    if let Err(e) = node.keeping(now).await {
+        aloud!("failed   marking this epoch as kept: {e:#}");
+    }
+    if let Some(address) = address {
+        say_where(node, &address, now).await;
+    }
+    trade_news(node, dialer, now).await;
+    ask_those_drawn(node, dialer, now).await;
+    judge_what_is_ready(node, now).await;
+    forget_the_old(node, now).await;
 }
 
 /// Write down where this node can be reached, and keep it for others to pass on.

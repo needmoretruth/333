@@ -14,7 +14,7 @@ use n333_core::Epoch;
 use crate::node::Node;
 
 /// Judge the epoch that has now had long enough for statements to arrive.
-pub(super) async fn judge_what_is_ready(node: &Node, now: Epoch) {
+pub(crate) async fn judge_what_is_ready(node: &Node, now: Epoch) {
     let Some(ready) = now.0.checked_sub(JUDGEMENT_DELAY_EPOCHS).map(Epoch) else {
         return;
     };

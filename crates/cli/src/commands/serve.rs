@@ -352,3 +352,135 @@ mod onion {
         anyhow::bail!("this client was built without Tor, so it cannot publish an onion address")
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use std::path::PathBuf;
+
+    use n333_core::attestation::JUDGEMENT_DELAY_EPOCHS;
+    use n333_core::presence::Attendance;
+    use n333_core::subject::DIGEST;
+    use n333_core::transfer::{Half, Record};
+    use n333_core::Identity;
+
+    use crate::node::Keeping;
+    use crate::paths::NodePaths;
+
+    fn scratch(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("n333-round-test-{name}"));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).expect("creates dir");
+        dir
+    }
+
+    fn common(root: PathBuf) -> Common {
+        Common {
+            paths: NodePaths::at(root),
+            timeout: Duration::from_secs(10),
+            keeping: Keeping::TheWindow,
+            trust_directory_permissions: true,
+        }
+    }
+
+    /// Both halves of "somebody handed the file to this node", as they would be held.
+    ///
+    /// Signed rather than staged: the roll is built out of two keys agreeing, and a
+    /// test that put a member on a roll any other way would be testing something this
+    /// protocol does not do.
+    fn admitted(founder: &Identity, node: &Node, epoch: Epoch) -> Vec<Vec<u8>> {
+        vec![
+            Record::new(founder, node.identity().public_key(), epoch, DIGEST)
+                .seal(Half::Gave, founder)
+                .expect("seals"),
+            Record::new(node.identity(), founder.public_key(), epoch, DIGEST)
+                .seal(Half::Received, node.identity())
+                .expect("seals"),
+        ]
+    }
+
+    /// Open a node, answer on a socket, and say where that socket is.
+    async fn a_node_answering(name: &str) -> (Arc<Node>, Common, PeerAddress) {
+        let home = scratch(name);
+        let common = common(home.clone());
+        let (node, _) = Node::open(&common.mistrust(), &home, Keeping::TheWindow).expect("opens");
+        let node = Arc::new(node);
+        let listener = direct::Listener::bind("127.0.0.1:0".parse().expect("an address"))
+            .await
+            .expect("binds");
+        let where_it_is = PeerAddress::from(listener.address().expect("bound"));
+        let answering = Arc::clone(&node);
+        tokio::spawn(async move { answer_direct(listener, answering, Door::new()).await });
+        (node, common, where_it_is)
+    }
+
+    #[tokio::test]
+    async fn one_of_us_is_asked_answers_and_is_written_down_as_present() {
+        // The loop the whole protocol rests on, end to end: two of us on a roll, one
+        // drawn to ask the other, the answer given, the statement published and handed
+        // back, and three epochs later a verdict written into a record that is never
+        // revisited. It takes sixteen hours to watch happen and it has to work the
+        // first time, for ever.
+        let founder = Identity::from_seed(&[1; 32]);
+        let now = Epoch::now();
+        // Two epochs ago, so this epoch is the first their records cover: what came
+        // before it is not theirs to answer for and nothing is written about it.
+        let joined = Epoch(now.0.saturating_sub(2));
+
+        let (asked, asked_common, where_asked_is) = a_node_answering("asked").await;
+        let (asker, asker_common, where_asker_is) = a_node_answering("asker").await;
+
+        // Both hold both admissions, so both rolls are the same two of us. The founder
+        // is on neither: nobody handed the file to whoever had it first.
+        let mut halves = admitted(&founder, &asked, joined);
+        halves.extend(admitted(&founder, &asker, joined));
+        for node in [&asked, &asker] {
+            assert_eq!(node.admit(&halves).await.expect("admits"), 2);
+        }
+
+        // Each knows where to knock, the way a node does after an invitation or after
+        // hearing a neighbour on its own network: an address and nothing else.
+        asked.found(where_asker_is.to_string()).await;
+        asker.found(where_asked_is.to_string()).await;
+
+        // One round each. The first says where it is and hands that to the second; the
+        // second, now knowing WHO is at that address, is drawn to ask it.
+        let rounds = [
+            (&asked, &asked_common, where_asked_is),
+            (&asker, &asker_common, where_asker_is),
+        ];
+        for (node, common, where_it_is) in rounds {
+            let dialer = Dialer::new(common.clone());
+            hours::one_round(node, &dialer, Some(where_it_is), now).await;
+        }
+
+        // The verifier's round ends when it has published; the node it asked is still
+        // writing down what the round produced. In an epoch that gap is nothing and
+        // three epochs pass before any of it is read. Here it is the test running
+        // faster than a disk.
+        let mut waited = Duration::ZERO;
+        while asked.witnessed().await == 0 && waited < Duration::from_secs(5) {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+            waited += Duration::from_millis(10);
+        }
+
+        // Nothing is written about an epoch until it is too old to change.
+        assert!(
+            asked.own_record().await.expect("reads").is_empty(),
+            "an epoch that can still be spoken about is not judged"
+        );
+
+        hours::judge_what_is_ready(&asked, Epoch(now.0 + JUDGEMENT_DELAY_EPOCHS)).await;
+        assert_eq!(
+            asked.own_record().await.expect("reads"),
+            vec![(now, Attendance::Present)],
+            "asked, answered, and witnessed by the one drawn to ask"
+        );
+        assert_eq!(
+            asked.witnessed().await,
+            1,
+            "and the statement that says so is kept, in somebody else's hand"
+        );
+    }
+}
