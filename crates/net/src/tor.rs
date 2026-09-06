@@ -81,7 +81,9 @@ pub async fn bootstrap(paths: &Paths, trust_directory_permissions: bool) -> Resu
         builder.storage().permissions().dangerously_trust_everyone();
     }
     let config = builder.build()?;
-    Ok(TorClient::create_bootstrapped(config).await.map_err(Box::new)?)
+    Ok(TorClient::create_bootstrapped(config)
+        .await
+        .map_err(Box::new)?)
 }
 
 /// Open a stream to another node's onion address.
@@ -95,5 +97,8 @@ pub async fn bootstrap(paths: &Paths, trust_directory_permissions: bool) -> Resu
 /// Fails if the address is malformed, the peer never published a descriptor, or the
 /// circuit cannot be built.
 pub async fn connect(client: &Client, onion_address: &str, port: u16) -> Result<DataStream, Error> {
-    Ok(client.connect((onion_address, port)).await.map_err(Box::new)?)
+    Ok(client
+        .connect((onion_address, port))
+        .await
+        .map_err(Box::new)?)
 }

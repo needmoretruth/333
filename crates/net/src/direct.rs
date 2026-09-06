@@ -131,8 +131,7 @@ mod tests {
 
         let dialled = format!("127.0.0.1:{}", bound.port());
         let address: PeerAddress = dialled.parse().expect("a readable address");
-        let (accepted, connected) =
-            tokio::join!(listener.accept(), connect(&address));
+        let (accepted, connected) = tokio::join!(listener.accept(), connect(&address));
         let (_stream, from) = accepted.expect("accepts");
         connected.expect("connects");
         assert_eq!(from.ip(), bound.ip());

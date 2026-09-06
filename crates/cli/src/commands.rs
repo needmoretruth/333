@@ -205,7 +205,8 @@ pub(crate) fn report_heard(heard: &crate::node::Heard) {
             aloud!(
                 "rejoined {} more of us by name, from a node that knew {}. There were\n\
                  \x20        two of us and now the counting is one count.",
-                heard.members, heard.were
+                heard.members,
+                heard.were
             );
         } else {
             aloud!("learned  {} more of us by name", heard.members);
@@ -215,7 +216,10 @@ pub(crate) fn report_heard(heard: &crate::node::Heard) {
         aloud!("heard    {} of us speak", heard.said);
     }
     if heard.witnessed != 0 {
-        aloud!("carried  {} statements about epochs still open", heard.witnessed);
+        aloud!(
+            "carried  {} statements about epochs still open",
+            heard.witnessed
+        );
     }
 }
 
@@ -335,7 +339,10 @@ mod tests {
     fn a_shortened_name_keeps_both_ends_and_is_left_alone_when_it_is_short() {
         let name = "333ac0bdd148d7f9a783194ee6a9102c2e53b1227a8a41e7621f133fdba16cd4";
         assert_eq!(shorten(name), "333ac0bdd1…a16cd4");
-        assert!(name.starts_with("333ac0bdd1"), "the front is where the 333 is");
+        assert!(
+            name.starts_with("333ac0bdd1"),
+            "the front is where the 333 is"
+        );
         assert!(name.ends_with("a16cd4"), "the back is what a person checks");
         assert_eq!(shorten("333"), "333", "a short name is already itself");
     }

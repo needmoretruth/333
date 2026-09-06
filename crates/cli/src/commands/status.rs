@@ -80,7 +80,8 @@ async fn the_count(
     writeln!(out, "           ─────")?;
     writeln!(out, "roll       {}", census.roll())?;
     writeln!(out)?;
-    writeln!(out, 
+    writeln!(
+        out,
         "That first number is everyone this node holds a signature for in epoch {} or\n\
          {}. It is what this node saw. Somebody else saw something else.",
         now.0.saturating_sub(1),
@@ -165,16 +166,17 @@ async fn what_was_said(
     let tally = Tally::of(heard.against(everyone.iter()));
 
     if tally.spoken() == 0 {
-        writeln!(out, 
+        writeln!(
+            out,
             "Nobody has said anything in epoch {}. There are {} things that can be\n\
              said and no words for any of them yet.",
-            now.0,
-            SIGNAL_COUNT
+            now.0, SIGNAL_COUNT
         )?;
         return Ok(());
     }
 
-    writeln!(out, 
+    writeln!(
+        out,
         "SAID in epoch {} — {} of the {} of us this node can see spoke, {} did not.",
         now.0,
         tally.spoken(),
@@ -199,8 +201,13 @@ async fn what_was_said(
         };
         writeln!(out, "  #{:<4} {count:>5}  {share:>6}{mark}", signal.index())?;
     }
-    writeln!(out, "  the other {} of the {SIGNAL_COUNT} were not said.", SIGNAL_COUNT - said)?;
-    writeln!(out, 
+    writeln!(
+        out,
+        "  the other {} of the {SIGNAL_COUNT} were not said.",
+        SIGNAL_COUNT - said
+    )?;
+    writeln!(
+        out,
         "\nNo winner is picked and none of this decides anything. It is what reached\n\
          this node. The node beside you heard something else and is not wrong."
     )?;
@@ -208,11 +215,7 @@ async fn what_was_said(
 }
 
 /// Whether anybody is here, and what is left if nobody is.
-async fn the_silence(
-    out: &mut impl std::io::Write,
-    node: &Node,
-    now: Epoch,
-) -> anyhow::Result<()> {
+async fn the_silence(out: &mut impl std::io::Write, node: &Node, now: Epoch) -> anyhow::Result<()> {
     let vigil = node.watched(now).await.context("reading the watch")?;
     // A build without arti cannot reach an onion address at all, so it has never heard
     // from the members who are hiding and never will. It may report what it saw; it may

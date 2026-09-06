@@ -123,10 +123,7 @@ impl Log {
                 path: path.to_path_buf(),
                 length: records,
             },
-            Opened {
-                records,
-                truncated,
-            },
+            Opened { records, truncated },
         ))
     }
 
@@ -207,9 +204,8 @@ impl Log {
         if record.len() > MAX_RECORD_LEN {
             return Err(Error::TooLongToWrite { got: record.len() });
         }
-        let length = u32::try_from(record.len()).map_err(|_| Error::TooLongToWrite {
-            got: record.len(),
-        })?;
+        let length =
+            u32::try_from(record.len()).map_err(|_| Error::TooLongToWrite { got: record.len() })?;
         let mut framed = Vec::with_capacity(LENGTH_PREFIX_LEN + record.len());
         framed.extend_from_slice(&length.to_be_bytes());
         framed.extend_from_slice(record);
@@ -245,10 +241,12 @@ impl Log {
                 path: self.path.clone(),
                 source,
             })?;
-        self.file.seek(SeekFrom::End(0)).map_err(|source| Error::Io {
-            path: self.path.clone(),
-            source,
-        })?;
+        self.file
+            .seek(SeekFrom::End(0))
+            .map_err(|source| Error::Io {
+                path: self.path.clone(),
+                source,
+            })?;
 
         let mut records = Vec::with_capacity(self.length as usize);
         let mut rest = bytes.as_slice();
@@ -258,12 +256,11 @@ impl Log {
                 // and possible again only if something else is writing to the file.
                 return Ok(records);
             };
-            let announced = u32::from_be_bytes(
-                prefix.try_into().map_err(|_| Error::RecordTooLong {
+            let announced =
+                u32::from_be_bytes(prefix.try_into().map_err(|_| Error::RecordTooLong {
                     path: self.path.clone(),
                     got: 0,
-                })?,
-            ) as usize;
+                })?) as usize;
             if announced > MAX_RECORD_LEN {
                 return Err(Error::RecordTooLong {
                     path: self.path.clone(),
@@ -300,7 +297,13 @@ mod tests {
     fn what_goes_in_comes_back_in_order() {
         let path = scratch("roundtrip");
         let (mut log, opened) = Log::open(&path).expect("opens");
-        assert_eq!(opened, Opened { records: 0, truncated: 0 });
+        assert_eq!(
+            opened,
+            Opened {
+                records: 0,
+                truncated: 0
+            }
+        );
         assert!(log.is_empty());
 
         for record in [b"one".as_slice(), b"two", b"", b"four"] {
@@ -309,7 +312,12 @@ mod tests {
         assert_eq!(log.len(), 4);
         assert_eq!(
             log.read_all().expect("reads"),
-            vec![b"one".to_vec(), b"two".to_vec(), Vec::new(), b"four".to_vec()]
+            vec![
+                b"one".to_vec(),
+                b"two".to_vec(),
+                Vec::new(),
+                b"four".to_vec()
+            ]
         );
         let _ = std::fs::remove_dir_all(path.parent().expect("has a parent"));
     }
@@ -322,7 +330,13 @@ mod tests {
             log.append(b"kept").expect("appends");
         }
         let (mut log, opened) = Log::open(&path).expect("opens");
-        assert_eq!(opened, Opened { records: 1, truncated: 0 });
+        assert_eq!(
+            opened,
+            Opened {
+                records: 1,
+                truncated: 0
+            }
+        );
         assert_eq!(log.read_all().expect("reads"), vec![b"kept".to_vec()]);
         log.append(b"and more").expect("appends");
         assert_eq!(log.len(), 2);
@@ -394,10 +408,7 @@ mod tests {
             file.seek(SeekFrom::Start(0)).expect("seeks");
             file.write_all(&u32::MAX.to_be_bytes()).expect("writes");
         }
-        assert!(matches!(
-            Log::open(&path),
-            Err(Error::RecordTooLong { .. })
-        ));
+        assert!(matches!(Log::open(&path), Err(Error::RecordTooLong { .. })));
         let _ = std::fs::remove_dir_all(path.parent().expect("has a parent"));
     }
 

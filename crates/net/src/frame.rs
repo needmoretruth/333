@@ -109,10 +109,7 @@ pub struct AsReceived<T> {
 ///
 /// # Errors
 /// Fails if the frame is over the limit or the stream fails.
-pub async fn write_frame<W: AsyncWrite + Unpin>(
-    stream: &mut W,
-    frame: &[u8],
-) -> Result<(), Error> {
+pub async fn write_frame<W: AsyncWrite + Unpin>(stream: &mut W, frame: &[u8]) -> Result<(), Error> {
     if frame.len() > MAX_FRAME_LEN {
         return Err(Error::TooLong { got: frame.len() });
     }
@@ -188,7 +185,9 @@ mod tests {
         let sent = vec![7_u8; 300];
         let expected = sent.clone();
         let writer = tokio::spawn(async move {
-            write_frame(&mut client, &sent).await.map_err(|e| e.to_string())
+            write_frame(&mut client, &sent)
+                .await
+                .map_err(|e| e.to_string())
         });
         let got = read_frame(&mut server).await.expect("reads");
         writer.await.expect("task").expect("writes");
@@ -199,9 +198,15 @@ mod tests {
     async fn an_empty_frame_round_trips() {
         let (client, server) = tokio::io::duplex(1024);
         let (mut client, mut server) = (client.compat(), server.compat());
-        let writer =
-            tokio::spawn(async move { write_frame(&mut client, &[]).await.map_err(|e| e.to_string()) });
-        assert_eq!(read_frame(&mut server).await.expect("reads"), Vec::<u8>::new());
+        let writer = tokio::spawn(async move {
+            write_frame(&mut client, &[])
+                .await
+                .map_err(|e| e.to_string())
+        });
+        assert_eq!(
+            read_frame(&mut server).await.expect("reads"),
+            Vec::<u8>::new()
+        );
         writer.await.expect("task").expect("writes");
     }
 
@@ -243,7 +248,10 @@ mod tests {
         // body before checking the length would block here forever.
         let announced = u32::MAX;
         let writer = tokio::spawn(async move {
-            client.write_all(&announced.to_be_bytes()).await.map_err(|e| e.to_string())?;
+            client
+                .write_all(&announced.to_be_bytes())
+                .await
+                .map_err(|e| e.to_string())?;
             client.flush().await.map_err(|e| e.to_string())
         });
         let err = read_frame(&mut server).await.expect_err("refuses");
@@ -256,8 +264,14 @@ mod tests {
         let (client, server) = tokio::io::duplex(1024);
         let (mut client, mut server) = (client.compat(), server.compat());
         let writer = tokio::spawn(async move {
-            client.write_all(&10_u32.to_be_bytes()).await.map_err(|e| e.to_string())?;
-            client.write_all(&[1, 2, 3]).await.map_err(|e| e.to_string())?;
+            client
+                .write_all(&10_u32.to_be_bytes())
+                .await
+                .map_err(|e| e.to_string())?;
+            client
+                .write_all(&[1, 2, 3])
+                .await
+                .map_err(|e| e.to_string())?;
             client.flush().await.map_err(|e| e.to_string())
             // then dropped: the promised ten bytes never arrive
         });
@@ -271,7 +285,9 @@ mod tests {
         let (client, _server) = tokio::io::duplex(1024);
         let mut client = client.compat();
         let too_big = vec![0_u8; MAX_FRAME_LEN + 1];
-        let err = write_frame(&mut client, &too_big).await.expect_err("refuses");
+        let err = write_frame(&mut client, &too_big)
+            .await
+            .expect_err("refuses");
         assert!(matches!(err, Error::TooLong { .. }), "got {err:?}");
     }
 

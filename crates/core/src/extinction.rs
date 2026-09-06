@@ -121,7 +121,10 @@ mod tests {
     fn it_reads_the_way_a_person_reads_it() {
         let ended = 1_788_000_000;
         let left = remaining(ended, ended + 100 * SECONDS_PER_DAY).expect("still counting");
-        assert_eq!(left.to_string(), format!("{} years {} days", left.years, left.days));
+        assert_eq!(
+            left.to_string(),
+            format!("{} years {} days", left.years, left.days)
+        );
         assert!(left.years >= 19_682);
     }
 
@@ -364,7 +367,11 @@ mod vigil_tests {
         assert_eq!(vigil.silent(), 300);
 
         vigil.watch(Epoch(400), Watched::Nobody);
-        assert_eq!(vigil.silent(), 1, "the run restarts at the epoch after the gap");
+        assert_eq!(
+            vigil.silent(),
+            1,
+            "the run restarts at the epoch after the gap"
+        );
     }
 
     #[test]

@@ -198,7 +198,9 @@ async fn main() -> anyhow::Result<()> {
 
     let cli = Cli::parse();
     let common = Common {
-        paths: cli.data_dir.map_or_else(NodePaths::default_home, NodePaths::at),
+        paths: cli
+            .data_dir
+            .map_or_else(NodePaths::default_home, NodePaths::at),
         timeout: Duration::from_secs(cli.timeout),
         keeping: if cli.keep_everything {
             node::Keeping::Everything

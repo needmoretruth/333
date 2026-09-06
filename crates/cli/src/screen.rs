@@ -180,7 +180,10 @@ async fn pressed(
 /// Say one of the 333, and say what happened either way.
 async fn say_it(node: &Arc<Node>, typed: &str) -> String {
     let Ok(index) = typed.parse::<u16>() else {
-        return format!("refused  there are {SIGNAL_COUNT} of them, numbered 0 to {}. \"{typed}\" is not one.", SIGNAL_COUNT - 1);
+        return format!(
+            "refused  there are {SIGNAL_COUNT} of them, numbered 0 to {}. \"{typed}\" is not one.",
+            SIGNAL_COUNT - 1
+        );
     };
     match crate::commands::say::speak(node, index).await {
         // Saying it says its own lines; there is nothing to add here.
@@ -216,10 +219,7 @@ fn remember(log: &mut Vec<String>, said: &str) {
 ///
 /// The flag is how it is stopped: a thread left polling a terminal after this program
 /// has finished with it eats the keystrokes meant for whatever runs next.
-fn read_keys() -> (
-    UnboundedReceiver<event::KeyEvent>,
-    Arc<AtomicBool>,
-) {
+fn read_keys() -> (UnboundedReceiver<event::KeyEvent>, Arc<AtomicBool>) {
     let (sender, receiver) = unbounded_channel();
     let reading = Arc::new(AtomicBool::new(true));
     let stop = Arc::clone(&reading);

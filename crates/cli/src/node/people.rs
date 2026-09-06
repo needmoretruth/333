@@ -74,7 +74,9 @@ impl Node {
     /// Fails if the logs cannot be read.
     pub(crate) async fn tidings(&self, now: Epoch) -> anyhow::Result<Tidings> {
         let mut state = self.state.lock().await;
-        let oldest = now.0.saturating_sub(n333_core::attestation::JUDGEMENT_DELAY_EPOCHS);
+        let oldest = now
+            .0
+            .saturating_sub(n333_core::attestation::JUDGEMENT_DELAY_EPOCHS);
         let mut about_epochs = Vec::new();
         for number in oldest..=now.0 {
             let epoch = Epoch(number);
@@ -94,7 +96,12 @@ impl Node {
             [
                 state.directory.frames().collect(),
                 about_epochs.iter().map(Vec::as_slice).collect(),
-                state.admissions.frames().iter().map(Vec::as_slice).collect(),
+                state
+                    .admissions
+                    .frames()
+                    .iter()
+                    .map(Vec::as_slice)
+                    .collect(),
             ],
             offsets,
         );
@@ -254,7 +261,6 @@ impl Node {
             .member(&key)
             .map(|member| member.received_in)
     }
-
 }
 
 /// Could anything said about this epoch still change what anybody writes down?

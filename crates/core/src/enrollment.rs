@@ -113,8 +113,7 @@ mod tests {
         // over one. The epoch number is the same either way.
         assert_eq!(active_from(Epoch(100)), Epoch(102));
         assert_eq!(
-            active_from(Epoch(100)).starts_at_unix_seconds()
-                - Epoch(100).starts_at_unix_seconds(),
+            active_from(Epoch(100)).starts_at_unix_seconds() - Epoch(100).starts_at_unix_seconds(),
             2 * crate::epoch::EPOCH_SECONDS
         );
     }

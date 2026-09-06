@@ -91,7 +91,12 @@ pub struct Record {
 impl Record {
     /// Compose this node's half of a handover.
     #[must_use]
-    pub fn new(identity: &Identity, counterparty: [u8; 32], epoch: Epoch, subject: [u8; 32]) -> Self {
+    pub fn new(
+        identity: &Identity,
+        counterparty: [u8; 32],
+        epoch: Epoch,
+        subject: [u8; 32],
+    ) -> Self {
         Self {
             protocol: crate::heartbeat::PROTOCOL_VERSION,
             author: identity.public_key(),
@@ -349,10 +354,7 @@ mod tests {
             .seal(Half::Gave, &giver)
             .expect("seals");
         assert!(open(&frame, Half::Gave).is_ok());
-        assert_eq!(
-            open(&frame, Half::Received),
-            Err(wire::Error::BadSignature)
-        );
+        assert_eq!(open(&frame, Half::Received), Err(wire::Error::BadSignature));
     }
 
     #[test]

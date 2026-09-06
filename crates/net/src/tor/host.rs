@@ -70,7 +70,10 @@ impl OnionHost {
         let config = tor_hsservice::config::OnionServiceConfigBuilder::default()
             .nickname(HsNickname::new(nickname.to_owned())?)
             .build()?;
-        let (service, rendezvous) = client.launch_onion_service(config).map_err(Box::new)?.ok_or(Error::Disabled)?;
+        let (service, rendezvous) = client
+            .launch_onion_service(config)
+            .map_err(Box::new)?
+            .ok_or(Error::Disabled)?;
         Ok(Self {
             service,
             // The stream arti returns is not Unpin, and `handle_rend_requests` wants
@@ -144,7 +147,10 @@ impl OnionHost {
                 let _ = request.reject(End::new_with_reason(EndReason::DONE)).await;
                 continue;
             }
-            return Ok(request.accept(Connected::new_empty()).await.map_err(Box::new)?);
+            return Ok(request
+                .accept(Connected::new_empty())
+                .await
+                .map_err(Box::new)?);
         }
     }
 }

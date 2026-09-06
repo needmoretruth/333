@@ -27,11 +27,11 @@ use std::path::Path;
 
 use anyhow::Context as _;
 use fs_mistrust::Mistrust;
+use n333_core::Identity;
 use n333_core::chain::{self, Head};
 use n333_core::roll::Read;
 use n333_core::subject::{self, Subject};
 use n333_core::whereabouts::Directory;
-use n333_core::Identity;
 use n333_store::{Log, Once, Window};
 
 use admissions::Admitted;
@@ -245,7 +245,6 @@ impl Node {
         *self.subject.lock().await = Some(subject);
         Ok(())
     }
-
 }
 
 /// What filing a peer's statements changed.

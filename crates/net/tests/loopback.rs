@@ -75,7 +75,10 @@ async fn a_frame_split_across_packets_still_arrives_whole() {
     let opener = identity(1);
     let heartbeat = n333_core::heartbeat::Heartbeat::now(&opener, None);
     let body = heartbeat.seal(&opener).expect("seals");
-    let mut framed = u32::try_from(body.len()).expect("fits").to_be_bytes().to_vec();
+    let mut framed = u32::try_from(body.len())
+        .expect("fits")
+        .to_be_bytes()
+        .to_vec();
     framed.extend_from_slice(&body);
 
     let mut socket = tokio::net::TcpStream::connect(("127.0.0.1", address.port()))
@@ -135,13 +138,10 @@ async fn a_peer_that_connects_and_says_nothing_ends_the_exchange_rather_than_han
         .expect("connects");
     drop(socket);
 
-    let ended = tokio::time::timeout(
-        std::time::Duration::from_secs(5),
-        answering,
-    )
-    .await
-    .expect("does not hang")
-    .expect("task");
+    let ended = tokio::time::timeout(std::time::Duration::from_secs(5), answering)
+        .await
+        .expect("does not hang")
+        .expect("task");
     assert!(ended.is_err(), "a closed connection is not an exchange");
 }
 

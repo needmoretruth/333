@@ -248,7 +248,10 @@ mod tests {
     #[test]
     fn a_string_that_is_not_an_invitation_is_refused_as_one() {
         assert_eq!(read("node.example:3333"), Err(InviteError::NotAnInvitation));
-        assert_eq!(read("http://node.example"), Err(InviteError::NotAnInvitation));
+        assert_eq!(
+            read("http://node.example"),
+            Err(InviteError::NotAnInvitation)
+        );
         assert_eq!(read(""), Err(InviteError::NotAnInvitation));
         assert_eq!(read("333:"), Err(AddressError::Empty.into()));
         assert_eq!(
@@ -273,7 +276,9 @@ mod tests {
         // Strictness is for what gets stored and signed, not for a person at a
         // keyboard. Both of these dial; only one of them is an invitation.
         assert_eq!(
-            address_or_invite("node.example").expect("dials").to_string(),
+            address_or_invite("node.example")
+                .expect("dials")
+                .to_string(),
             "node.example:3333"
         );
         assert_eq!(

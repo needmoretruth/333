@@ -270,10 +270,7 @@ impl Exchange {
     ///
     /// # Errors
     /// Fails if the answer does not answer this challenge.
-    pub fn assemble(
-        challenge: SignedChallenge,
-        answer: SignedAnswer,
-    ) -> Result<Self, NotAnAnswer> {
+    pub fn assemble(challenge: SignedChallenge, answer: SignedAnswer) -> Result<Self, NotAnAnswer> {
         if answer.answer.nonce != challenge.challenge.nonce {
             return Err(NotAnAnswer::WrongNonce);
         }
@@ -400,11 +397,13 @@ mod tests {
         let answer = Answer::to(&asked.challenge, &prover, [0_u8; 32], 0);
         assert_eq!(answer.chain_head, [0_u8; 32]);
         assert_eq!(answer.chain_len, 0);
-        assert!(Exchange::assemble(
-            asked,
-            open_answer(&answer.seal(&prover).expect("seals")).expect("opens")
-        )
-        .is_ok());
+        assert!(
+            Exchange::assemble(
+                asked,
+                open_answer(&answer.seal(&prover).expect("seals")).expect("opens")
+            )
+            .is_ok()
+        );
     }
 
     #[test]

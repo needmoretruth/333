@@ -43,9 +43,9 @@ use crate::dial::Dialer;
 use crate::node::Node;
 
 pub(crate) use asking::trade_at_once;
-pub(crate) use meeting::Board;
 use asking::{ask_those_drawn, trade_news};
 pub(crate) use judging::judge_what_is_ready;
+pub(crate) use meeting::Board;
 
 /// Run the hours until the process is stopped.
 ///
@@ -149,9 +149,9 @@ async fn say_where(node: &Node, address: &PeerAddress, now: Epoch) -> Option<Vec
 async fn forget_the_old(node: &Node, now: Epoch) {
     match node.forget_old(now).await {
         Ok(0) => {}
-        Ok(dropped) => aloud!(
-            "forgot   {dropped} epochs. nothing said about them now could change a verdict."
-        ),
+        Ok(dropped) => {
+            aloud!("forgot   {dropped} epochs. nothing said about them now could change a verdict.")
+        }
         Err(e) => aloud!("failed   forgetting old statements: {e:#}"),
     }
 }

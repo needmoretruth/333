@@ -99,12 +99,22 @@ mod tests {
         );
         let epoch = Epoch(100);
         vec![
-            Record::new(&giver, taker.public_key(), epoch, n333_core::subject::DIGEST)
-                .seal(Half::Gave, &giver)
-                .expect("seals"),
-            Record::new(&taker, giver.public_key(), epoch, n333_core::subject::DIGEST)
-                .seal(Half::Received, &taker)
-                .expect("seals"),
+            Record::new(
+                &giver,
+                taker.public_key(),
+                epoch,
+                n333_core::subject::DIGEST,
+            )
+            .seal(Half::Gave, &giver)
+            .expect("seals"),
+            Record::new(
+                &taker,
+                giver.public_key(),
+                epoch,
+                n333_core::subject::DIGEST,
+            )
+            .seal(Half::Received, &taker)
+            .expect("seals"),
         ]
     }
 
@@ -123,7 +133,10 @@ mod tests {
         for _ in 0..10 {
             assert_eq!(held.keep(&both).expect("keeps"), 0, "nothing of it is new");
         }
-        assert_eq!(std::fs::metadata(&path).expect("still there").len(), after_first);
+        assert_eq!(
+            std::fs::metadata(&path).expect("still there").len(),
+            after_first
+        );
         assert_eq!(held.frames().len(), 2);
         assert_eq!(held.roll().len(), 1);
 

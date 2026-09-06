@@ -5,11 +5,11 @@
 //! ITSELF and nobody else: the statements it published about others are the evidence
 //! other people judge them by, and this is only the record it is entitled to keep.
 
-use n333_core::attestation::{self, Because, Evidence, JUDGEMENT_DELAY_EPOCHS};
-use n333_core::challenge::{self, Exchange};
-use n333_core::chain::evidence_digest;
-use n333_core::enrollment;
 use n333_core::Epoch;
+use n333_core::attestation::{self, Because, Evidence, JUDGEMENT_DELAY_EPOCHS};
+use n333_core::chain::evidence_digest;
+use n333_core::challenge::{self, Exchange};
+use n333_core::enrollment;
 
 use crate::node::Node;
 
@@ -111,4 +111,3 @@ const fn said(because: Because) -> &'static str {
         }
     }
 }
-

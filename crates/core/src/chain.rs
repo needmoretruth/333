@@ -452,8 +452,7 @@ mod tests {
             (11, Attendance::Absent),
             (12, Attendance::Excluded),
         ] {
-            let entry =
-                Entry::following(head.as_ref(), &me, Epoch(epoch), attendance, NO_PREVIOUS);
+            let entry = Entry::following(head.as_ref(), &me, Epoch(epoch), attendance, NO_PREVIOUS);
             let frame = entry.seal(&me).expect("seals");
             head = Some(Head {
                 digest: digest_of(&frame),

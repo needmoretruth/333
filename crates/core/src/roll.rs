@@ -363,8 +363,10 @@ mod tests {
             .seal(Half::Gave, &giver)
             .expect("seals");
 
-        for order in [vec![good[0].clone(), good[1].clone(), poison.clone()],
-                      vec![poison.clone(), good[0].clone(), good[1].clone()]] {
+        for order in [
+            vec![good[0].clone(), good[1].clone(), poison.clone()],
+            vec![poison.clone(), good[0].clone(), good[1].clone()],
+        ] {
             let (roll, read) = Roll::from_halves(&order);
             assert_eq!(read.admitted, 1, "the good pair still assembles");
             assert!(roll.member(&newcomer.public_key()).is_some());
@@ -554,7 +556,10 @@ mod tests {
         }
         assert_eq!(held.read(), once);
         assert_eq!(once.admitted, 1);
-        assert_eq!(once.unpaired, 0, "a pair that completed is not still waiting");
+        assert_eq!(
+            once.unpaired, 0,
+            "a pair that completed is not still waiting"
+        );
         let (whole, read) = Roll::from_halves(&both);
         assert_eq!(held.roll(), &whole);
         assert_eq!(once, read);
@@ -566,7 +571,10 @@ mod tests {
         let both = admission(&sponsor, &newcomer, 100);
         let mut held = Admissions::new();
         held.add(&both[0]);
-        for other in [admission(&identity(3), &identity(4), 50), admission(&identity(5), &identity(6), 60)] {
+        for other in [
+            admission(&identity(3), &identity(4), 50),
+            admission(&identity(5), &identity(6), 60),
+        ] {
             for frame in &other {
                 held.add(frame);
             }

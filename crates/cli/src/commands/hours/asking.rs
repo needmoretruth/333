@@ -210,7 +210,8 @@ async fn ask_one(
         Ok(Ok(witnessed)) => {
             aloud!(
                 "witness  epoch {} answered by {}",
-                now.0, witnessed.exchange.answer.prover
+                now.0,
+                witnessed.exchange.answer.prover
             );
             node.keep(now, &witnessed.attestation).await
         }
@@ -220,7 +221,10 @@ async fn ask_one(
                 node,
                 &question,
                 now,
-                &format!("nothing within the {} s the window allows", ROUND_TIMEOUT.as_secs()),
+                &format!(
+                    "nothing within the {} s the window allows",
+                    ROUND_TIMEOUT.as_secs()
+                ),
             )
             .await
         }
@@ -241,4 +245,3 @@ async fn unanswered(
     node.keep(now, &question.frame).await?;
     node.keep(now, &sealed).await
 }
-

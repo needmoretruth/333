@@ -225,7 +225,10 @@ mod tests {
         // one; both gain a byte roughly once a century, so these numbers are the
         // shape of the message and not a permanent promise.
         assert_eq!(pinned(None).seal(&me).expect("seals").len(), 139);
-        assert_eq!(pinned(Some([0xcc; 32])).seal(&me).expect("seals").len(), 171);
+        assert_eq!(
+            pinned(Some([0xcc; 32])).seal(&me).expect("seals").len(),
+            171
+        );
         assert!(
             Heartbeat::now(&me, None).seal(&me).expect("seals").len() <= 200,
             "a live heartbeat outgrew the size this limit was chosen for"

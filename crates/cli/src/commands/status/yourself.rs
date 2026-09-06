@@ -4,8 +4,8 @@
 //! node: what others concluded about it is in the statements they published, and this
 //! node holds only the ones that were handed to it.
 
-use n333_core::presence::{self, Standing, WINDOW_EPOCHS};
 use n333_core::Epoch;
+use n333_core::presence::{self, Standing, WINDOW_EPOCHS};
 
 use crate::node::Node;
 
@@ -30,7 +30,8 @@ pub(super) async fn this_node(
     };
     let counted_from = n333_core::enrollment::active_from(joined);
     if now.0 < counted_from.0 {
-        writeln!(out, 
+        writeln!(
+            out,
             "Given the file in epoch {}, and counted from epoch {} — {} to go.\n\
              Answer everything asked of you until then. None of it is banked, and all\n\
              of it is watched.",
@@ -112,11 +113,10 @@ fn read_standing(standing: &Standing) -> String {
              lapsed; you are simply not yet part of anybody's arithmetic."
         );
     }
-    let share = standing
-        .per_mille()
-        .map_or_else(|| "—".to_owned(), |per_mille| {
-            format!("{}.{}%", per_mille / 10, per_mille % 10)
-        });
+    let share = standing.per_mille().map_or_else(
+        || "—".to_owned(),
+        |per_mille| format!("{}.{}%", per_mille / 10, per_mille % 10),
+    );
     let verdict = if standing.qualifies() {
         "By your own record, you are counted."
     } else {

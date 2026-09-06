@@ -114,11 +114,7 @@ pub fn signing_input(domain: &[u8; DOMAIN_LEN], body: &[u8]) -> Vec<u8> {
 /// Fails if the resulting frame would exceed [`MAX_FRAME_LEN`]. That is this node's
 /// own bug, not a peer's, so it is worth failing loudly rather than sending a frame
 /// the other side is required to refuse.
-pub fn seal(
-    domain: &[u8; DOMAIN_LEN],
-    body: &[u8],
-    identity: &Identity,
-) -> Result<Vec<u8>, Error> {
+pub fn seal(domain: &[u8; DOMAIN_LEN], body: &[u8], identity: &Identity) -> Result<Vec<u8>, Error> {
     let total = SIGNATURE_LEN.saturating_add(body.len());
     if total > MAX_FRAME_LEN {
         return Err(Error::TooLong { got: total });

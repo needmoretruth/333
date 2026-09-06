@@ -18,10 +18,10 @@ use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Padding, Paragraph};
 
+use n333_core::epoch;
 use n333_core::extinction::{Remaining, Verdict};
 use n333_core::presence::WINDOW_EPOCHS;
 use n333_core::signal::SIGNAL_COUNT;
-use n333_core::epoch;
 
 use super::Saying;
 use super::watch::{Said, Watch, Where, to_the_boundary, until};
@@ -34,9 +34,12 @@ const TOO_NARROW: u16 = 62;
 
 /// Draw everything.
 pub(super) fn everything(frame: &mut Frame<'_>, watch: &Watch, log: &[String], saying: &Saying) {
-    let [top, middle, bottom] =
-        Layout::vertical([Constraint::Length(1), Constraint::Min(3), Constraint::Length(2)])
-            .areas(frame.area());
+    let [top, middle, bottom] = Layout::vertical([
+        Constraint::Length(1),
+        Constraint::Min(3),
+        Constraint::Length(2),
+    ])
+    .areas(frame.area());
 
     let wide = frame.area().width >= TOO_NARROW;
     frame.render_widget(header(watch, wide), top);
@@ -51,8 +54,8 @@ pub(super) fn everything(frame: &mut Frame<'_>, watch: &Watch, log: &[String], s
         frame.render_widget(this_node(watch, left), left);
         frame.render_widget(vigil(log, right), right);
     }
-    let [silence, keys] = Layout::vertical([Constraint::Length(1), Constraint::Length(1)])
-        .areas(bottom);
+    let [silence, keys] =
+        Layout::vertical([Constraint::Length(1), Constraint::Length(1)]).areas(bottom);
     frame.render_widget(the_silence(watch, wide), silence);
     frame.render_widget(the_keys(watch, saying, wide), keys);
 }
@@ -68,11 +71,11 @@ fn header<'a>(watch: &'a Watch, wide: bool) -> Paragraph<'a> {
             Style::new().add_modifier(Modifier::BOLD),
         ),
         Span::raw("   epoch "),
-        Span::styled(watch.epoch.0.to_string(), Style::new().add_modifier(Modifier::BOLD)),
-        Span::raw(format!(
-            "   {}{left}",
-            until(to_the_boundary(watch.epoch))
-        )),
+        Span::styled(
+            watch.epoch.0.to_string(),
+            Style::new().add_modifier(Modifier::BOLD),
+        ),
+        Span::raw(format!("   {}{left}", until(to_the_boundary(watch.epoch)))),
     ]))
 }
 
@@ -86,7 +89,10 @@ fn this_node<'a>(watch: &'a Watch, area: Rect) -> Paragraph<'a> {
         counted("known where", watch.addresses, false),
         counted("witnessed", watch.witnessed, false),
         Line::raw(""),
-        Line::from(Span::styled("YOU", Style::new().add_modifier(Modifier::BOLD))),
+        Line::from(Span::styled(
+            "YOU",
+            Style::new().add_modifier(Modifier::BOLD),
+        )),
     ];
     lines.extend(standing(&watch.standing));
     lines.push(Line::raw(""));
@@ -115,10 +121,7 @@ fn standing(standing: &Where) -> Vec<Line<'static>> {
             Line::raw("nobody has handed you"),
             Line::raw("the file yet. it takes"),
             Line::raw("an invitation."),
-            Line::styled(
-                crate::commands::THE_PLACE,
-                Style::new().fg(Color::DarkGray),
-            ),
+            Line::styled(crate::commands::THE_PLACE, Style::new().fg(Color::DarkGray)),
         ],
         Where::Waiting {
             joined,
@@ -126,23 +129,25 @@ fn standing(standing: &Where) -> Vec<Line<'static>> {
         } => vec![
             Line::raw(format!("given the file in {}", joined.0)),
             Line::raw(format!("counted from {}", counted_from.0)),
+            Line::styled("answer everything until", Style::new().fg(Color::DarkGray)),
             Line::styled(
-                "answer everything until",
+                "then. none of it is banked.",
                 Style::new().fg(Color::DarkGray),
             ),
-            Line::styled("then. none of it is banked.", Style::new().fg(Color::DarkGray)),
         ],
         Where::Counted {
             standing,
             silent_on,
         } => {
-            let share = standing
-                .per_mille()
-                .map_or_else(|| "—".to_owned(), |per_mille| {
-                    format!("{}.{}%", per_mille / 10, per_mille % 10)
-                });
+            let share = standing.per_mille().map_or_else(
+                || "—".to_owned(),
+                |per_mille| format!("{}.{}%", per_mille / 10, per_mille % 10),
+            );
             let mut lines = vec![Line::from(vec![
-                Span::raw(format!("present in {} of {} — ", standing.present, standing.counted)),
+                Span::raw(format!(
+                    "present in {} of {} — ",
+                    standing.present, standing.counted
+                )),
                 Span::styled(share, Style::new().add_modifier(Modifier::BOLD)),
             ])];
             if standing.qualifies() {
@@ -175,7 +180,10 @@ fn standing(standing: &Where) -> Vec<Line<'static>> {
 fn said(said: &Said, height: u16) -> Vec<Line<'static>> {
     if said.spoken == 0 {
         return vec![
-            Line::from(Span::styled("SAID", Style::new().add_modifier(Modifier::BOLD))),
+            Line::from(Span::styled(
+                "SAID",
+                Style::new().add_modifier(Modifier::BOLD),
+            )),
             Line::styled(
                 format!("nothing yet. {SIGNAL_COUNT} things"),
                 Style::new().fg(Color::DarkGray),
@@ -192,9 +200,10 @@ fn said(said: &Said, height: u16) -> Vec<Line<'static>> {
     // one, which is the one thing this screen must never do.
     let room = usize::from(height).saturating_sub(lines.len() + 14).max(1);
     for (index, count, share, reached) in said.rows.iter().take(room) {
-        let share = share.map_or_else(|| "—".to_owned(), |per_mille| {
-            format!("{}.{}%", per_mille / 10, per_mille % 10)
-        });
+        let share = share.map_or_else(
+            || "—".to_owned(),
+            |per_mille| format!("{}.{}%", per_mille / 10, per_mille % 10),
+        );
         let mark = if *reached { "  a third" } else { "" };
         let style = if *reached {
             Style::new().add_modifier(Modifier::BOLD)
@@ -317,7 +326,9 @@ fn the_silence<'a>(watch: &'a Watch, wide: bool) -> Paragraph<'a> {
         ),
         Verdict::Waiting { silent, needed } => Line::styled(
             if wide {
-                format!(" nobody has answered for {silent} of the {needed} epochs it would take to say so")
+                format!(
+                    " nobody has answered for {silent} of the {needed} epochs it would take to say so"
+                )
             } else {
                 format!(" nobody for {silent} of {needed} epochs")
             },
@@ -363,7 +374,11 @@ fn the_keys<'a>(watch: &'a Watch, saying: &'a Saying, wide: bool) -> Paragraph<'
     }
     let mut keys = vec![
         Span::styled(" q ", Style::new().add_modifier(Modifier::REVERSED)),
-        Span::raw(if wide { " leave the vigil   " } else { " leave  " }),
+        Span::raw(if wide {
+            " leave the vigil   "
+        } else {
+            " leave  "
+        }),
         Span::styled(" s ", Style::new().add_modifier(Modifier::REVERSED)),
         Span::raw(if wide {
             format!(" say one of the {SIGNAL_COUNT}   ")
@@ -407,7 +422,10 @@ mod tests {
         // a space that never comes would drop the line, and on a pane this narrow the
         // hanging indent would leave two columns for the letters.
         let folded = fold("name 333abcdefghijklmnop", 12);
-        assert!(folded.iter().all(|line| line.chars().count() <= 12), "{folded:?}");
+        assert!(
+            folded.iter().all(|line| line.chars().count() <= 12),
+            "{folded:?}"
+        );
         assert_eq!(folded.concat().replace(' ', ""), "name333abcdefghijklmnop");
     }
 

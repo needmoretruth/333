@@ -81,7 +81,10 @@ impl Board {
         let said = tokio::task::spawn_blocking(move || place.say(&who, &statement)).await;
         match said {
             Ok(Ok(())) => aloud!("meet     left this node's address at {}", self.place()),
-            Ok(Err(e)) => aloud!("meet     {} did not take this node's address: {e}", self.place()),
+            Ok(Err(e)) => aloud!(
+                "meet     {} did not take this node's address: {e}",
+                self.place()
+            ),
             Err(e) => aloud!("meet     could not reach the meeting point: {e}"),
         }
     }

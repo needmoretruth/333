@@ -405,11 +405,11 @@ mod tests {
 
     use std::path::PathBuf;
 
+    use n333_core::Identity;
     use n333_core::attestation::JUDGEMENT_DELAY_EPOCHS;
     use n333_core::presence::Attendance;
     use n333_core::subject::DIGEST;
     use n333_core::transfer::{Half, Record};
-    use n333_core::Identity;
 
     use crate::node::Keeping;
     use crate::paths::NodePaths;

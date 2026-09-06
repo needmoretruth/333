@@ -101,7 +101,10 @@ where
         given.transfer.receiver(),
         given.transfer.epoch().0
     );
-    aloud!("{}", crate::commands::what_was_signed(&given.transfer, true));
+    aloud!(
+        "{}",
+        crate::commands::what_was_signed(&given.transfer, true)
+    );
     let members = node.admit(&[given.gave, given.received]).await?;
     aloud!("roll     {members} of us");
     Ok(())

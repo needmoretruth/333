@@ -263,7 +263,11 @@ mod tests {
         let held: Vec<Slot> = (0..MAX_FROM_ONE_PLACE)
             .filter_map(|n| door.place_for(caller(&format!("10.0.0.1:{}", 4000 + n))))
             .collect();
-        assert_eq!(held.len(), MAX_FROM_ONE_PLACE, "a caller gets its few places");
+        assert_eq!(
+            held.len(),
+            MAX_FROM_ONE_PLACE,
+            "a caller gets its few places"
+        );
         assert!(
             door.place_for(caller("10.0.0.1:4999")).is_none(),
             "and not one more, however many sockets it opens"

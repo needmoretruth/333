@@ -286,7 +286,10 @@ mod tests {
         let second = stated(&me, "b.example:3333", 5);
         assert!(directory.note(open(&first).expect("opens"), first));
         assert!(!directory.note(open(&second).expect("opens"), second));
-        assert_eq!(directory.address_of(&me.public_key()), Some("a.example:3333"));
+        assert_eq!(
+            directory.address_of(&me.public_key()),
+            Some("a.example:3333")
+        );
     }
 
     #[test]
@@ -294,7 +297,10 @@ mod tests {
         let me = identity(1);
         let frame = stated(&me, "node.example:3333", 1);
         let (directory, _) = Directory::from_frames(std::slice::from_ref(&frame));
-        assert_eq!(directory.frame_for(&me.public_key()), Some(frame.as_slice()));
+        assert_eq!(
+            directory.frame_for(&me.public_key()),
+            Some(frame.as_slice())
+        );
     }
 
     #[test]

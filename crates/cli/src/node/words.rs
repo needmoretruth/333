@@ -230,7 +230,6 @@ fn signers_of(frame: &[u8], epoch: Epoch) -> Vec<[u8; 32]> {
     Vec::new()
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;

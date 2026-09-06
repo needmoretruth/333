@@ -168,9 +168,7 @@ impl FromStr for PeerAddress {
 /// Split an address into its host and its port, if it names one.
 fn split_host_and_port(text: &str) -> Result<(&str, Option<u16>), AddressError> {
     if let Some(rest) = text.strip_prefix('[') {
-        let (host, after) = rest
-            .split_once(']')
-            .ok_or(AddressError::UnclosedBracket)?;
+        let (host, after) = rest.split_once(']').ok_or(AddressError::UnclosedBracket)?;
         return match after.strip_prefix(':') {
             Some(port) => Ok((host, Some(parse_port(port)?))),
             None if after.is_empty() => Ok((host, None)),
@@ -319,7 +317,10 @@ mod tests {
             assert_eq!(parse(text).to_string(), text);
             assert_eq!(parse(&parse(text).to_string()), parse(text));
         }
-        assert_eq!(parse("abcdefghij.onion").to_string(), "abcdefghij.onion:333");
+        assert_eq!(
+            parse("abcdefghij.onion").to_string(),
+            "abcdefghij.onion:333"
+        );
     }
 
     #[test]
@@ -337,7 +338,10 @@ mod tests {
         let v6: SocketAddr = "[2001:db8::1]:4444".parse().expect("a socket address");
         assert_eq!(PeerAddress::from(v6).host(), "2001:db8::1");
         assert_eq!(PeerAddress::from(v6).to_string(), "[2001:db8::1]:4444");
-        assert_eq!(parse(&PeerAddress::from(v6).to_string()), PeerAddress::from(v6));
+        assert_eq!(
+            parse(&PeerAddress::from(v6).to_string()),
+            PeerAddress::from(v6)
+        );
     }
 
     #[test]

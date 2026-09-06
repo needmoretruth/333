@@ -10,8 +10,8 @@
 //! beginning.
 
 use anyhow::Context as _;
-use n333_core::enrollment;
 use n333_core::Epoch;
+use n333_core::enrollment;
 
 use crate::commands::{Common, describe};
 use crate::dial::Dialer;

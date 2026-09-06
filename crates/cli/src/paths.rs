@@ -41,8 +41,10 @@ impl NodePaths {
     /// surprising.
     #[must_use]
     pub(crate) fn default_home() -> Self {
-        directories::ProjectDirs::from_path(PathBuf::from("333"))
-            .map_or_else(|| Self::at(PathBuf::from("333-data")), Self::from_project_dirs)
+        directories::ProjectDirs::from_path(PathBuf::from("333")).map_or_else(
+            || Self::at(PathBuf::from("333-data")),
+            Self::from_project_dirs,
+        )
     }
 
     /// Read the node's home out of a resolved set of project directories.

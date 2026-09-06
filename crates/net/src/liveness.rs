@@ -29,8 +29,8 @@ use std::collections::BTreeSet;
 
 use futures::{AsyncRead, AsyncWrite};
 use n333_core::attestation::{self, Attestation, SignedAttestation};
-use n333_core::challenge::{self, Answer, Challenge, Exchange, SignedChallenge};
 use n333_core::chain::Head;
+use n333_core::challenge::{self, Answer, Challenge, Exchange, SignedChallenge};
 use n333_core::epoch::MAX_CLOCK_SKEW_EPOCHS;
 use n333_core::{Epoch, Identity, draw};
 
@@ -160,8 +160,10 @@ impl Question {
         // unchanged. Re-encoding them would make every later reader's signature check
         // depend on this encoder still producing the same bytes.
         let answer_frame = frame::read_frame(stream).await?;
-        let exchange =
-            Exchange::assemble(self.challenge.clone(), challenge::open_answer(&answer_frame)?)?;
+        let exchange = Exchange::assemble(
+            self.challenge.clone(),
+            challenge::open_answer(&answer_frame)?,
+        )?;
 
         let sealed = Attestation::answered(
             verifier,
@@ -209,9 +211,7 @@ impl Question {
 ///
 /// # Errors
 /// Fails if the stream fails mid-frame, or the frame is not a challenge.
-pub async fn take_question<S>(
-    stream: &mut S,
-) -> Result<Option<AsReceived<SignedChallenge>>, Error>
+pub async fn take_question<S>(stream: &mut S) -> Result<Option<AsReceived<SignedChallenge>>, Error>
 where
     S: AsyncRead + Unpin,
 {
@@ -280,13 +280,15 @@ where
         return Err(Error::NotEntitled { epoch: epoch.0 });
     }
 
-    let reply = Answer::to(&question.message.challenge, prover, head.digest, head.length);
+    let reply = Answer::to(
+        &question.message.challenge,
+        prover,
+        head.digest,
+        head.length,
+    );
     let answer_frame = reply.seal(prover)?;
     frame::write_frame(stream, &answer_frame).await?;
-    let receipt = Exchange::assemble(
-        question.message,
-        challenge::open_answer(&answer_frame)?,
-    )?;
+    let receipt = Exchange::assemble(question.message, challenge::open_answer(&answer_frame)?)?;
 
     // The statement is a courtesy, not a requirement: a verifier that hangs up here
     // has still been answered, and the receipt above is what survives that.
@@ -482,7 +484,10 @@ mod tests {
             attestations: opened.iter().take(2).collect(),
             receipt: None,
         };
-        assert_eq!(judge(epoch, &key, &roll, &two_of_three), Attendance::Excluded);
+        assert_eq!(
+            judge(epoch, &key, &roll, &two_of_three),
+            Attendance::Excluded
+        );
     }
 
     #[tokio::test]

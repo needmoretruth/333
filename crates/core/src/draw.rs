@@ -64,11 +64,7 @@ pub fn ticket(epoch: Epoch, prover: &[u8; 32], candidate: &[u8; 32]) -> [u8; 32]
 ///
 /// The prover is excluded from its own draw. Nobody witnesses themselves.
 #[must_use]
-pub fn verifiers_for(
-    epoch: Epoch,
-    prover: &[u8; 32],
-    roll: &BTreeSet<[u8; 32]>,
-) -> Vec<[u8; 32]> {
+pub fn verifiers_for(epoch: Epoch, prover: &[u8; 32], roll: &BTreeSet<[u8; 32]>) -> Vec<[u8; 32]> {
     let mut tickets: Vec<([u8; 32], [u8; 32])> = roll
         .iter()
         .filter(|candidate| *candidate != prover)

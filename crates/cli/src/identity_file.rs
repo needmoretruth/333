@@ -225,7 +225,10 @@ mod tests {
             "the curse is meant to be levied, not described"
         );
         let said = refused.to_string();
-        assert!(said.contains("taken 333 milliseconds off your life"), "{said}");
+        assert!(
+            said.contains("taken 333 milliseconds off your life"),
+            "{said}"
+        );
         assert!(said.contains("at every door"), "{said}");
         let _ = std::fs::remove_dir_all(&home);
     }
@@ -276,8 +279,7 @@ mod tests {
         use std::os::unix::fs::PermissionsExt as _;
         let home = scratch("trusting");
         let (first, _) = load_or_create(&strict(), &home).expect("creates");
-        std::fs::set_permissions(&home, std::fs::Permissions::from_mode(0o777))
-            .expect("loosens");
+        std::fs::set_permissions(&home, std::fs::Permissions::from_mode(0o777)).expect("loosens");
         let (second, origin) =
             load_or_create(&Mistrust::new_dangerously_trust_everyone(), &home).expect("loads");
         assert_eq!(origin, Origin::Loaded);

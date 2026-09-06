@@ -41,9 +41,7 @@ pub const REQUIRED: Fraction = Fraction {
 /// entry, and the encoding writes an enum as the index of its variant and nothing
 /// else — no name, no tag. Reordering them is a protocol break that compiles cleanly
 /// and turns every past presence into an absence.
-#[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
-)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum Attendance {
     /// At least one of the three verifiers got a valid answer. One is enough: an
     /// answer carries a signature, and silence carries nothing.

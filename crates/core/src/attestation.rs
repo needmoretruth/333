@@ -93,12 +93,7 @@ impl Attestation {
 
     /// Compose a statement that nothing arrived.
     #[must_use]
-    pub fn silent(
-        verifier: &Identity,
-        prover: [u8; 32],
-        epoch: Epoch,
-        nonce: [u8; 32],
-    ) -> Self {
+    pub fn silent(verifier: &Identity, prover: [u8; 32], epoch: Epoch, nonce: [u8; 32]) -> Self {
         Self {
             protocol: PROTOCOL_VERSION,
             verifier: verifier.public_key(),
@@ -599,12 +594,7 @@ mod tests {
         let alone = identity(1);
         let roll: BTreeSet<_> = [alone.public_key()].into_iter().collect();
         assert_eq!(
-            judge(
-                Epoch(11),
-                &alone.public_key(),
-                &roll,
-                &Evidence::default()
-            ),
+            judge(Epoch(11), &alone.public_key(), &roll, &Evidence::default()),
             Attendance::Excluded
         );
     }
@@ -613,12 +603,7 @@ mod tests {
     fn an_epoch_nobody_published_anything_about_leaves_the_count() {
         let (prover, _, roll) = cast();
         assert_eq!(
-            judge(
-                Epoch(11),
-                &prover.public_key(),
-                &roll,
-                &Evidence::default()
-            ),
+            judge(Epoch(11), &prover.public_key(), &roll, &Evidence::default()),
             Attendance::Excluded
         );
     }

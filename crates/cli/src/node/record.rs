@@ -5,9 +5,9 @@
 //! last one, and there is no operation here that replaces anything.
 
 use anyhow::Context as _;
+use n333_core::Epoch;
 use n333_core::chain::{self, Head};
 use n333_core::presence::Attendance;
-use n333_core::Epoch;
 
 use super::Node;
 
@@ -49,11 +49,19 @@ impl Node {
     /// The newest epoch this node's own record judges, if it has judged any.
     pub(crate) async fn last_judged(&self) -> anyhow::Result<Option<Epoch>> {
         let mut state = self.state.lock().await;
-        let frames = state.chain.read_all().context("reading this node's record")?;
+        let frames = state
+            .chain
+            .read_all()
+            .context("reading this node's record")?;
         let Some(last) = frames.last() else {
             return Ok(None);
         };
-        Ok(Some(chain::open(last).context("reading the last entry")?.entry.epoch()))
+        Ok(Some(
+            chain::open(last)
+                .context("reading the last entry")?
+                .entry
+                .epoch(),
+        ))
     }
 
     /// This node's own record, epoch by epoch, the way anybody else would read it.
@@ -62,7 +70,10 @@ impl Node {
     /// Fails if the record cannot be read, or an entry in it does not open.
     pub(crate) async fn own_record(&self) -> anyhow::Result<Vec<(Epoch, Attendance)>> {
         let mut state = self.state.lock().await;
-        let frames = state.chain.read_all().context("reading this node's record")?;
+        let frames = state
+            .chain
+            .read_all()
+            .context("reading this node's record")?;
         frames
             .iter()
             .map(|frame| {
@@ -71,5 +82,4 @@ impl Node {
             })
             .collect()
     }
-
 }

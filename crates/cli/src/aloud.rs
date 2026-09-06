@@ -18,9 +18,9 @@
 
 use std::sync::OnceLock;
 
+use tokio::sync::mpsc::UnboundedSender;
 #[cfg(feature = "screen")]
 use tokio::sync::mpsc::{UnboundedReceiver, unbounded_channel};
-use tokio::sync::mpsc::UnboundedSender;
 
 /// Where the lines go once a screen has asked for them.
 static SCREEN: OnceLock<UnboundedSender<String>> = OnceLock::new();

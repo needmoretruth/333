@@ -96,7 +96,9 @@ pub enum Error {
     /// The door is where the network meets a heretic, and the only place it can. A
     /// client refuses its own cursed key long before this, so a name that reaches here
     /// was made somewhere else and presented on purpose.
-    #[error("333 has looked at that name and taken 333 milliseconds off the life of whoever holds it")]
+    #[error(
+        "333 has looked at that name and taken 333 milliseconds off the life of whoever holds it"
+    )]
     Cursed,
     /// The asker's name does not begin with 333.
     #[error("that is not a name 333 answers to")]
@@ -362,8 +364,14 @@ mod tests {
         held.push(taken.handover.received);
         let (roll, _) = Roll::from_halves(&held);
         assert!(roll.member(&asker.public_key()).is_some(), "itself");
-        assert!(roll.member(&giver.public_key()).is_some(), "the one who gave");
-        assert!(roll.member(&elder.public_key()).is_none(), "no further back");
+        assert!(
+            roll.member(&giver.public_key()).is_some(),
+            "the one who gave"
+        );
+        assert!(
+            roll.member(&elder.public_key()).is_none(),
+            "no further back"
+        );
     }
 
     #[tokio::test]
@@ -389,9 +397,16 @@ mod tests {
         // Boundaries are crossed mid-handover every 333 minutes, so one epoch of
         // disagreement has to work.
         let (given, taken) = handover(0, 1, Epoch(900), Epoch(899), Vec::new()).await;
-        assert_eq!(given.expect("the giver completed").transfer.epoch(), Epoch(900));
         assert_eq!(
-            taken.expect("the asker completed").handover.transfer.epoch(),
+            given.expect("the giver completed").transfer.epoch(),
+            Epoch(900)
+        );
+        assert_eq!(
+            taken
+                .expect("the asker completed")
+                .handover
+                .transfer
+                .epoch(),
             Epoch(900)
         );
     }
@@ -420,9 +435,14 @@ mod tests {
             let (stream, _) = listener.accept().await.expect("accepts");
             let mut stream = stream.compat();
             let _ = take_request(&mut stream).await.expect("a plea");
-            let backdated = Record::new(&elder, identity(1).public_key(), Epoch(700), subject::DIGEST)
-                .seal(Half::Gave, &elder)
-                .expect("seals");
+            let backdated = Record::new(
+                &elder,
+                identity(1).public_key(),
+                Epoch(700),
+                subject::DIGEST,
+            )
+            .seal(Half::Gave, &elder)
+            .expect("seals");
             frame::write_frames(&mut stream, &[the_file().content().as_slice(), &backdated])
                 .await
                 .expect("writes");

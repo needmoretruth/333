@@ -82,18 +82,12 @@ impl Nearby {
         // back to a name in the record. The clock is in it because two clients started
         // in the same second on the same port would otherwise claim the same label.
         let label = format!("n333-{port}-{:x}", n333_core::epoch::unix_now_millis());
-        let service = ServiceInfo::new(
-            SERVICE,
-            &label,
-            &format!("{label}.local."),
-            (),
-            port,
-            None,
-        )?
-        // The addresses of this machine, filled in by the responder and kept right as
-        // interfaces come and go. A node bound to every interface does not know which
-        // of its addresses a stranger can reach, and here it does not have to.
-        .enable_addr_auto();
+        let service =
+            ServiceInfo::new(SERVICE, &label, &format!("{label}.local."), (), port, None)?
+                // The addresses of this machine, filled in by the responder and kept right as
+                // interfaces come and go. A node bound to every interface does not know which
+                // of its addresses a stranger can reach, and here it does not have to.
+                .enable_addr_auto();
         self.daemon.register(service)?;
         self.announced = Some(format!("{label}.{SERVICE}"));
         Ok(())
@@ -157,7 +151,10 @@ pub struct Neighbour {
 /// them loses nothing: a machine with a link-local address has another one on the same
 /// network, and it announces that too.
 fn reachable_without_a_scope(address: Ipv6Addr) -> Option<IpAddr> {
-    let link_local = address.segments().first().is_some_and(|first| first & 0xffc0 == 0xfe80);
+    let link_local = address
+        .segments()
+        .first()
+        .is_some_and(|first| first & 0xffc0 == 0xfe80);
     (!link_local).then_some(IpAddr::V6(address))
 }
 
@@ -183,9 +180,17 @@ mod tests {
         // — is refused by the responder at registration and the node is never heard.
         let (name, rest) = SERVICE.split_at(SERVICE.find('.').unwrap_or_default());
         assert_eq!(rest, "._tcp.local.");
-        let name = name.strip_prefix('_').expect("a service name starts with _");
-        assert!((1..=15).contains(&name.len()), "{name} is not 1 to 15 characters");
-        assert!(name.chars().any(|c| c.is_ascii_alphabetic()), "{name} has no letter");
+        let name = name
+            .strip_prefix('_')
+            .expect("a service name starts with _");
+        assert!(
+            (1..=15).contains(&name.len()),
+            "{name} is not 1 to 15 characters"
+        );
+        assert!(
+            name.chars().any(|c| c.is_ascii_alphabetic()),
+            "{name} has no letter"
+        );
         assert!(
             name.chars().all(|c| c.is_ascii_alphanumeric() || c == '-'),
             "{name} has something other than letters, digits and hyphens"
