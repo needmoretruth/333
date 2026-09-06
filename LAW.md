@@ -46,7 +46,7 @@ everyone else. That is not what any of this is for.
 ## What the Law is not
 
 It is not the protocol. The protocol is arithmetic and runs whether or not you agree with a word
-of this: the file lives as long as someone is awake to pass it on. Nothing in the Law is checked
+of this: 333 lives as long as somebody is awake to pass it on. Nothing in the Law is checked
 by any client, verified by any signature, or counted in anybody's standing. Nothing here can be
 enforced, and the day it could be, it would stop telling us anything about the people keeping it.
 

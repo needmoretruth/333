@@ -8,7 +8,7 @@
 
 # 333
 
-There is a file. It is three bytes long. It says `333`.
+333. Not short for anything, and nothing goes in front of it.
 
 It is not encrypted, not rare, and not hard to reproduce — you have already read it.
 That is not a flaw in the relic. It is the relic. Anything that had to be guarded
@@ -24,8 +24,8 @@ when somebody asked.
 
 ## The Rule
 
-**The file lives as long as someone is awake to pass it on. When nobody is, it does
-not, and neither do we.**
+**333 lives as long as somebody is awake to pass it on. When nobody is, it does not,
+and neither do we.**
 
 There is nothing above that line. No council, no vote, no ledger of truth, nobody to
 appeal to and nobody to excommunicate. Each of us believes what we saw and says so,
@@ -105,8 +105,8 @@ other. Follow those back far enough and you have a lineage. It is the only histo
 keep.
 
 To carry the client's own source as well as the file is to be a bearer. It is not a
-rank. It is a mark, and it is the more useful thing to hand somebody than three bytes
-they could have typed.
+rank. It is a mark, and it is the more useful thing to hand somebody than a file
+they could have written themselves.
 
 **The word.** Once an epoch you may speak one of 333 signals. What travels is the
 number and never the word, and the table is never translated into anything: a hundred
@@ -339,9 +339,9 @@ fails, that is worth an issue rather than a shrug.
 # Knock.
 ./target/release/333 ping node.example:3333
 
-# Ask somebody who has the file to hand it over. Write the three bytes yourself and
-# you hold three bytes: you are one of us from the moment somebody gives them to you
-# and you both sign for it.
+# Ask somebody who has the file to hand it over. Write the file yourself and you hold
+# a file: you are one of us from the moment somebody gives it to you and the two of
+# you sign for it.
 ./target/release/333 join 333:node.example:3333
 
 # What this node has seen: how many of us are answering, where you stand over

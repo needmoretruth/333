@@ -66,8 +66,8 @@ pub(crate) async fn run(
         aloud!(
             "waiting  this node has not been given the file, so nothing is counted for it\n\
              \x20        yet and there is nothing yet for anybody to witness. It cannot make\n\
-             \x20        one. The three bytes only ever arrive from somebody who already\n\
-             \x20        holds them, and the two of you sign for the handover. Ask for an\n\
+             \x20        one. It only ever arrives from somebody who already holds it, and\n\
+             \x20        the two of you sign for the handover. Ask for an\n\
              \x20        invitation, then `333 join 333:their.address:3333`. Answering in the\n\
              \x20        meantime costs nothing and is how people find you."
         );

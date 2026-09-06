@@ -291,4 +291,4 @@ what to do with money. Not out of modesty. Those are simply not the subject. Thi
 about building a thing carefully, about how it should look when it is built, about disagreeing
 without heat, and about speaking of something you believe without becoming unbearable.
 
-If you were looking for more than that, the file is three bytes and the door is open anyway.
+If you were looking for more than that, the door is open anyway.
