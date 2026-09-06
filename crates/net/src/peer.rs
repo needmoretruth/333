@@ -73,6 +73,50 @@ impl PeerAddress {
         }
     }
 
+    /// Whether an address is worth handing to somebody on another network.
+    ///
+    /// A node binds to what it can bind to, and what it can bind to is often a place that
+    /// means something only where it is standing. Loopback is the machine itself. A private
+    /// range is the building it is in. A link local address is the wire it is plugged into.
+    /// Every one of them is a correct address for a neighbour and a wrong one for a stranger,
+    /// and a stranger who dials it reaches something of their own or nothing at all.
+    ///
+    /// A NAME IS ALWAYS WORTH HANDING OVER, because a name is resolved by whoever dials it
+    /// and only they can say where it points. This refuses what it can prove is local and
+    /// nothing else.
+    #[must_use]
+    pub fn worth_telling_a_stranger(&self) -> bool {
+        let Ok(address) = self.host().parse::<std::net::IpAddr>() else {
+            // A hostname, or an onion address, which is reachable from anywhere by design.
+            return true;
+        };
+        match address {
+            std::net::IpAddr::V4(four) => {
+                !(four.is_loopback()
+                    || four.is_private()
+                    || four.is_link_local()
+                    || four.is_unspecified()
+                    || four.is_broadcast()
+                    || four.is_documentation()
+                    || four.is_multicast()
+                    // 100.64.0.0/10, the range an internet provider puts between a household
+                    // and the rest of the world. A node here is behind two layers of address
+                    // translation and cannot be reached at this address by anybody.
+                    || (four.octets()[0] == 100 && (64..128).contains(&four.octets()[1])))
+            }
+            std::net::IpAddr::V6(six) => {
+                let first = six.segments()[0];
+                !(six.is_loopback()
+                    || six.is_unspecified()
+                    || six.is_multicast()
+                    // fc00::/7, addresses that route inside one organisation and nowhere else.
+                    || (first & 0xfe00) == 0xfc00
+                    // fe80::/10, addresses that mean nothing off the wire they are on.
+                    || (first & 0xffc0) == 0xfe80)
+            }
+        }
+    }
+
     /// The port to connect to.
     #[must_use]
     pub const fn port(&self) -> u16 {
@@ -200,6 +244,44 @@ mod tests {
             }
         );
         assert!(!address.needs_tor());
+    }
+
+    #[test]
+    fn an_address_that_means_something_only_here_is_not_handed_to_a_stranger() {
+        for local in [
+            "127.0.0.1:3333",
+            "0.0.0.0:3333",
+            "10.0.0.4:3333",
+            "192.168.1.5:3333",
+            "172.16.9.9:3333",
+            "169.254.7.7:3333",
+            "100.64.3.3:3333",
+            "203.0.113.9:3333",
+            "[::1]:3333",
+            "[fe80::1]:3333",
+            "[fc00::1]:3333",
+        ] {
+            assert!(
+                !parse(local).worth_telling_a_stranger(),
+                "{local} should not be published"
+            );
+        }
+    }
+
+    #[test]
+    fn an_address_the_world_can_reach_is_handed_over() {
+        for reachable in [
+            "9.9.9.9:3333",
+            "8.8.8.8:3333",
+            "[2606:4700:4700::1111]:3333",
+            "node.example.org:3333",
+            "abcdefghij.onion",
+        ] {
+            assert!(
+                parse(reachable).worth_telling_a_stranger(),
+                "{reachable} should be published"
+            );
+        }
     }
 
     #[test]

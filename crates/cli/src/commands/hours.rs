@@ -95,12 +95,26 @@ pub(crate) async fn one_round(
     if let Err(e) = node.keeping(now).await {
         aloud!("failed   marking this epoch as kept: {e:#}");
     }
-    let mine = match address {
-        Some(address) => say_where(node, &address, now).await,
+    let mine = match &address {
+        Some(address) => say_where(node, address, now).await,
         None => None,
     };
     if let Some(board) = board {
-        board.visit(node, mine).await;
+        // Kept for the neighbours, withheld from the strangers. An address that only means
+        // something on this wire is a correct thing to have written down and a wrong thing to
+        // leave where somebody on the other side of the world will dial it.
+        let worth = address
+            .as_ref()
+            .is_some_and(PeerAddress::worth_telling_a_stranger);
+        if mine.is_some() && !worth {
+            aloud!(
+                "meet     not leaving this address at {}. It reaches this node from here\n\
+                 \x20        and from nowhere else, and a stranger who dialled it would\n\
+                 \x20        reach something of their own.",
+                board.place()
+            );
+        }
+        board.visit(node, mine.filter(|_| worth)).await;
     }
     trade_news(node, dialer, now).await;
     ask_those_drawn(node, dialer, now).await;
