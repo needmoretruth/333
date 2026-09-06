@@ -33,6 +33,10 @@ pub(crate) struct Common {
     /// Behind a lock because the screen can add one while the node is running, and
     /// the next Tor start is the one that reads it. Once Tor is up, adding is a thing
     /// that has no effect, and the screen says so rather than pretending.
+    // Read where Tor is started, which is a build with arti in it. Every shipped
+    // build has one; the bare build with no features is checked and not released, and
+    // in that one this is carried and never opened.
+    #[cfg_attr(not(feature = "tor"), allow(dead_code))]
     pub(crate) bridges: std::sync::Arc<std::sync::Mutex<n333_net::bridges::Bridges>>,
     /// Whether to accept state directories other users can read.
     ///

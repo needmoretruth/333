@@ -154,6 +154,8 @@ impl Dialer {
     ///
     /// Asked before offering to change something that only the start reads, so that a
     /// person is told their bridge will do nothing rather than left believing it will.
+    /// Only the screen asks, and the smallest edition has no screen.
+    #[cfg_attr(not(feature = "screen"), allow(dead_code))]
     pub(crate) fn tor_is_up(&self) -> bool {
         self.tor.get().is_some()
     }
