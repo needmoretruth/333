@@ -33,30 +33,43 @@ use crate::node::Node;
 
 use door::{Caller, Door, spawn_exchange};
 
+/// Everything about how one vigil is kept.
+///
+/// One struct rather than seven parameters: they are read together, they are written
+/// down together where the command line is read, and seven of anything in a row is a
+/// place where two of them get swapped and it still compiles.
+pub(crate) struct Vigil {
+    /// The socket to listen on, or `None` to listen only through Tor.
+    pub(crate) bind: Option<SocketAddr>,
+    /// Whether to publish an onion address as well.
+    pub(crate) tor: bool,
+    /// What this node tells others to reach it at, when it cannot work that out.
+    pub(crate) announce: Option<PeerAddress>,
+    /// Whether to say on the local network that something here speaks 333.
+    pub(crate) nearby: bool,
+    /// The meeting point, or `None` to use none.
+    pub(crate) meet: Option<String>,
+    /// Whether to say the lines rather than draw the screen.
+    pub(crate) plain: bool,
+    /// Whether to ask the router to send the port to this machine.
+    pub(crate) ask_the_router: bool,
+}
+
 /// Run until interrupted, answering everyone who arrives.
-///
-/// `ask_the_router` asks whatever router is in front of this machine to send the port
-/// here, which is what makes a socket on a home connection answer anybody at all.
-///
-/// `bind` is the socket to listen on, or `None` to listen only through Tor. `tor`
-/// publishes an onion address as well. `announce` overrides what this node tells
-/// others to reach it at, for the ordinary case of a socket that cannot say. `meet`
-/// is the meeting point to use, or `None` to use none and be found only by whoever
-/// was handed an invitation or is on this network.
 ///
 /// # Errors
 /// Fails if the node cannot be opened, if neither way of listening was asked for, if
 /// a socket cannot be bound, or if Tor was asked for and cannot start.
-pub(crate) async fn run(
-    common: &Common,
-    bind: Option<SocketAddr>,
-    tor: bool,
-    announce: Option<PeerAddress>,
-    nearby: bool,
-    meet: Option<String>,
-    plain: bool,
-    ask_the_router: bool,
-) -> anyhow::Result<()> {
+pub(crate) async fn run(common: &Common, how: Vigil) -> anyhow::Result<()> {
+    let Vigil {
+        bind,
+        tor,
+        announce,
+        nearby,
+        meet,
+        plain,
+        ask_the_router,
+    } = how;
     if bind.is_none() && !tor {
         bail!("nothing would be listening: --no-direct needs --tor");
     }

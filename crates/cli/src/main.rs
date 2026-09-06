@@ -282,13 +282,15 @@ async fn main() -> anyhow::Result<()> {
         } => {
             commands::serve::run(
                 &common,
-                (!no_direct).then_some(bind),
-                tor,
-                announce,
-                !no_mdns,
-                (!no_meet).then_some(meet),
-                plain,
-                !no_upnp,
+                commands::serve::Vigil {
+                    bind: (!no_direct).then_some(bind),
+                    tor,
+                    announce,
+                    nearby: !no_mdns,
+                    meet: (!no_meet).then_some(meet),
+                    plain,
+                    ask_the_router: !no_upnp,
+                },
             )
             .await
         }
