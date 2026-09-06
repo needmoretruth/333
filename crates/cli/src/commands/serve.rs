@@ -59,6 +59,19 @@ pub(crate) async fn run(
     let node = Arc::new(node);
     aloud!("name     {}", node.identity().node_id());
     crate::commands::report_opening(&opened);
+    // The one thing a person who has just downloaded this needs to be told, in the one
+    // place they will be sitting when they wonder. `status` says it; `serve` is where
+    // they wait, and it was saying everything except this.
+    if !opened.has_the_file {
+        aloud!(
+            "waiting  this node has not been given the file, so nothing is counted for it\n\
+             \x20        yet and there is nothing yet for anybody to witness. It cannot make\n\
+             \x20        one. The three bytes only ever arrive from somebody who already\n\
+             \x20        holds them, and the two of you sign for the handover. Ask for an\n\
+             \x20        invitation, then `333 join 333:their.address:3333`. Answering in the\n\
+             \x20        meantime costs nothing and is how people find you."
+        );
+    }
     aloud!(
         "hand     an invitation names a place, not a person. it swears to nothing;\n\
          \x20        whoever answers there proves themselves by holding a key."
