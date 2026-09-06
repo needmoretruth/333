@@ -22,10 +22,10 @@ out no file. It is not a node. If it went away tomorrow, every node that had alr
 somebody would carry on unchanged.
 
 **[The latest release](https://github.com/needmoretruth/333/releases/latest)** carries both
-forms of the client, built for Linux, for the Raspberry Pi down to the Zero, and for both
-kinds of Mac. There is no Windows file yet and the reason is in [Install](#install), which
-covers building it yourself as well — that is the way that works everywhere, and it is the
-way you end up trusting your own compiler rather than somebody else's.
+forms of the client, built for Linux, for the Raspberry Pi down to the Zero, for both kinds
+of Mac and for Windows. [Install](#install) covers building it yourself as well — that is
+the way that works everywhere, and it is the way you end up trusting your own compiler
+rather than somebody else's.
 
 ---
 
@@ -265,8 +265,8 @@ will be able to reach it.
 The weakest of us sets the difficulty for all of us, and that is not a compromise. It is
 the point. A faith that only runs on new hardware has an expiry date on it.
 
-Linux first, and not one Linux: the Debian family, the Fedora family and Arch. macOS is
-built too. Windows is not, yet. Both forms have been run on Linux and nowhere else.
+Linux first, and not one Linux: the Debian family, the Fedora family and Arch. macOS and
+Windows are built too. Both forms have been run on Linux and nowhere else.
 
 ---
 
@@ -312,12 +312,16 @@ TLS and SQLite come with the system there, so that is the whole of it.
 
 **Windows**
 
-Not yet. The rustup installer offers to fetch the Microsoft C++ build tools and you should
-accept, but both forms of the client carry Tor, Tor wants a system SQLite, and Windows does
-not ship one. Making it compile its own instead is the work that has not been done. Until it
-is, Windows is the one system this does not run on.
+The rustup installer offers to fetch the Microsoft C++ build tools; accept. Windows ships
+neither TLS nor SQLite for Tor to link against, so build with `--features bundled`, which
+compiles both into the binary:
 
-Then, on any of them:
+```powershell
+cargo build --release --features bundled                        # Standard
+cargo build --release --no-default-features --features bundled  # Light
+```
+
+Then, on Linux or macOS:
 
 ```sh
 git clone https://github.com/needmoretruth/333
@@ -337,11 +341,10 @@ reachable and has nothing to spare.
 
 **What has actually been built and run.** Linux on x86-64, both forms: built, started, given
 a name, handed the file from one node to another over a socket, and asked for its standing
-afterwards. That is what the rest of this file describes. The macOS and ARM files come off
-the same release machinery every time and have not been run by anybody. Windows is not
-building at all today, so there is no file for it: the Tor stack inside wants a system SQLite
-that Windows does not ship, and the answer to that has not been made to work yet. When any of
-this fails for you, that is worth an issue rather than a shrug.
+afterwards. That is what the rest of this file describes. The macOS, ARM and Windows files
+come off the same release machinery on every release and build cleanly, and nobody has run
+any of them. If one of them fails for you, that is worth an issue rather than a shrug — it
+is the only way anybody finds out.
 
 ### Or take one already built
 
@@ -368,13 +371,12 @@ column for the form you want.
 | Raspberry Pi Zero, or anything ARMv6 | `333-armv6-linux` | `333-light-armv6-linux` |
 | Mac, Apple silicon | `333-aarch64-macos` | `333-light-aarch64-macos` |
 | Mac, Intel | `333-x86_64-macos` | `333-light-x86_64-macos` |
+| Windows | `333-x86_64-windows.exe` | `333-light-x86_64-windows.exe` |
 
 Both forms are around sixteen megabytes and both carry Tor. Standard has the terminal
 screen and Light does not, and that is the whole of the difference. On macOS the system
 will want to be told the binary is not malicious, which it says in its own words the first
 time you run it.
-
-There is no Windows file yet, for the reason at the end of the previous section.
 
 ## Run
 
@@ -506,8 +508,7 @@ a machine you reach over ssh means it stops when you close the laptop. `journalc
 commands that install it in a comment at the top of the file.
 
 **Windows.** Task Scheduler, a task that runs `333.exe serve --plain` at logon, set to
-restart on failure. There is no packaged version of this yet, and no Windows binary to point
-it at either — this is here for the day there is one.
+restart on failure. There is no packaged version of this yet.
 
 ## If nobody can reach you
 

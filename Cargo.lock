@@ -2590,7 +2590,7 @@ dependencies = [
 
 [[package]]
 name = "n333-cli"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -2608,7 +2608,7 @@ dependencies = [
 
 [[package]]
 name = "n333-core"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "ed25519-dalek",
  "postcard",
@@ -2621,7 +2621,7 @@ dependencies = [
 
 [[package]]
 name = "n333-net"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "arti-client",
  "futures",
@@ -2644,7 +2644,7 @@ dependencies = [
 
 [[package]]
 name = "n333-store"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "n333-core",
  "thiserror 2.0.20",
