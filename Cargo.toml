@@ -3,7 +3,7 @@ resolver = "3"
 members = ["crates/core", "crates/net", "crates/store", "crates/cli"]
 
 [workspace.package]
-version = "0.0.1"
+version = "0.1.0"
 edition = "2024"
 # Declared as the toolchain this is actually built and tested on. The arti crates
 # claim 1.91, but an MSRV nobody compiles is an untested claim.
@@ -123,3 +123,12 @@ indexing_slicing = "warn"
 # minute — and makes every test that touches a key look like a hang.
 [profile.dev.package."*"]
 opt-level = 3
+
+# What is shipped. Debug symbols are a third of the binary and are of no use to
+# somebody running it: whoever is debugging has the source and builds their own.
+# One codegen unit and link-time optimisation are worth the slower build here and
+# nowhere else, because this build happens once per release and runs for years.
+[profile.release]
+strip = "symbols"
+lto = "thin"
+codegen-units = 1

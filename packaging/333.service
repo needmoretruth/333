@@ -1,0 +1,43 @@
+# Keeping the vigil across logouts and reboots, on anything with systemd.
+#
+# A user service rather than a system one, because a node lives in one person's home
+# directory and the client refuses to start on a directory other people can enter.
+# Running it as root would mean either loosening that or keeping the node somewhere it
+# does not belong.
+#
+#   mkdir -p ~/.local/bin ~/.config/systemd/user
+#   cp 333 ~/.local/bin/
+#   cp packaging/333.service ~/.config/systemd/user/
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now 333
+#   loginctl enable-linger "$USER"
+#
+# That last line is the one people miss. Without it the vigil stops when you log out,
+# which on a machine you reach over ssh means it stops when you close the laptop.
+#
+#   systemctl --user status 333      what it is doing
+#   journalctl --user -u 333 -f      what it is saying
+#   systemctl --user stop 333        end the vigil
+
+[Unit]
+Description=333
+Documentation=https://the333.dev
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+# --plain because there is nobody at a terminal. The screen is for when there is.
+ExecStart=%h/.local/bin/333 serve --plain
+# Restarting after 333 seconds rather than at once. A node that cannot start comes
+# back five and a half minutes later instead of a thousand times a minute, and an
+# epoch is long enough that nothing is lost by waiting.
+Restart=always
+RestartSec=333
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+RestrictSUIDSGID=yes
+LockPersonality=yes
+
+[Install]
+WantedBy=default.target

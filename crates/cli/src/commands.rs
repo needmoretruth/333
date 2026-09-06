@@ -129,6 +129,14 @@ pub(crate) async fn bootstrap(common: &Common) -> anyhow::Result<n333_net::tor::
     .context("starting the Tor client")
 }
 
+/// How many epochs of silence mean something is wrong rather than nothing has happened.
+///
+/// Three. Every member is asked by three verifiers every epoch, so a reachable node has
+/// something signed about it within one. Three is long enough that a quiet start, a
+/// restart, or an epoch where the people who drew this node were themselves asleep does
+/// not raise it.
+const EPOCHS_BEFORE_SILENCE_MEANS_SOMETHING: u64 = 3;
+
 /// What opening a node found, said once at the start.
 ///
 /// Only the lines that are true of this node right now. A fresh node has no record
@@ -158,6 +166,26 @@ pub(crate) fn report_opening(opened: &crate::node::Opened) {
              \x20        after the epochs they belong to are gone, because nothing else of\n\
              \x20        them survives the window.",
             opened.witnessed
+        );
+    }
+    // Being on the roll and having nothing signed about you is the one failure this
+    // client can see from the inside and a person cannot see at all. Everything looks
+    // right: the node starts, it dials out, it trades statements, it says nothing is
+    // wrong. What is wrong is that nobody can dial back, so nobody asks, so nothing is
+    // ever witnessed, so the window fills with epochs that do not count. Said only
+    // after a few of them, and only when there is somebody who could have asked.
+    if opened.has_the_file
+        && opened.witnessed == 0
+        && opened.chain_length >= EPOCHS_BEFORE_SILENCE_MEANS_SOMETHING
+        && opened.members >= 2
+    {
+        aloud!(
+            "unseen   nothing has been signed about this node, in any epoch. Reaching out\n\
+             \x20        works and being reached does not, and only the second one is counted:\n\
+             \x20        whoever is drawn to ask has to arrive. Two things do this. A router\n\
+             \x20        that does not send port 3333 to this machine, and an address nobody\n\
+             \x20        was given. `serve --tor` needs neither — an onion address is reachable\n\
+             \x20        from behind any router, and this client already carries Tor."
         );
     }
     if opened.members != 0 {

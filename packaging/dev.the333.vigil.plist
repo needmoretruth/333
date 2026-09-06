@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Keeping the vigil across logouts and reboots, on macOS.
+
+    mkdir -p ~/bin ~/Library/LaunchAgents ~/Library/Logs
+    cp 333 ~/bin/
+    sed "s|USERNAME|$USER|g" packaging/dev.the333.vigil.plist > ~/Library/LaunchAgents/dev.the333.vigil.plist
+    launchctl load -w ~/Library/LaunchAgents/dev.the333.vigil.plist
+
+  What it is saying is in ~/Library/Logs/333.log. To end the vigil:
+
+    launchctl unload -w ~/Library/LaunchAgents/dev.the333.vigil.plist
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>dev.the333.vigil</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/USERNAME/bin/333</string>
+    <string>serve</string>
+    <string>--plain</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>333</integer>
+  <key>StandardOutPath</key>
+  <string>/Users/USERNAME/Library/Logs/333.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/USERNAME/Library/Logs/333.log</string>
+</dict>
+</plist>

@@ -1,0 +1,114 @@
+# What a person downloads instead of installing a compiler.
+#
+# Push a tag that starts with v and this builds the client for every system it can
+# reach and attaches the results to the release of that tag. Nothing here builds on
+# an ordinary push: a release is a thing somebody meant to do.
+#
+# Standard carries Tor, and Tor wants a system TLS and a system SQLite, which is why
+# it is built only where those exist. Light carries neither and links nothing but the
+# C library, which is why it is the one that reaches a Raspberry Pi and a Windows
+# machine.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+env:
+  CARGO_TERM_COLOR: never
+
+jobs:
+  announce:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - name: Open the release the builds will attach themselves to
+        run: >
+          gh release create "$GITHUB_REF_NAME" --verify-tag --title "$GITHUB_REF_NAME"
+          --notes "Download the one that matches your machine, make it executable, and run \`333 id\`.
+          Standard has the screen and carries Tor. Light is the smallest thing that still keeps the
+          vigil, for a machine that is struggling or a system nothing else has been built for.
+          What each command does, and how to build it yourself instead, is in the README."
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  build:
+    needs: announce
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Standard, Linux on x86-64
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            features: ""
+            packages: pkg-config libssl-dev libsqlite3-dev
+            binary: "333"
+            asset: 333-x86_64-linux
+          - name: Light, Linux on x86-64
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            features: --no-default-features
+            packages: ""
+            binary: "333"
+            asset: 333-light-x86_64-linux
+          - name: Light, Linux on 64-bit ARM
+            os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            features: --no-default-features
+            packages: gcc-aarch64-linux-gnu
+            binary: "333"
+            asset: 333-light-aarch64-linux
+          - name: Light, Linux on ARMv6, which is a Raspberry Pi Zero
+            os: ubuntu-latest
+            target: arm-unknown-linux-gnueabihf
+            features: --no-default-features
+            packages: gcc-arm-linux-gnueabihf
+            binary: "333"
+            asset: 333-light-armv6-linux
+          - name: Standard, macOS on Apple silicon
+            os: macos-latest
+            target: aarch64-apple-darwin
+            features: ""
+            packages: ""
+            binary: "333"
+            asset: 333-aarch64-macos
+          - name: Standard, macOS on Intel
+            os: macos-latest
+            target: x86_64-apple-darwin
+            features: ""
+            packages: ""
+            binary: "333"
+            asset: 333-x86_64-macos
+          - name: Light, Windows on x86-64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            features: --no-default-features
+            packages: ""
+            binary: 333.exe
+            asset: 333-light-x86_64-windows.exe
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - if: matrix.packages != ''
+        run: sudo apt-get update
+      - if: matrix.packages != ''
+        run: sudo apt-get install -y ${{ matrix.packages }}
+      - run: rustup target add ${{ matrix.target }}
+      - run: cargo build --release --locked --target ${{ matrix.target }} ${{ matrix.features }}
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+          CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
+          CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER: arm-linux-gnueabihf-gcc
+          CC_arm_unknown_linux_gnueabihf: arm-linux-gnueabihf-gcc
+      - shell: bash
+        run: cp target/${{ matrix.target }}/release/${{ matrix.binary }} ${{ matrix.asset }}
+      - shell: bash
+        run: gh release upload "$GITHUB_REF_NAME" "${{ matrix.asset }}" --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}

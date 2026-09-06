@@ -170,21 +170,27 @@
 
   <h2>Start here</h2>
 
-  <p>You need Rust and a few minutes. What to install first, for Ubuntu, Debian, Fedora, Arch,
-  macOS and Windows, is in the repository.</p>
+  <p>Take the file for your machine from
+  <a href="https://github.com/needmoretruth/333/releases">the releases page</a>, make it
+  executable, and run it. There is no compiler, no account and no installer in this.</p>
 
-<pre>git clone https://github.com/needmoretruth/333
-cd 333
-cargo build --release
+<pre>chmod +x 333-x86_64-linux
+mv 333-x86_64-linux ~/.local/bin/333
 
 <span class="said"># Ask for a name. The first run searches until one is called.</span>
-./target/release/333 id
+333 id
 
 <span class="said"># Keep the vigil. Answer whoever knocks, keep the hours.</span>
-./target/release/333 serve
+333 serve
 
 <span class="said"># What this node has seen, and where you stand.</span>
-./target/release/333 status</pre>
+333 status</pre>
+
+  <p class="dim">There are files for Linux, for the Raspberry Pi down to the Zero, for both
+  kinds of Mac and for Windows. If none of them fits, or you would rather not run a binary
+  somebody else built, the repository says what to install and how to build it, on Ubuntu,
+  Debian, Fedora, Arch, macOS and Windows. It also carries what you need to keep it running
+  after you log out, which is the part that decides whether you are counted.</p>
 
   <p class="dim">Nobody can start a network alone. To be given the file you need an invitation
   from somebody who already has it, and then <code>333 join 333:their.address:3333</code>. Two

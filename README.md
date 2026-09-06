@@ -231,8 +231,37 @@ and Windows follow. Today both forms exist and have been run on Linux.
 
 ## Install
 
-There are no prebuilt binaries. You build it, which is one command and a few minutes, and
-which means the thing you run is the thing you can read.
+### Download it
+
+Every release carries a binary for each system it has been built for. Take the one that
+matches yours, make it executable, and it is installed.
+
+```sh
+curl -LO https://github.com/needmoretruth/333/releases/latest/download/333-x86_64-linux
+chmod +x 333-x86_64-linux
+mkdir -p ~/.local/bin && mv 333-x86_64-linux ~/.local/bin/333
+333 id
+```
+
+| your machine | the file |
+|---|---|
+| Linux, ordinary desktop or server | `333-x86_64-linux` |
+| Linux, and you want the small one | `333-light-x86_64-linux` |
+| Raspberry Pi 3, 4, 5 on 64-bit | `333-light-aarch64-linux` |
+| Raspberry Pi Zero, or anything ARMv6 | `333-light-armv6-linux` |
+| Mac, Apple silicon | `333-aarch64-macos` |
+| Mac, Intel | `333-x86_64-macos` |
+| Windows | `333-light-x86_64-windows.exe` |
+
+Standard is around 17 MB and has the screen and Tor in it. Light is around 5 MB, links
+nothing but the C library, and is the smallest thing that still counts as keeping the
+vigil. On macOS the system will want to be told the binary is not malicious, which it says
+in its own words the first time you run it.
+
+Nothing is signed by a developer certificate and nothing goes through an app store. If that
+matters to you, or if there is no file for your machine, build it.
+
+### Or build it
 
 **Rust 1.96 or newer.** What a distribution packages is usually older than that, so take it
 from [rustup.rs](https://rustup.rs):
@@ -284,8 +313,8 @@ cargo build --release                        # Standard: the screen, and Tor
 cargo build --release --no-default-features  # Light: neither
 ```
 
-Standard comes out around 28 MB and links your system TLS and SQLite, both of which arrive
-with Tor. Light comes out around 8 MB and links nothing but the C library, which is why it is
+Standard comes out around 17 MB and links your system TLS and SQLite, both of which arrive
+with Tor. Light comes out around 5 MB and links nothing but the C library, which is why it is
 the form for a machine that is struggling and the form most likely to build somewhere nobody
 has tried yet.
 
@@ -364,6 +393,59 @@ Tor's state if it uses Tor. Two nodes on one machine are two directories.
 ./target/release/333 --data-dir ./node-a serve --bind 127.0.0.1:3333
 ./target/release/333 --data-dir ./node-b join 333:127.0.0.1:3333
 ```
+
+## Keeping it running
+
+The vigil is the product. A node that stops when you close the terminal is a node that is
+absent for every epoch you were asleep, and absence is the only thing that costs you
+anything here.
+
+**Linux, and anything else with systemd.** There is a unit in `packaging/333.service`.
+
+```sh
+mkdir -p ~/.local/bin ~/.config/systemd/user
+cp target/release/333 ~/.local/bin/
+cp packaging/333.service ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now 333
+loginctl enable-linger "$USER"
+```
+
+That last line is the one people miss. Without it the vigil stops when you log out, which on
+a machine you reach over ssh means it stops when you close the laptop. `journalctl --user -u
+333 -f` shows what it is saying.
+
+**macOS.** There is a launch agent in `packaging/dev.the333.vigil.plist`, with the three
+commands that install it in a comment at the top of the file.
+
+**Windows.** Task Scheduler, a task that runs `333.exe serve --plain` at logon, set to
+restart on failure. There is no packaged version of this yet.
+
+## If nobody can reach you
+
+Answering is what gets you counted, and reaching out is not. Whoever is drawn to ask you has
+to arrive; if they cannot, nothing is signed about you, and those epochs leave the sum
+rather than counting against you. You are not punished. You are invisible, which over a
+window of 333 epochs is worse.
+
+Most home connections are like this. Your router does not send port 3333 to your machine
+unless you have told it to, and a good many connections cannot be told at all.
+
+There are two ways out.
+
+**Forward the port.** In your router, send TCP port 3333 to this machine, and then tell the
+node what to hand out: `333 serve --announce your.address:3333`. If you do not know what to
+put there, start the node and it will say what address the meeting point saw it arrive from,
+which is the half you cannot work out from where you are sitting.
+
+**Or raise an onion address.** `333 serve --tor` needs no router, no forwarding and no
+`--announce`, because an onion address is reachable from behind anything. It costs seconds
+to minutes at startup while Tor wakes. The rest of this file describes Tor as the answer for
+somebody whose address must not be seen, and it is, but the everyday use is this one.
+
+The client tells you when this has happened to you. After three epochs with nothing signed
+about it, on a roll with somebody else on it who could have asked, it says so at startup
+rather than leaving you to work out why your standing never moves.
 
 Without `--data-dir` a node lives in the conventional place for the system:
 
