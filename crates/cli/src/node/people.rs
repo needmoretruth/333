@@ -178,17 +178,40 @@ impl Node {
             .map(ToOwned::to_owned)
     }
 
-    /// Where every node other than this one last said it could be found.
+    /// Everywhere this node could knock: what nodes signed, and what it overheard.
+    ///
+    /// The two are not distinguished here on purpose. An address is somewhere to
+    /// knock; whoever answers proves who they are by holding a key, and an address
+    /// that came from a broadcast on this network is worth exactly as much and no
+    /// more than one that came from an invitation.
     pub(crate) async fn where_others_are(&self) -> Vec<String> {
         let me = self.identity.public_key();
-        self.state
+        let mut everywhere: BTreeSet<String> = self
+            .state
             .lock()
             .await
             .directory
             .entries()
             .filter(|(key, _)| **key != me)
             .map(|(_, address)| address.to_owned())
-            .collect()
+            .collect();
+        everywhere.extend(self.found.lock().await.iter().cloned());
+        everywhere.into_iter().collect()
+    }
+
+    /// Keep an address overheard on this network, and say whether it is new.
+    ///
+    /// The cap is what stops a machine on the same network from filling this node's
+    /// memory by announcing a new address every second. Past it, the ones already
+    /// here are kept: a node that has heard of 64 neighbours has enough to be going
+    /// on with, and the ones it already trades with tell it about the rest.
+    pub(crate) async fn found(&self, address: String) -> bool {
+        const ENOUGH_NEIGHBOURS: usize = 64;
+        let mut found = self.found.lock().await;
+        if found.len() >= ENOUGH_NEIGHBOURS && !found.contains(&address) {
+            return false;
+        }
+        found.insert(address)
     }
 
     /// The epoch somebody handed this node the file, if anybody has.

@@ -72,6 +72,13 @@ fs-mistrust = "=0.15.1"
 # instead of assuming the XDG variables exist. It is data only: no unsafe, no C.
 directories = "6"
 
+# --- finding each other on one network -----------------------------------------
+# mDNS is how two nodes in the same house meet without anybody typing an invitation.
+# Pure Rust, no async runtime of its own, and small: four crates, all already the kind
+# of thing this tree carries. The `logging` default feature is off — everything this
+# client has to say goes through its own voice, not through `log`.
+mdns-sd = { version = "0.21.2", default-features = false, features = ["async"] }
+
 # --- the screen ----------------------------------------------------------------
 # The Standard edition's screen. Pure Rust, and the only part of the client a person
 # looks at for hours, which is why it is a library rather than hand-rolled escape

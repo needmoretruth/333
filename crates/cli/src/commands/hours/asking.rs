@@ -84,6 +84,32 @@ pub(super) async fn trade_news(node: &Node, dialer: &Dialer, now: Epoch) {
     }
 }
 
+/// Trade with one address now, without waiting for the next epoch.
+///
+/// For a node that has just turned up on this network. The hours come round every 333
+/// minutes, and a person who starts a second node in the same house and watches
+/// nothing happen for five hours has been told, correctly, that nothing is happening.
+pub(crate) async fn trade_at_once(node: &Node, dialer: &Dialer, address: &str) -> bool {
+    let now = Epoch::now();
+    let mine = match node.tidings(now).await {
+        Ok(mine) => mine,
+        Err(e) => {
+            aloud!("failed   gathering what this node could pass on: {e:#}");
+            return false;
+        }
+    };
+    match trade_with(node, dialer, address, now, &mine.frames).await {
+        Ok(heard) => {
+            crate::commands::report_heard(&heard);
+            true
+        }
+        Err(e) => {
+            aloud!("quiet    {address}: {e:#}");
+            false
+        }
+    }
+}
+
 /// One round with one node: greet, trade, file whatever came back.
 async fn trade_with(
     node: &Node,

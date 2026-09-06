@@ -25,6 +25,7 @@ tor = [
 [dependencies]
 n333-core.workspace = true
 futures.workspace = true
+mdns-sd.workspace = true
 tokio = { workspace = true, features = ["net"] }
 tokio-util.workspace = true
 tracing.workspace = true

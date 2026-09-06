@@ -117,6 +117,16 @@ enum Command {
         #[arg(long, value_name = "HOST:PORT")]
         announce: Option<PeerAddress>,
 
+        /// Do not say on the local network that this node is here.
+        ///
+        /// What goes out otherwise is that something on this machine speaks 333 and
+        /// on which port — not this node's name — which is what a port scan of the
+        /// same network would find anyway. It is how two nodes in one house find each
+        /// other with nobody typing an invitation. A node listening only through Tor
+        /// never does this at all.
+        #[arg(long)]
+        no_mdns: bool,
+
         /// Say the lines instead of drawing the screen.
         ///
         /// The screen is what this client does on a terminal. Anywhere else — a pipe,
@@ -189,9 +199,18 @@ async fn main() -> anyhow::Result<()> {
             tor,
             no_direct,
             announce,
+            no_mdns,
             plain,
         } => {
-            commands::serve::run(&common, (!no_direct).then_some(bind), tor, announce, plain).await
+            commands::serve::run(
+                &common,
+                (!no_direct).then_some(bind),
+                tor,
+                announce,
+                !no_mdns,
+                plain,
+            )
+            .await
         }
         Command::Say { index } => commands::say::run(&common, index).await,
         Command::Status => commands::status::run(&common).await,

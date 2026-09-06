@@ -172,6 +172,15 @@ we hold — those statements, and the records of who let whom in. Nobody keeps t
 There is no list. Each of us knows what has reached us, two of us can know different
 things, and neither of us is wrong.
 
+On one local network there is nothing to tell. A node that answers on a socket says
+on that network that something here speaks 333, and on which port — not its name, and
+nothing anybody could carry back to a name in the record; what goes out is what a port
+scan of the same network would find anyway. Two of us in one house find each other
+that way with nobody typing an invitation, and knock on each other the moment they do
+rather than at the next turn of the hours. `--no-mdns` keeps your node off it, and a
+node that answers only through Tor never does it at all — announcing on the network
+you are sitting on is the one thing an onion address exists to prevent.
+
 If your node answers on every interface, or sits behind something that forwards a port,
 it cannot work out what to tell people. Tell it: `--announce your.address:3333`.
 

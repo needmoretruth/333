@@ -39,6 +39,7 @@ use n333_net::PeerAddress;
 use crate::dial::Dialer;
 use crate::node::Node;
 
+pub(crate) use asking::trade_at_once;
 use asking::{ask_those_drawn, trade_news};
 use judging::judge_what_is_ready;
 

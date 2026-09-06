@@ -12,6 +12,7 @@ mod door;
 
 use std::net::SocketAddr;
 use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::{Context as _, bail};
 use n333_core::Epoch;
@@ -38,6 +39,7 @@ pub(crate) async fn run(
     bind: Option<SocketAddr>,
     tor: bool,
     announce: Option<PeerAddress>,
+    nearby: bool,
     plain: bool,
 ) -> anyhow::Result<()> {
     if bind.is_none() && !tor {
@@ -93,6 +95,25 @@ pub(crate) async fn run(
         aloud!("answer   {bound}");
         if announce.is_none() {
             say_the_invitation(bound, &found_address);
+        }
+        // Only a node that answers on a socket says anything on the local network.
+        // Browsing is not the quiet half of it — asking the whole network out loud
+        // whether anybody here speaks 333 is the same disclosure as answering it — so
+        // a hiding node does neither.
+        if nearby {
+            match n333_net::Nearby::start(bound.port()) {
+                Ok(nearby) => {
+                    aloud!(
+                        "nearby   saying on this network that something here speaks 333, and\n\
+                         \x20        listening for the others. Not this node's name: what goes out\n\
+                         \x20        is what a port scan of the same network would find. --no-mdns\n\
+                         \x20        keeps this node off it."
+                    );
+                    let (node, dialer) = (Arc::clone(&node), dialer.clone());
+                    listening.spawn(greet_the_neighbours(node, dialer, nearby));
+                }
+                Err(e) => aloud!("nearby   this network would not carry the announcement: {e}"),
+            }
         }
         let node = Arc::clone(&node);
         listening.spawn(async move { answer_direct(listener, node, Door::new()).await });
@@ -158,6 +179,63 @@ fn farewell() {
         Epoch::now().0,
         n333_core::presence::WINDOW_EPOCHS
     );
+}
+
+/// How long a node on the same network gets to answer before this one moves on.
+///
+/// Not the patience this node has for a peer: that one is a ceiling for reaching
+/// across the world through Tor, and spending it on a virtual interface with nothing
+/// behind it would leave a neighbour that is actually there waiting behind it.
+const NEARBY_PATIENCE: Duration = Duration::from_secs(10);
+
+/// Knock on every node that turns up on this network, as it turns up.
+///
+/// Waiting for the next epoch would be correct and useless: a person who starts a
+/// second node in the same house and watches nothing happen for five hours has been
+/// told, correctly, that nothing is happening.
+async fn greet_the_neighbours(
+    node: Arc<Node>,
+    dialer: Dialer,
+    nearby: n333_net::Nearby,
+) -> anyhow::Result<()> {
+    let mut greeted = std::collections::BTreeSet::new();
+    while let Some(neighbour) = nearby.found().await {
+        // A machine with eight interfaces is announced eight times over. It is one
+        // neighbour, and it is worth one knock.
+        if !greeted.insert(neighbour.label) {
+            continue;
+        }
+        for address in neighbour.addresses {
+            let address = address.to_string();
+            aloud!("nearby   one of us at {address}");
+            // On a deadline of its own, and a short one. A machine on the same network
+            // answers in milliseconds; the several minutes this node is willing to
+            // wait on a peer across the world would be spent here on an address that
+            // belongs to a virtual interface with nothing behind it.
+            let answered = tokio::time::timeout(
+                NEARBY_PATIENCE,
+                hours::trade_at_once(&node, &dialer, &address),
+            )
+            .await;
+            if answered != Ok(true) {
+                continue;
+            }
+            // Kept only now that it is known to answer, so that the addresses this
+            // node carries into its hours are the ones somebody is behind.
+            node.found(address.clone()).await;
+            // Nothing here takes the file for anybody. A node is given it because a
+            // person asked for it and two keys signed, and finding a neighbour is not
+            // asking.
+            if node.subject().await.is_none() {
+                aloud!(
+                    "         `333 join 333:{address}` asks them for the file. Nothing\n\
+                     \x20        here does it for you."
+                );
+            }
+            break;
+        }
+    }
+    Ok(())
 }
 
 /// Say what to hand somebody so they can find this node.

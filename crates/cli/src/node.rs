@@ -90,6 +90,15 @@ pub(crate) struct Node {
     /// Outside the lock: it is written once, in the round that makes this node a
     /// member, and never changes afterwards.
     subject: Mutex<Option<Subject>>,
+    /// Addresses heard of on this network with nobody signing for them.
+    ///
+    /// Somewhere to knock and nothing else, which is why they are here and not in the
+    /// directory: the directory holds statements nodes signed about where they are,
+    /// and these are rumours from a broadcast. They are not written down and they do
+    /// not survive a restart. Whoever answers proves who they are by holding a key,
+    /// and then says where they are in a statement of their own — and that one is
+    /// kept.
+    found: Mutex<std::collections::BTreeSet<String>>,
     /// Everything that changes, behind one lock.
     ///
     /// One lock rather than four: the things under it are written together — a
@@ -198,6 +207,7 @@ impl Node {
             Self {
                 home: home.to_path_buf(),
                 identity,
+                found: Mutex::new(std::collections::BTreeSet::new()),
                 subject: Mutex::new(subject),
                 state: Mutex::new(State {
                     chain,
