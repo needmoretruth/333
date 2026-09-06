@@ -59,7 +59,21 @@ interface Line {
   b: string;
   /** When this server received it, in milliseconds. Used only to forget. */
   t: number;
+  /** Where the node was when it said this, as far as the edge could tell.
+   *
+   *  ABSENT ON PURPOSE FOR A HIDDEN NODE. A node publishing an onion address reaches this
+   *  server over the ordinary internet, so the edge does know which country the request came
+   *  from — and that is exactly the fact the onion address exists to withhold. It is dropped
+   *  here rather than stored and hidden later: `"tor"` is all that is kept, and there is
+   *  nothing in the record to leak afterwards.
+   *
+   *  Missing on lines written before this existed, and on any request the edge could not
+   *  place. Both are counted as unplaced and neither is guessed at. */
+  p?: Place;
 }
+
+/** Where a node was when it wrote, or the fact that it will not say. */
+type Place = "tor" | { c: string; y: number; x: number };
 
 /** The board, as it is stored. */
 interface Board {
@@ -70,6 +84,19 @@ interface Board {
   /** The statements. */
   e: Line[];
 }
+
+/** The parts of the edge's own account of a request that this file reads, and no more. */
+interface Edge {
+  /** Two-letter country code, or null where the edge could not place the request. */
+  country?: string | null;
+  /** Degrees north, as a string, where the edge has it. */
+  latitude?: string | null;
+  /** Degrees east, as a string, where the edge has it. */
+  longitude?: string | null;
+}
+
+/** A request as it actually arrives here: the standard one, plus what the edge knows. */
+type Arriving = Request & { readonly cf?: Edge };
 
 /** The parts of the Workers runtime this file uses, and no more. */
 interface Store {
@@ -103,11 +130,14 @@ const NAMED = /^[0-9a-f]{64}$/;
 const ELIGIBLE = "333";
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Arriving, env: Env): Promise<Response> {
     const path = new URL(request.url).pathname;
 
     if (path === "/" || path === "/index.html") return theFrontPage(request, env);
     if (path === "/333/where") return whereYouAre(request);
+    if (path === "/333/where-we-are") {
+      return request.method === "GET" ? whereWeAre(env) : plain(405, "GET /333/where-we-are\n");
+    }
     if (path === "/333") {
       return request.method === "GET" ? readTheBoard(request, env) : plain(405, "GET /333\n");
     }
@@ -264,7 +294,7 @@ not have the client yet, it is at
  *
  *  None of that stops somebody determined. It stops a loop, which is what actually
  *  happens, and it costs a real node nothing it was not already paying. */
-async function speak(request: Request, env: Env, key: string): Promise<Response> {
+async function speak(request: Arriving, env: Env, key: string): Promise<Response> {
   if (!NAMED.test(key)) return plain(400, "The slot is a node name in lower-case hex.\n");
 
   const frame = new Uint8Array(await request.arrayBuffer());
@@ -303,10 +333,80 @@ async function speak(request: Request, env: Env, key: string): Promise<Response>
   }
 
   const kept = lines.filter((line) => line.k !== key);
-  kept.push({ k: key, b: said, t: Date.now() });
+  kept.push({ k: key, b: said, t: Date.now(), p: placeOf(request, standsUp.address) });
   const next: Board = { d: today, w: written + 1, e: kept.slice(-MOST) };
   await env.BOARD.put(BOARD, JSON.stringify({ v: 1, ...next }));
   return plain(200, "Said.\n");
+}
+
+/** Where the writer was, or `"tor"`, or nothing.
+ *
+ *  A statement naming an onion address is placed nowhere, whatever the edge says about the
+ *  connection that carried it. That connection is the node's own address and this is the one
+ *  place in the whole design where it would be written down.
+ *
+ *  Everything else is placed as coarsely as the map needs: whole degrees, which is roughly a
+ *  hundred kilometres, and which is less than the address on the board already gives away to
+ *  anybody who cares to look it up. */
+function placeOf(request: Arriving, address: string): Place | undefined {
+  if (hostOf(address).endsWith(".onion")) return "tor";
+  const edge = request.cf;
+  const country = edge?.country;
+  if (typeof country !== "string" || !/^[A-Z]{2}$/.test(country)) return undefined;
+  const y = Number(edge?.latitude);
+  const x = Number(edge?.longitude);
+  if (!Number.isFinite(y) || !Number.isFinite(x)) return undefined;
+  if (y < -90 || y > 90 || x < -180 || x > 180) return undefined;
+  return { c: country, y: Math.round(y), x: Math.round(x) };
+}
+
+/** The host out of a `host:port` address, leaving a bare host alone.
+ *
+ *  Split on the last colon so that an address written with a bracketed IPv6 host keeps its
+ *  brackets and everything before them. Nothing here needs the port. */
+function hostOf(address: string): string {
+  const cut = address.lastIndexOf(":");
+  const host = cut === -1 ? address : address.slice(0, cut);
+  return host.toLowerCase();
+}
+
+/** How many of us are where, for the map. Names nobody: counts only.
+ *
+ *  It is served from the same board everything else is served from, so it is exactly as
+ *  fresh, exactly as incomplete, and exactly as untrusted. A node that met somebody through
+ *  an invitation and never came here is not in it, and neither is one that told this server
+ *  nothing. It is what this one place saw, said as that and not as a census. */
+async function whereWeAre(env: Env): Promise<Response> {
+  const lines = alive((await held(env)).e);
+  const counted = new Map<string, number>();
+  const dots: Array<[number, number]> = [];
+  let tor = 0;
+  let unplaced = 0;
+  for (const line of lines) {
+    if (line.p === "tor") {
+      tor += 1;
+    } else if (line.p === undefined) {
+      unplaced += 1;
+    } else {
+      counted.set(line.p.c, (counted.get(line.p.c) ?? 0) + 1);
+      dots.push([line.p.x, line.p.y]);
+    }
+  }
+  const countries = [...counted]
+    .map(([c, n]) => ({ c, n }))
+    .sort((one, two) => two.n - one.n || one.c.localeCompare(two.c));
+  return json(200, { as_of: Date.now(), saying: lines.length, tor, unplaced, countries, dots });
+}
+
+/** Hand back a value as JSON, uncached: the board changes and a stale map is a wrong map. */
+function json(status: number, body: unknown): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "no-store",
+    },
+  });
 }
 
 /** Whether this address has left a statement too recently to leave another.

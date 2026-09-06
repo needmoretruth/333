@@ -108,3 +108,6 @@ desktop.ini
 # Cloudflare
 .wrangler/
 .dev.vars*
+
+# Screenshots and traces from driving a real browser at the site.
+/.playwright-mcp/

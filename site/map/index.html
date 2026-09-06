@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Where we are</title>
+<meta name="description" content="Where the nodes saying where they are, are.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<meta name="robots" content="noindex">
+<style>
+  /* The same greyscale as the rest of the site, and for the same reason: a map that
+     needs hue to be read is a map that cannot be read on a cheap screen, on paper, or
+     by somebody who cannot see red. Count is shown by size and by the table beside it. */
+  :root {
+    color-scheme: light dark;
+    --ground: #ffffff;
+    --raised: #f5f5f5;
+    --line:   #e3e3e3;
+    --land:   #dcdcdc;
+    --ink:    #141414;
+    --dim:    #575757;
+    --faint:  #757575;
+    --radius: 14px;
+    --live:   #2f7d32;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #0b0b0b;
+      --raised: #151515;
+      --line:   #262626;
+      --land:   #2b2b2b;
+      --ink:    #ededed;
+      --dim:    #a6a6a6;
+      --faint:  #7d7d7d;
+      --live:   #6cc070;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font: 1rem/1.7 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    padding: 0 1.25rem 6rem;
+    -webkit-font-smoothing: antialiased;
+  }
+  main { max-width: 52rem; margin: 0 auto; }
+  body, main { overflow-wrap: anywhere; }
+  a { color: inherit; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px; }
+  a:hover { text-decoration-thickness: 2px; }
+  h1 { font-size: clamp(1.9rem, 6vw, 2.8rem); letter-spacing: -0.01em; margin: 3rem 0 0.4rem; }
+  p { margin: 0 0 1.1rem; }
+  .dim { color: var(--dim); }
+  .faint { color: var(--faint); font-size: 0.9rem; }
+  hr { border: 0; border-top: 1px solid var(--line); margin: 2.5rem 0; }
+
+  /* The map is the part that costs something to look at, so it is the part that goes
+     first when there is no room for it. Under this width the table is the whole page,
+     and the table was always the thing that actually says the number. */
+  .map { display: none; }
+  @media (min-width: 34rem) {
+    .map {
+      display: block;
+      background: var(--raised);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 0.75rem;
+      margin: 0 0 1.5rem;
+    }
+    .map svg { display: block; width: 100%; height: auto; }
+  }
+  .land { fill: var(--land); }
+  .dot { fill: var(--ink); }
+  .ring { fill: none; stroke: var(--ink); stroke-width: 3; opacity: 0.35; }
+
+  table { width: 100%; border-collapse: collapse; margin: 0 0 1.5rem; }
+  th, td { text-align: left; padding: 0.55rem 0.5rem; border-bottom: 1px solid var(--line); }
+  th { font-weight: 600; font-size: 0.85rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--faint); }
+  td.n, th.n { text-align: right; white-space: nowrap; }
+  td.n { font-variant-numeric: tabular-nums; }
+  tr.sum td { font-weight: 600; border-bottom: none; }
+
+  button {
+    font: inherit;
+    color: var(--ink);
+    background: var(--raised);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 0.45rem 1.1rem;
+    cursor: pointer;
+  }
+  button:hover { border-color: var(--faint); }
+  .watching { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; margin: 0 0 1.5rem; }
+  /* The one place with hue on the whole site: a status dot, small, and never the colour
+     the page is made of. Recommendation 6 allows exactly this much. */
+  .lamp { width: 0.6rem; height: 0.6rem; border-radius: 50%; background: var(--faint); flex: none; }
+  .lamp.on { background: var(--live); }
+</style>
+</head>
+<body>
+<main>
+
+  <h1>Where we are</h1>
+
+  <p class="dim">Every node that says where it can be reached leaves that statement at
+  <a href="/333">the333.dev/333</a>, and the request carrying it arrives from somewhere. This
+  is that, counted. It is not a census: a node that was handed an invitation and never came
+  here is not in it, and neither is one that told this place nothing.</p>
+
+  <p class="dim">A node reachable through Tor is counted as Tor and placed in no country.
+  The request that carried its statement came from an ordinary address like everybody
+  else&#8217;s, and that address is the one thing an onion address exists to withhold, so it
+  is dropped here rather than stored.</p>
+
+  <div class="watching">
+    <button id="live" type="button" aria-pressed="false">Watch it live</button>
+    <span class="lamp" id="lamp" aria-hidden="true"></span>
+    <span class="faint" id="said">Loading.</span>
+  </div>
+
+  <div class="map">
+    <svg viewBox="0 20 1440 580" role="img" aria-labelledby="mapname">
+      <title id="mapname">A world map with a mark where each node is</title>
+      <!-- Cut at 85 degrees north and 60 degrees south. Nothing is being hidden: the
+           projection makes the empty ends of it a third of the picture, and a map is
+           for reading. A node further south than that would be off the edge and in
+           the table, where the number actually lives. -->
+      <path class="land" d="M482 680l-1 2l-2 2l-8 -1l-9 1l-5 -2l-2 -1l9 0l8 1l3 -2l3 -1l4 1ZM83 678l-8 1l-5 -2l-2 -1l0 -1l-3 -1l3 -1l7 1l4 1l3 1l1 2ZM539 672l5 2l2 2l1 2l0 2l-7 1l-6 1l-8 1l-8 1l-9 0l-6 -1l1 -2l9 -1l3 -2l3 -1l1 -2l3 -1l2 -2l2 0l6 -1l6 1ZM235 654l5 1l5 -1l-2 1l-4 1l-5 0l-4 -1l0 -2l5 1ZM218 654l6 1l-2 0l-6 0l-5 -1l3 -1l4 1ZM324 648l4 0l5 0l2 2l-3 0l-5 0l-5 0l-5 0l-4 -1l-2 -1l2 -1l5 0l6 1ZM446 644l1 2l-1 1l-1 2l-5 0l-4 1l-6 0l2 -2l-4 1l-5 0l-3 -1l0 -1l4 -2l3 0l5 0l1 -2l0 -2l0 -3l2 -2l4 0l2 1l1 1l2 2l1 2l1 2ZM-1440 699l4 -2l7 1l2 -1l1 0l1 0l1 -1l1 0l5 2l6 -2l12 0l4 0l2 1l6 1l11 1l9 2l16 0l11 -1l17 1l10 1l10 -1l12 -1l0 -2l-15 0l-13 -1l-4 -1l-10 -1l0 -2l2 -2l1 -1l0 -2l-7 -1l-3 -1l-6 -2l9 1l10 -1l5 1l8 -1l6 -1l3 -2l-1 -1l-5 -1l-6 -2l-8 0l-8 0l-7 -1l-3 -1l-5 -1l-3 -2l-1 -4l2 0l3 1l7 0l6 -1l3 2l7 0l5 -1l5 -1l5 -2l6 0l-1 -2l-1 -1l1 -1l5 -1l3 1l6 -1l4 -1l6 0l6 0l5 -1l4 -1l5 -1l3 0l3 1l6 -1l5 1l6 0l5 -1l5 1l6 0l6 0l6 0l6 0l5 0l4 -1l5 -1l5 1l5 -1l4 -1l3 1l1 2l3 1l4 -1l5 1l5 1l5 1l5 0l6 -1l6 0l5 1l5 0l3 -2l-3 -1l-2 -1l-5 -1l-2 -1l-1 -2l-2 -3l3 1l6 0l5 0l4 1l5 1l1 1l6 0l5 0l5 -1l5 0l4 1l6 -1l3 -3l3 2l5 1l5 -1l3 2l5 0l5 1l5 0l3 -1l2 -1l4 1l5 0l4 1l3 1l5 -1l5 0l4 -1l5 -1l5 0l5 -1l4 -1l3 -1l0 -2l0 -1l-1 -2l-2 -2l-1 -1l-1 -2l0 -1l0 -2l2 -1l2 -2l0 -1l0 -2l-1 -2l2 -1l2 -2l3 -1l3 -1l3 -2l1 -1l2 -1l3 -1l4 -1l2 -1l3 -1l3 0l3 -1l3 -1l3 -1l2 1l-1 1l-4 2l-2 0l-3 0l-3 0l-3 1l-3 1l-2 1l-1 2l1 1l2 2l-3 1l-4 0l-2 1l-3 2l-2 1l-1 2l2 1l2 2l3 1l3 1l2 1l1 2l1 2l2 1l1 1l0 4l2 2l0 1l1 2l0 2l-3 1l-2 2l-5 0l-2 2l-2 1l-6 2l-6 0l-5 1l-5 1l-3 2l-7 0l-7 0l-6 0l-7 0l1 1l6 1l5 1l2 2l-4 1l-7 -1l-6 2l0 1l0 2l5 1l0 2l6 1l8 1l7 1l6 1l7 1l10 1l10 1l7 1l7 2l4 1l2 2l5 -2l7 -1l7 -1l8 -1l7 -1l10 0l10 0l8 1l2 -1l6 -2l10 0l8 -1l7 0l9 -1l9 -1l6 -1l-3 -1l-2 -1l0 -2l-7 0l-9 1l-8 0l-1 -2l1 -3l2 -1l5 0l7 -1l5 -2l5 -1l3 -1l6 -1l5 -1l3 0l6 0l6 -1l5 0l5 -1l4 -1l6 -1l3 -2l4 -1l1 -2l-4 -1l2 -1l2 -1l4 -1l5 -1l4 -1l3 -2l2 -2l3 -1l5 0l2 2l4 0l0 -2l3 -1l4 0l1 2l5 0l5 -1l5 0l4 0l2 2l4 -2l5 0l4 -1l5 -1l4 -1l4 0l4 -1l2 -1l3 1l4 -1l3 2l2 1l5 0l2 -2l4 -1l5 0l2 2l3 -2l4 0l5 0l4 0l4 0l5 0l2 2l2 1l5 -1l4 0l5 0l4 0l4 -1l5 0l3 -1l4 -1l4 0l3 -1l2 -3l2 -1l5 1l1 1l4 1l4 0l3 1l3 1l4 -1l1 -2l4 0l4 -2l4 0l4 -1l4 -1l3 -1l3 -1l4 1l3 -2l3 -1l4 0l3 0l1 -2l3 -1l3 -1l4 0l4 -1l4 1l3 0l4 1l0 2l4 1l2 1l5 1l2 1l4 1l4 0l3 -1l3 -1l4 0l4 1l4 0l4 1l4 0l3 4l0 1l-1 2l-4 1l-3 1l1 2l4 0l0 1l-2 2l-2 1l3 2l4 0l5 -1l2 -1l2 -2l2 -1l2 -1l1 -2l2 -1l3 -1l5 0l3 -1l5 0l2 -2l1 -1l2 -2l4 -1l4 0l2 -2l2 -1l3 0l4 0l4 0l4 -1l4 1l3 -1l2 -3l1 1l2 2l4 1l4 0l3 -1l4 1l4 0l3 -1l3 1l3 1l4 -1l4 0l4 -1l4 1l3 -1l2 -2l2 -1l5 -3l3 1l3 1l3 1l5 3l4 0l3 0l5 -1l4 0l3 -1l3 -1l4 -1l3 0l4 0l2 2l2 1l5 0l3 1l4 1l5 0l4 0l4 -1l2 -2l4 0l3 0l5 1l3 -1l4 0l4 1l3 0l4 -1l4 0l4 0l5 0l3 -1l4 0l1 -2l0 -2l3 1l0 2l2 2l1 1l4 1l4 0l6 0l3 -1l5 0l4 0l5 0l5 1l3 1l-1 1l3 2l4 1l4 1l6 0l5 1l4 0l5 1l2 -2l4 1l3 2l3 1l5 0l5 0l2 2l4 1l3 1l5 1l4 0l5 0l4 0l5 0l5 1l4 1l4 1l3 1l-1 1l-2 2l-2 2l-1 1l-2 2l-5 0l-2 2l-6 1l-1 1l-3 2l-3 1l-2 1l-1 2l0 2l0 1l2 2l1 1l2 2l7 0l2 2l-7 1l-6 0l-8 1l-3 2l-1 2l-2 1l-2 2l5 1l3 2l3 1l5 2l5 1l6 1l10 1l2 2l11 1l1 0l3 2l11 -1l9 1l7 1ZM0 699l4 -2l7 1l2 -1l1 0l1 0l1 -1l1 0l5 2l6 -2l12 0l4 0l2 1l6 1l11 1l9 2l16 0l11 -1l17 1l10 1l10 -1l12 -1l0 -2l-15 0l-13 -1l-4 -1l-10 -1l0 -2l2 -2l1 -1l0 -2l-7 -1l-3 -1l-6 -2l9 1l10 -1l5 1l8 -1l6 -1l3 -2l-1 -1l-5 -1l-6 -2l-8 0l-8 0l-7 -1l-3 -1l-5 -1l-3 -2l-1 -4l2 0l3 1l7 0l6 -1l3 2l7 0l5 -1l5 -1l5 -2l6 0l-1 -2l-1 -1l1 -1l5 -1l3 1l6 -1l4 -1l6 0l6 0l5 -1l4 -1l5 -1l3 0l3 1l6 -1l5 1l6 0l5 -1l5 1l6 0l6 0l6 0l6 0l5 0l4 -1l5 -1l5 1l5 -1l4 -1l3 1l1 2l3 1l4 -1l5 1l5 1l5 1l5 0l6 -1l6 0l5 1l5 0l3 -2l-3 -1l-2 -1l-5 -1l-2 -1l-1 -2l-2 -3l3 1l6 0l5 0l4 1l5 1l1 1l6 0l5 0l5 -1l5 0l4 1l6 -1l3 -3l3 2l5 1l5 -1l3 2l5 0l5 1l5 0l3 -1l2 -1l4 1l5 0l4 1l3 1l5 -1l5 0l4 -1l5 -1l5 0l5 -1l4 -1l3 -1l0 -2l0 -1l-1 -2l-2 -2l-1 -1l-1 -2l0 -1l0 -2l2 -1l2 -2l0 -1l0 -2l-1 -2l2 -1l2 -2l3 -1l3 -1l3 -2l1 -1l2 -1l3 -1l4 -1l2 -1l3 -1l3 0l3 -1l3 -1l3 -1l2 1l-1 1l-4 2l-2 0l-3 0l-3 0l-3 1l-3 1l-2 1l-1 2l1 1l2 2l-3 1l-4 0l-2 1l-3 2l-2 1l-1 2l2 1l2 2l3 1l3 1l2 1l1 2l1 2l2 1l1 1l0 4l2 2l0 1l1 2l0 2l-3 1l-2 2l-5 0l-2 2l-2 1l-6 2l-6 0l-5 1l-5 1l-3 2l-7 0l-7 0l-6 0l-7 0l1 1l6 1l5 1l2 2l-4 1l-7 -1l-6 2l0 1l0 2l5 1l0 2l6 1l8 1l7 1l6 1l7 1l10 1l10 1l7 1l7 2l4 1l2 2l5 -2l7 -1l7 -1l8 -1l7 -1l10 0l10 0l8 1l2 -1l6 -2l10 0l8 -1l7 0l9 -1l9 -1l6 -1l-3 -1l-2 -1l0 -2l-7 0l-9 1l-8 0l-1 -2l1 -3l2 -1l5 0l7 -1l5 -2l5 -1l3 -1l6 -1l5 -1l3 0l6 0l6 -1l5 0l5 -1l4 -1l6 -1l3 -2l4 -1l1 -2l-4 -1l2 -1l2 -1l4 -1l5 -1l4 -1l3 -2l2 -2l3 -1l5 0l2 2l4 0l0 -2l3 -1l4 0l1 2l5 0l5 -1l5 0l4 0l2 2l4 -2l5 0l4 -1l5 -1l4 -1l4 0l4 -1l2 -1l3 1l4 -1l3 2l2 1l5 0l2 -2l4 -1l5 0l2 2l3 -2l4 0l5 0l4 0l4 0l5 0l2 2l2 1l5 -1l4 0l5 0l4 0l4 -1l5 0l3 -1l4 -1l4 0l3 -1l2 -3l2 -1l5 1l1 1l4 1l4 0l3 1l3 1l4 -1l1 -2l4 0l4 -2l4 0l4 -1l4 -1l3 -1l3 -1l4 1l3 -2l3 -1l4 0l3 0l1 -2l3 -1l3 -1l4 0l4 -1l4 1l3 0l4 1l0 2l4 1l2 1l5 1l2 1l4 1l4 0l3 -1l3 -1l4 0l4 1l4 0l4 1l4 0l3 4l0 1l-1 2l-4 1l-3 1l1 2l4 0l0 1l-2 2l-2 1l3 2l4 0l5 -1l2 -1l2 -2l2 -1l2 -1l1 -2l2 -1l3 -1l5 0l3 -1l5 0l2 -2l1 -1l2 -2l4 -1l4 0l2 -2l2 -1l3 0l4 0l4 0l4 -1l4 1l3 -1l2 -3l1 1l2 2l4 1l4 0l3 -1l4 1l4 0l3 -1l3 1l3 1l4 -1l4 0l4 -1l4 1l3 -1l2 -2l2 -1l5 -3l3 1l3 1l3 1l5 3l4 0l3 0l5 -1l4 0l3 -1l3 -1l4 -1l3 0l4 0l2 2l2 1l5 0l3 1l4 1l5 0l4 0l4 -1l2 -2l4 0l3 0l5 1l3 -1l4 0l4 1l3 0l4 -1l4 0l4 0l5 0l3 -1l4 0l1 -2l0 -2l3 1l0 2l2 2l1 1l4 1l4 0l6 0l3 -1l5 0l4 0l5 0l5 1l3 1l-1 1l3 2l4 1l4 1l6 0l5 1l4 0l5 1l2 -2l4 1l3 2l3 1l5 0l5 0l2 2l4 1l3 1l5 1l4 0l5 0l4 0l5 0l5 1l4 1l4 1l3 1l-1 1l-2 2l-2 2l-1 1l-2 2l-5 0l-2 2l-6 1l-1 1l-3 2l-3 1l-2 1l-1 2l0 2l0 1l2 2l1 1l2 2l7 0l2 2l-7 1l-6 0l-8 1l-3 2l-1 2l-2 1l-2 2l5 1l3 2l3 1l5 2l5 1l6 1l10 1l2 2l11 1l1 0l3 2l11 -1l9 1l7 1ZM1440 699l4 -2l7 1l2 -1l1 0l1 0l1 -1l1 0l5 2l6 -2l12 0l4 0l2 1l6 1l11 1l9 2l16 0l11 -1l17 1l10 1l10 -1l12 -1l0 -2l-15 0l-13 -1l-4 -1l-10 -1l0 -2l2 -2l1 -1l0 -2l-7 -1l-3 -1l-6 -2l9 1l10 -1l5 1l8 -1l6 -1l3 -2l-1 -1l-5 -1l-6 -2l-8 0l-8 0l-7 -1l-3 -1l-5 -1l-3 -2l-1 -4l2 0l3 1l7 0l6 -1l3 2l7 0l5 -1l5 -1l5 -2l6 0l-1 -2l-1 -1l1 -1l5 -1l3 1l6 -1l4 -1l6 0l6 0l5 -1l4 -1l5 -1l3 0l3 1l6 -1l5 1l6 0l5 -1l5 1l6 0l6 0l6 0l6 0l5 0l4 -1l5 -1l5 1l5 -1l4 -1l3 1l1 2l3 1l4 -1l5 1l5 1l5 1l5 0l6 -1l6 0l5 1l5 0l3 -2l-3 -1l-2 -1l-5 -1l-2 -1l-1 -2l-2 -3l3 1l6 0l5 0l4 1l5 1l1 1l6 0l5 0l5 -1l5 0l4 1l6 -1l3 -3l3 2l5 1l5 -1l3 2l5 0l5 1l5 0l3 -1l2 -1l4 1l5 0l4 1l3 1l5 -1l5 0l4 -1l5 -1l5 0l5 -1l4 -1l3 -1l0 -2l0 -1l-1 -2l-2 -2l-1 -1l-1 -2l0 -1l0 -2l2 -1l2 -2l0 -1l0 -2l-1 -2l2 -1l2 -2l3 -1l3 -1l3 -2l1 -1l2 -1l3 -1l4 -1l2 -1l3 -1l3 0l3 -1l3 -1l3 -1l2 1l-1 1l-4 2l-2 0l-3 0l-3 0l-3 1l-3 1l-2 1l-1 2l1 1l2 2l-3 1l-4 0l-2 1l-3 2l-2 1l-1 2l2 1l2 2l3 1l3 1l2 1l1 2l1 2l2 1l1 1l0 4l2 2l0 1l1 2l0 2l-3 1l-2 2l-5 0l-2 2l-2 1l-6 2l-6 0l-5 1l-5 1l-3 2l-7 0l-7 0l-6 0l-7 0l1 1l6 1l5 1l2 2l-4 1l-7 -1l-6 2l0 1l0 2l5 1l0 2l6 1l8 1l7 1l6 1l7 1l10 1l10 1l7 1l7 2l4 1l2 2l5 -2l7 -1l7 -1l8 -1l7 -1l10 0l10 0l8 1l2 -1l6 -2l10 0l8 -1l7 0l9 -1l9 -1l6 -1l-3 -1l-2 -1l0 -2l-7 0l-9 1l-8 0l-1 -2l1 -3l2 -1l5 0l7 -1l5 -2l5 -1l3 -1l6 -1l5 -1l3 0l6 0l6 -1l5 0l5 -1l4 -1l6 -1l3 -2l4 -1l1 -2l-4 -1l2 -1l2 -1l4 -1l5 -1l4 -1l3 -2l2 -2l3 -1l5 0l2 2l4 0l0 -2l3 -1l4 0l1 2l5 0l5 -1l5 0l4 0l2 2l4 -2l5 0l4 -1l5 -1l4 -1l4 0l4 -1l2 -1l3 1l4 -1l3 2l2 1l5 0l2 -2l4 -1l5 0l2 2l3 -2l4 0l5 0l4 0l4 0l5 0l2 2l2 1l5 -1l4 0l5 0l4 0l4 -1l5 0l3 -1l4 -1l4 0l3 -1l2 -3l2 -1l5 1l1 1l4 1l4 0l3 1l3 1l4 -1l1 -2l4 0l4 -2l4 0l4 -1l4 -1l3 -1l3 -1l4 1l3 -2l3 -1l4 0l3 0l1 -2l3 -1l3 -1l4 0l4 -1l4 1l3 0l4 1l0 2l4 1l2 1l5 1l2 1l4 1l4 0l3 -1l3 -1l4 0l4 1l4 0l4 1l4 0l3 4l0 1l-1 2l-4 1l-3 1l1 2l4 0l0 1l-2 2l-2 1l3 2l4 0l5 -1l2 -1l2 -2l2 -1l2 -1l1 -2l2 -1l3 -1l5 0l3 -1l5 0l2 -2l1 -1l2 -2l4 -1l4 0l2 -2l2 -1l3 0l4 0l4 0l4 -1l4 1l3 -1l2 -3l1 1l2 2l4 1l4 0l3 -1l4 1l4 0l3 -1l3 1l3 1l4 -1l4 0l4 -1l4 1l3 -1l2 -2l2 -1l5 -3l3 1l3 1l3 1l5 3l4 0l3 0l5 -1l4 0l3 -1l3 -1l4 -1l3 0l4 0l2 2l2 1l5 0l3 1l4 1l5 0l4 0l4 -1l2 -2l4 0l3 0l5 1l3 -1l4 0l4 1l3 0l4 -1l4 0l4 0l5 0l3 -1l4 0l1 -2l0 -2l3 1l0 2l2 2l1 1l4 1l4 0l6 0l3 -1l5 0l4 0l5 0l5 1l3 1l-1 1l3 2l4 1l4 1l6 0l5 1l4 0l5 1l2 -2l4 1l3 2l3 1l5 0l5 0l2 2l4 1l3 1l5 1l4 0l5 0l4 0l5 0l5 1l4 1l4 1l3 1l-1 1l-2 2l-2 2l-1 1l-2 2l-5 0l-2 2l-6 1l-1 1l-3 2l-3 1l-2 1l-1 2l0 2l0 1l2 2l1 1l2 2l7 0l2 2l-7 1l-6 0l-8 1l-3 2l-1 2l-2 1l-2 2l5 1l3 2l3 1l5 2l5 1l6 1l10 1l2 2l11 1l1 0l3 2l11 -1l9 1l7 1ZM449 575l5 3l6 1l-2 2l-4 0l-2 -1l-1 1l-4 1l-4 0l-3 -1l-4 -1l-5 -2l-4 -2l-6 -5l4 1l5 3l6 1l2 -2l1 -2l4 -2l2 1l2 1l2 3ZM486 564l3 2l-1 2l-6 1l-1 -2l-4 2l-2 -2l5 -2l3 1l3 -2ZM1001 559l-6 0l0 -2l0 -2l1 -1l2 2l4 0l0 1l-1 2ZM1302 523l3 2l3 -1l3 -1l2 0l0 5l-1 2l0 3l-2 -1l-3 3l0 -1l-3 0l-2 -3l-1 -3l-2 -3l0 -2l3 0ZM1412 524l1 1l3 -1l1 1l0 2l-1 2l-3 3l-2 1l1 2l-3 0l-3 2l-1 3l-3 4l-3 1l-2 2l-3 -1l-3 -1l-4 0l-1 -2l2 -3l5 -4l3 0l3 -2l3 -2l3 -2l1 -3l2 -1l0 -2l3 -2l1 2ZM1418 505l3 4l0 -3l2 1l1 3l3 2l3 0l2 -2l2 1l-1 3l-1 3l-3 0l-1 1l0 2l-2 2l-2 3l-3 2l-1 -1l-1 -1l2 -3l-1 -2l-5 -2l0 -1l3 -2l1 -3l0 -2l-2 -3l0 -1l-2 -2l-3 -3l-1 -3l1 0l2 2l3 1l1 4ZM1388 449l-1 1l-2 -1l-3 -2l-3 -2l-2 -3l-1 -2l2 0l2 2l2 1l1 1l3 3l2 2ZM1433 429l2 2l-1 2l-2 0l-2 0l-1 -2l2 -1l1 0l1 -1ZM0 426l-3 1l-2 1l-1 -1l2 -1l2 0l2 -2l1 0l-1 2ZM1440 426l-3 1l-2 1l-1 -1l2 -1l2 0l2 -2l1 0l-1 2ZM1391 426l-1 0l-1 -1l0 -1l2 2ZM1388 420l1 3l-1 -1l-1 1l0 -1l0 -3l1 1ZM920 414l1 5l1 2l0 2l-1 1l-2 -2l0 1l0 3l0 1l-1 1l0 4l-2 4l-2 6l-2 8l-2 5l-2 5l-3 1l-3 1l-3 -1l-3 -1l-1 -2l0 -4l-2 -3l0 -3l1 -3l2 0l0 -2l2 -3l0 -2l-1 -2l-1 -3l0 -3l1 -3l1 -2l2 0l2 -1l1 -1l2 0l3 -2l3 -3l1 -2l-1 -1l2 0l2 -3l0 -2l2 -2l1 2l1 2l1 2ZM1294 415l2 3l2 -1l2 1l1 2l0 2l1 3l1 2l1 1l1 3l-1 2l2 3l4 2l3 2l2 2l0 1l2 2l2 4l1 -1l2 2l1 0l1 4l2 2l2 2l3 3l2 3l0 3l-1 2l2 3l0 4l-1 2l-1 3l0 3l0 3l-2 3l-3 2l-2 3l-1 2l-1 4l-2 2l-1 3l0 2l0 2l-2 1l-5 0l-3 2l-2 1l-3 2l-3 -2l-2 0l0 -2l-2 0l-4 3l-3 -1l-2 0l-3 -1l-3 -1l-3 -2l-1 -3l-1 -2l-2 -2l-4 -1l2 -1l-1 -3l-2 2l-4 1l2 -2l1 -2l2 -2l-1 -3l-3 3l-3 1l-1 4l-3 -2l0 -2l-3 -3l-2 -2l1 -1l-5 -2l-3 0l-4 -2l-7 0l-5 2l-5 1l-3 0l-5 2l-3 1l-1 2l-1 2l-4 0l-2 0l-4 -1l-3 1l-2 0l-3 2l-1 0l-2 1l-2 1l-3 0l-3 0l-4 -2l-2 -1l0 -3l2 0l1 -1l0 -1l0 -3l0 -3l-2 -4l-1 -2l0 -2l-1 -3l-1 -1l-1 -2l-1 -3l-2 -3l-1 -2l2 2l-1 -4l2 2l1 1l0 -2l-2 -3l0 -1l-1 -1l0 -3l1 -1l0 -2l0 -2l2 -3l0 3l2 -3l3 -1l2 -2l3 -1l2 -1l1 1l3 -2l2 0l1 -1l1 0l2 0l4 -1l3 -2l1 -2l2 -2l0 -2l0 -2l3 -3l2 3l1 -1l-1 -2l1 -2l2 1l1 -3l2 -2l1 -1l2 -1l0 -1l2 0l0 -1l1 0l2 -1l3 2l2 2l3 1l2 0l0 -2l2 -4l1 -1l0 -1l1 -2l3 -1l2 0l3 -1l0 -2l-3 -1l2 0l3 1l2 1l4 1l1 0l2 1l3 -1l1 0l1 -1l2 2l-1 3l-2 1l-1 0l0 2l-1 2l-1 2l0 1l3 2l3 1l2 2l3 2l1 0l2 1l1 1l4 2l2 -2l1 -2l1 -1l1 -3l1 -3l-1 -2l1 -1l-1 -2l1 -3l0 -1l0 -1l1 -2l0 -3l1 -1l1 -1l1 2l0 2l1 1l1 1l1 2l0 3l0 1ZM1368 402l2 1l-3 0l-2 -2l3 1ZM1203 401l-2 0l-5 -3l4 -1l2 2l1 1l0 1ZM1363 399l-1 1l-3 -1l0 -2l2 1l2 0l0 1ZM1367 398l-1 1l-3 -3l-1 -3l2 0l1 3l2 2ZM1218 401l-4 0l0 -1l2 -3l4 -1l0 -1l4 -1l3 0l1 -1l1 1l-1 1l-4 1l-4 2l-2 3ZM1192 392l1 1l3 0l1 2l-5 1l-3 0l-2 0l1 -2l3 0l1 -2ZM1212 392l-1 3l-6 1l-5 -1l0 -1l3 -1l2 1l3 0l4 -2ZM1360 393l0 1l-3 -2l-3 -1l-1 -1l0 -1l2 1l4 2l1 1ZM1350 389l-1 1l-1 -1l-2 -2l0 -1l3 2l1 1ZM1154 387l8 1l1 -2l7 2l2 2l6 1l5 2l-5 2l-4 -2l-4 1l-4 -1l-4 -1l-4 -1l-3 0l-2 0l-7 -2l-1 -1l-4 -1l3 -3l5 0l3 1l2 1l0 1ZM1259 385l-2 3l-1 -3l1 -2l1 -1l1 1l0 2ZM1344 387l-2 1l-1 -2l-2 -2l-1 -3l1 -1l0 1l1 1l2 3l2 1l0 1ZM1328 382l-2 0l-1 1l-2 1l-2 1l-2 0l-3 -1l-3 -1l1 -1l3 0l2 0l1 -2l1 0l0 2l2 0l1 -2l3 -1l-1 -2l3 0l0 2l-1 3ZM1229 374l-2 1l-2 -1l-1 -1l4 0l1 1ZM1242 372l1 3l-3 -1l-3 -1l-3 1l-2 0l1 -3l4 0l5 1ZM1333 378l-2 1l0 -2l-1 -2l-2 -1l-2 -2l-3 -1l1 -1l2 1l1 1l2 1l2 2l1 1l1 2ZM1257 365l1 6l4 2l3 -4l5 -2l3 0l4 1l3 2l4 0l7 3l7 2l3 2l2 3l1 2l7 2l1 2l-4 1l1 3l3 2l3 4l2 0l0 2l3 1l-1 0l4 2l0 1l-3 1l-1 -1l-3 -1l-4 0l-3 -3l-3 -2l-2 -4l-5 -1l-3 1l-3 1l1 3l-3 1l-3 0l-4 -1l-3 -3l-4 -1l-1 2l-6 0l2 -4l3 -1l-1 -4l-2 -3l-8 -4l-3 0l-6 -4l-2 2l-1 0l-1 -1l0 -2l-3 -2l4 -1l3 0l0 -1l-6 0l-2 -3l-3 0l-2 -2l5 -1l3 -2l6 2l1 2ZM1221 354l-3 4l-3 1l-4 -1l-7 0l-3 1l-1 3l4 4l2 -2l7 -2l0 2l-2 0l-1 2l-4 2l4 5l-1 1l4 5l0 2l-2 2l-2 -2l2 -3l-4 1l-1 -1l0 -1l-2 -3l0 -3l-3 1l1 4l0 6l-3 1l-2 -1l2 -4l-1 -4l-2 0l-1 -3l2 -2l0 -4l2 -6l1 -1l4 -3l3 1l5 0l4 0l4 -3l1 1ZM1235 355l0 4l-3 0l0 2l2 2l-2 1l-1 -3l-1 -5l0 -3l2 -2l0 2l2 1l1 1ZM1143 383l-4 0l-4 -3l-5 -3l-1 -3l-3 -3l-2 -3l-3 -5l-4 -4l-1 -3l-2 -3l-3 -3l-2 -3l-3 -2l-4 -5l-1 -2l3 0l6 1l3 4l4 3l2 1l4 5l4 0l3 2l2 4l3 2l-1 3l2 1l1 0l1 3l2 2l2 1l2 2l-1 5l0 6ZM1191 353l5 3l-5 1l-1 3l0 3l-4 3l0 4l-1 6l-1 -1l-5 1l-1 -2l-3 0l-2 -2l-5 2l-1 -2l-3 0l-3 0l-1 -6l-2 -1l-2 -3l0 -4l0 -3l3 -3l3 1l3 0l0 -4l2 -1l5 0l3 -4l2 -2l1 -2l4 -2l3 -3l2 -3l2 0l2 2l0 2l2 1l4 1l-1 2l-2 0l0 2l-2 1l-3 4l3 4l-1 2ZM1226 326l0 3l0 2l-1 4l-2 -4l-2 2l2 3l-1 2l-5 -3l-1 -3l1 -1l-3 -2l-1 1l-2 0l-3 2l0 -1l1 -3l3 -1l2 -2l1 2l3 -1l1 -2l3 0l0 -3l3 2l0 2l1 1ZM1045 335l-4 1l-2 -3l0 -6l2 -6l2 2l2 3l2 4l0 4l-2 1ZM476 320l-3 0l-1 0l1 -1l0 -2l3 -1l0 1l0 3ZM1216 319l-2 1l-1 3l-1 1l-2 -3l0 -1l1 -1l1 -3l2 0l-1 3l3 -4l0 4ZM1194 323l-5 4l2 -3l3 -3l2 -3l2 -3l1 3l-3 2l-2 3ZM1208 312l2 2l2 0l0 1l-1 2l-3 1l0 -2l0 -2l0 -2ZM1222 311l1 5l-3 -1l0 1l1 3l-2 0l0 -2l-1 -1l-1 -2l3 0l0 -1l-3 -3l4 0l1 1ZM1206 308l-1 3l-2 -2l-2 -3l4 0l1 2ZM1205 286l3 1l1 -1l0 1l0 2l1 3l-1 3l-2 1l-1 3l1 4l2 0l2 0l5 2l-1 2l2 1l-1 2l-3 -2l-1 -2l-1 1l-3 -2l-3 0l-2 0l0 -2l1 -1l-1 -1l-1 1l-2 -2l0 -2l0 -3l1 1l1 -6l1 -4l2 0ZM458 287l-1 1l-3 0l-3 0l0 -1l1 -1l3 0l2 0l1 1ZM412 289l-1 0l-2 0l-2 -2l0 -1l2 0l1 0l2 0l3 1l0 1l-3 1ZM430 281l3 0l1 -1l3 0l2 2l1 -1l1 2l2 0l0 1l2 0l2 2l-2 1l-2 -1l-1 0l-2 0l-1 1l-1 0l-1 -1l-1 1l-2 3l-1 -1l0 -1l-2 -1l-2 0l-3 0l-2 1l-2 -1l1 -2l3 1l3 0l2 -1l-2 -1l0 -2l-3 -1l1 -1l3 1ZM1161 285l-3 2l-3 -1l0 -3l1 -2l5 -1l2 0l1 1l-2 2l-1 2ZM98 284l-1 0l-1 0l0 -1l0 -2l1 -1l-1 -1l1 0l1 1l1 0l1 1l1 1l-2 1l-1 1ZM96 277l-2 1l0 -1l-1 0l0 -1l1 0l1 0l1 1ZM93 275l0 1l-2 0l0 -1l2 0ZM89 275l-2 0l0 -1l1 -1l1 2ZM83 272l-1 0l-1 0l0 -1l1 0l1 0l0 1ZM401 269l2 1l4 0l1 1l3 2l3 2l1 0l3 1l-1 1l3 0l3 2l0 1l-3 0l-3 1l-2 -1l-6 1l3 -3l-2 -1l-3 0l-1 -1l-1 -2l-2 0l-4 -1l-1 -1l-5 -1l-2 -1l2 -1l-4 0l-3 2l-2 0l0 1l-2 1l-2 -1l2 -1l1 -1l2 -1l2 -1l3 0l1 -1l3 1l4 0l3 1ZM410 265l-1 0l-1 -2l-2 -1l1 -3l1 0l2 4l0 2ZM1205 269l-2 3l-2 -3l-1 -3l3 -4l3 -3l2 1l-1 2l-2 7ZM409 254l-5 0l0 -1l2 0l3 0l0 1ZM412 254l-1 2l0 -2l-2 -2l3 2ZM1259 223l0 2l-2 2l-2 -1l-2 1l-1 2l-3 -1l0 -2l3 -2l2 0l2 -1l3 0ZM858 217l-2 2l0 1l-4 2l-2 -1l-1 -1l2 -1l1 -1l3 1l3 -2ZM815 217l2 2l3 -1l3 1l2 0l0 1l-6 0l-5 -1l1 -2ZM782 207l-1 3l0 1l-1 3l-3 -2l-2 0l-5 -2l0 -3l5 1l4 -1l3 0ZM757 195l2 3l0 5l-2 0l-2 1l-1 -1l0 -5l-1 -2l2 0l2 -1ZM1284 211l-2 4l1 2l-2 2l-5 2l-7 1l-6 4l-3 -1l0 -3l-7 0l-4 2l-5 0l4 3l-3 7l-2 2l-2 -2l1 -3l-3 -1l-1 -3l3 -1l3 -3l4 -2l2 -3l8 -1l5 1l4 -7l3 2l5 -4l3 -2l2 -5l0 -4l1 -3l4 -1l3 6l0 3l-4 4l0 4ZM758 191l-1 3l-2 0l-1 -3l1 -2l3 -1l0 3ZM1296 183l2 1l3 -2l1 5l-6 1l-3 4l-7 -3l-2 5l-4 0l-1 -4l2 -3l5 -1l1 -5l1 -3l5 4l3 1ZM465 174l3 0l4 0l-2 2l-1 0l-6 -2l-1 -1l2 -1l1 2ZM473 164l-2 0l-5 -2l-4 -1l1 -1l6 1l4 2l0 1ZM226 166l-2 1l-7 -2l-1 -2l-3 -1l-1 -1l-4 -1l-2 -2l1 -1l4 1l2 0l4 1l1 1l2 2l4 2l2 2ZM495 157l-2 4l2 -2l3 1l-1 2l3 1l2 -1l4 1l-1 3l3 -1l0 2l1 3l-1 3l-2 1l-3 -1l1 -4l-1 0l-5 3l-2 0l3 -2l-4 -1l-4 1l-8 0l-1 -2l3 -1l-2 -1l3 -3l5 -6l2 -2l4 -2l1 1l0 1l-3 2ZM189 144l4 0l-1 4l3 3l-1 0l-3 -2l-1 -1l-2 -2l-1 -1l0 -2l2 1ZM1295 157l4 7l-6 -1l-3 6l4 4l0 2l-3 -2l-3 3l0 -3l0 -4l0 -4l1 -3l0 -6l-3 -4l1 -5l3 -2l-1 -2l2 0l1 2l1 4l0 4l2 4ZM693 151l-7 2l-6 0l3 -4l-2 -5l6 -3l3 -2l3 0l4 3l-2 3l1 2l-3 4ZM771 138l-3 3l-4 -2l0 -2l5 -1l2 2ZM108 132l-4 1l-2 -1l-1 -2l4 -1l2 -1l3 0l1 2l-3 2ZM708 125l-4 5l4 -1l4 0l-1 4l-3 3l4 0l4 6l2 0l3 5l1 1l5 1l-1 3l-2 1l2 2l-4 2l-5 0l-7 1l-2 -1l-2 2l-4 0l-3 1l-2 -1l6 -4l3 -1l-6 0l-1 -2l4 -1l-2 -2l1 -3l6 0l0 -2l-3 -2l-4 -1l-1 -1l1 -2l-1 -1l-2 2l-1 -4l-2 -2l2 -4l3 -4l3 1l5 -1ZM58 120l-3 1l-2 -1l-3 -1l4 -1l3 1l1 1ZM403 111l-2 2l-1 0l-1 -1l1 -2l2 1l1 0ZM392 109l-4 2l-3 0l-1 -1l3 -2l5 0l0 1ZM33 105l3 1l2 -1l3 1l4 1l-3 1l-3 -1l-2 -1l-3 1l-1 -1l0 -1ZM379 97l1 2l2 0l2 1l5 1l4 1l1 2l3 0l3 1l-4 1l-6 -1l-2 -1l-4 2l-6 2l-1 -3l-6 1l4 -2l0 -3l1 -4l3 0ZM662 94l-1 3l5 2l-6 4l-11 2l-4 1l-5 -1l-11 -1l4 -2l-9 -2l7 0l0 -2l-8 0l2 -3l6 -1l7 3l6 -2l5 1l6 -2l7 0ZM417 91l-5 1l-1 -2l2 -3l3 0l4 1l0 2l-1 0l-2 1ZM0 84l10 3l10 4l0 3l3 1l-1 -3l11 0l7 4l-4 2l-6 0l0 4l-2 1l-4 0l-3 -2l-5 -1l-1 -1l-4 -1l-4 0l-3 -1l1 -1l-5 1l2 1l-2 2l-5 2l-5 0l3 2l3 3l1 1l1 2l-1 1l-8 -1l-11 3l-3 0l-6 3l-6 3l-2 1l-5 -2l-11 3l-2 -2l-3 2l-6 0l-1 2l-5 4l0 2l5 1l-1 5l-3 1l-2 3l1 2l-7 2l-1 4l-6 1l-1 4l-6 4l-1 -3l-2 -6l-2 -9l2 -5l3 -2l0 -2l6 -1l8 -5l6 -4l8 -4l3 -5l-5 0l-2 3l-11 5l-3 -5l-10 1l-10 7l3 2l-9 1l-6 1l0 -3l-6 -1l-5 2l-12 0l-13 1l-13 8l-15 9l6 1l2 2l4 1l2 -2l5 0l5 5l1 3l-4 4l0 5l-2 6l-6 6l-1 3l-6 4l-5 5l-3 2l-5 3l-2 0l-3 -2l-5 3l-1 1l-1 0l-2 1l-1 2l0 2l-2 1l-1 1l-1 1l-3 1l-2 1l0 2l1 1l2 2l4 4l1 3l0 4l-2 3l-3 0l-3 2l-4 0l-1 -2l1 -3l-2 -4l3 -1l-2 -3l-2 -1l-1 1l-1 0l-1 -1l-1 0l1 -2l1 -1l1 -3l-1 0l-2 -1l-2 -1l-6 1l-2 2l-5 1l2 -1l0 -2l3 -3l-2 -2l-4 2l-4 2l-3 3l-4 0l-2 2l2 3l4 0l0 2l3 1l4 -2l4 1l2 0l1 2l-6 1l-1 3l-4 2l-2 2l4 3l1 3l3 4l3 3l0 3l-3 1l1 2l2 2l0 3l-1 3l-2 0l-3 5l-4 5l-3 5l-6 3l-5 4l-5 0l-2 2l-2 -1l-2 2l-6 2l-4 0l-1 5l-2 0l-1 -3l0 -2l-5 -1l-2 1l-5 3l-3 4l-1 3l3 4l3 5l4 3l3 3l1 7l0 7l-4 3l-4 3l-3 3l-5 4l-2 -3l1 -3l-3 -2l-3 -1l-2 -2l-2 -4l-3 -2l-4 0l1 -3l-4 0l0 5l-2 6l-1 3l0 3l2 0l2 4l1 3l2 3l2 0l3 2l3 3l2 3l0 2l-1 2l1 1l0 3l1 1l2 3l0 2l-3 0l-4 -3l-4 -3l-1 -2l-2 -3l-1 -3l-1 -2l0 -3l-1 -2l-1 -1l-1 -2l-2 -3l-2 -2l-1 3l0 -2l0 -3l1 -4l0 -3l1 -3l-1 -2l0 -4l-2 -3l-1 -4l-1 -5l-1 -4l-3 2l-5 3l-2 0l-2 -1l1 -5l-1 -4l-3 -4l1 -2l-3 0l-3 -4l-1 -2l0 -2l-1 -2l-1 -2l-4 0l0 1l-1 3l-2 -1l0 1l-1 -1l-2 0l0 1l-3 0l-5 1l0 3l-2 2l-6 3l-4 5l-3 2l-4 3l0 2l-2 1l-4 1l-2 0l-1 3l1 6l0 3l-2 4l0 7l-2 0l-1 3l1 1l-4 1l-1 3l-2 1l-4 -4l-1 -5l-2 -4l-1 -2l-3 -4l-1 -5l0 -2l-4 -6l-2 -8l-1 -5l0 -5l0 -3l-6 2l-3 -1l-5 -4l2 -2l-2 -1l-4 -4l-3 -1l-1 -3l-4 -3l-7 1l-6 0l-6 1l-8 -2l-4 0l-4 -1l-2 -5l-2 -1l-3 1l-4 2l-5 -1l-4 -3l-4 -1l-3 -4l-3 -6l-2 1l-2 -1l-2 1l-2 0l1 2l-1 1l2 3l1 3l2 1l1 2l3 1l0 2l-1 1l1 2l1 1l1 1l0 1l0 -3l1 -2l1 0l1 1l0 2l0 2l0 2l1 0l0 1l3 -1l4 0l2 1l3 -3l3 -3l2 -2l1 -2l1 1l0 1l-1 1l1 3l1 3l3 1l3 1l2 1l2 2l1 1l1 1l0 1l-1 2l-1 1l-2 2l-1 2l-2 0l-1 1l0 2l0 3l-2 0l-3 2l0 2l-1 0l-2 0l-2 1l0 2l-2 1l-2 0l-3 1l-2 0l-2 1l-1 2l0 2l-4 1l-7 2l-3 3l-2 0l-1 0l-3 2l-2 0l-3 1l-1 0l-1 1l-1 0l-1 1l-2 0l-1 1l-3 -1l-1 -2l0 -2l-1 -1l0 -3l-2 -2l1 0l0 -2l0 -1l0 -1l0 -2l-2 -1l0 -2l-2 -1l-2 -4l-1 -3l-3 -3l-2 0l-2 -4l-1 -3l0 -2l-2 -5l-2 -1l-2 -1l-1 -2l0 -1l-1 -2l-1 -1l-2 -3l-2 -4l-2 -2l-2 0l0 -2l0 -2l1 -1l0 -1l-1 2l-1 3l-1 2l-1 0l-2 -1l-1 -2l-3 -5l-1 0l2 4l2 4l3 6l2 3l1 2l4 4l-1 1l0 3l5 3l0 1l2 4l-1 1l0 4l2 5l1 1l3 1l2 5l1 3l2 2l6 4l2 2l2 3l1 1l2 1l1 1l0 2l-2 1l2 1l1 1l1 2l1 1l2 0l4 -1l5 0l3 -2l2 0l2 -1l2 0l1 0l2 0l2 -1l2 -1l1 0l1 1l-1 2l0 2l-1 2l-1 4l-2 5l-2 5l-4 6l-3 4l-5 6l-4 3l-6 4l-3 3l-5 5l-1 2l-1 1l-2 1l-1 2l-2 0l-1 3l-1 2l-1 2l-1 2l-2 5l0 2l3 1l0 1l-1 3l0 1l0 2l1 2l2 4l1 1l1 2l0 4l0 4l0 6l1 2l-1 3l-2 2l-2 3l-4 1l-4 2l-5 5l-1 0l-3 3l-2 1l0 3l2 3l0 2l1 2l0 -1l0 4l-1 2l1 1l0 1l-2 2l-3 1l-5 2l-2 2l1 2l1 0l-1 2l-1 3l0 3l-1 2l-3 2l-1 1l-1 2l-2 2l-2 3l-4 4l-3 2l-3 2l-4 1l-2 1l-1 1l-2 -1l-2 1l-5 -1l-2 1l-2 -1l-4 2l-3 1l-3 1l-2 0l-1 -1l-2 0l-1 -2l0 1l-1 -2l0 -2l-1 -3l1 0l0 -3l-3 -4l-2 -3l-3 -6l-3 -3l-1 -3l-1 -4l-1 -2l-1 -7l0 -4l-1 -3l-2 -1l-2 -4l-2 -4l-1 -3l-3 -4l0 -3l0 -2l0 -4l1 -3l1 -2l1 -4l1 -1l2 -3l2 -2l0 -3l0 -2l-1 -2l-2 -2l0 -2l0 -1l1 -2l-1 -4l-1 -2l-2 -3l0 -1l0 -1l-1 -3l-4 -4l-4 -4l-2 -3l-3 -5l0 -1l1 -1l1 -3l1 -3l-1 -1l2 -4l0 -3l-1 -3l-2 -1l-1 -1l-1 -1l0 -1l-4 1l-2 0l-1 1l-3 0l-3 -3l-1 -2l-3 -3l-3 0l-3 0l-4 0l-3 1l-6 3l-2 1l-4 1l-3 -1l-2 0l-3 -1l-3 0l-4 1l-3 1l-4 2l-1 0l-1 0l-4 -2l-4 -3l-3 -3l-3 -2l-1 0l-3 -2l-2 -2l0 -2l-1 -3l-2 -2l-1 -2l-1 0l-1 -1l-1 -2l0 -1l-2 0l-2 -2l-1 0l-1 -1l0 -1l-1 -1l-1 -1l0 -3l0 -1l-2 -3l-1 -2l1 -1l2 -2l1 -3l0 -2l1 -2l0 -3l0 -4l-1 -2l1 -2l-1 -2l-2 -2l0 -2l0 -2l2 -1l1 -2l0 -1l1 -3l2 -2l2 -1l1 -2l0 -3l1 -2l3 -1l2 -5l3 -1l3 -1l3 -2l2 -1l4 -4l-1 -5l1 -3l1 -2l2 -3l4 -2l3 -1l3 -5l1 -2l3 0l3 2l3 -1l5 1l1 0l4 -2l4 -1l3 -1l4 -1l7 -1l6 0l2 0l4 -1l4 0l2 0l3 0l4 -1l3 0l0 2l3 -1l-2 2l0 2l2 1l-1 4l-2 2l0 2l2 0l1 2l2 0l5 2l1 -1l4 1l5 2l2 3l3 1l6 2l4 2l2 -1l2 -2l-1 -3l2 -2l2 -2l3 0l6 0l1 2l1 0l2 1l4 0l1 2l5 0l4 1l4 1l2 1l3 -2l1 -1l4 0l3 0l1 2l1 -1l3 1l3 0l2 -1l1 -1l1 -2l1 -3l0 -1l1 0l1 -4l2 -2l0 -1l0 -3l1 -1l-2 -2l2 -2l-3 1l-3 -1l-3 2l-6 1l-3 -3l-5 0l0 2l-3 0l-4 -2l-4 0l-3 -4l-3 -2l2 -3l-2 -2l4 -4l6 0l2 -3l8 1l4 -3l5 -1l7 0l7 3l5 1l5 0l3 0l5 -2l1 -2l-1 -3l-2 -1l-3 -1l-1 -1l-5 -3l-5 -2l-3 -2l3 -1l3 -3l-2 -2l6 -1l-1 -1l-3 1l-3 0l-3 1l-4 0l-3 2l0 2l2 1l4 0l-1 2l-4 0l-5 3l-3 -1l1 -2l-4 -1l1 -1l3 -1l-1 -1l-6 -1l0 -2l-4 1l-1 2l-4 3l1 1l-2 1l-2 -1l-1 5l-2 2l-1 3l1 2l0 2l4 1l-1 1l-5 0l-1 1l-4 2l-1 -1l0 -1l-2 0l-2 -1l-5 1l3 3l-2 0l-3 0l-2 -2l0 1l0 2l2 2l-1 1l2 2l2 1l0 2l-4 -1l2 2l-3 1l2 3l-3 0l-3 -1l-2 -4l-1 -2l-1 -2l-2 -2l0 -2l-1 0l0 -1l-2 -1l-1 -2l1 -3l0 -1l-1 -1l-1 -1l-2 -1l-4 -1l-2 -2l-4 -1l-3 -3l1 0l-2 -2l0 -1l-3 -1l-1 2l-1 -2l0 -1l1 0l-3 -1l-4 1l1 2l-1 2l1 2l4 2l2 3l5 3l3 0l1 1l-1 1l3 1l3 1l4 3l-1 2l-2 -2l-4 -1l-1 3l3 1l-1 2l-1 1l-3 3l-1 0l0 -1l1 -2l0 -1l-1 -2l-1 -2l-2 -1l-1 -1l-3 -1l-1 -2l-3 0l-4 -2l-3 -2l-3 -3l-1 -4l-2 0l-3 -1l-2 0l-3 2l-1 0l-4 2l-8 -1l-6 2l0 2l0 2l-4 3l-5 1l0 1l-3 3l-1 3l1 2l-2 2l-1 2l-3 1l-3 3l-5 0l-3 0l-3 2l-2 1l-1 0l-2 -1l-1 -3l-4 0l-1 1l-3 -1l-2 1l1 -4l0 -2l-2 0l-1 -2l0 -3l2 -1l0 -2l1 -2l0 -2l-1 -1l0 -2l0 -2l-2 -2l6 -3l5 1l5 0l5 0l3 0l6 0l2 -2l1 -8l-4 -4l-3 -2l-6 -2l0 -3l5 -1l7 1l-2 -4l4 2l9 -4l2 -3l3 -1l3 0l2 -1l4 -6l5 -2l4 0l0 -1l4 0l0 1l3 -2l-1 -2l0 -2l-2 -2l0 -4l1 -1l1 -1l4 -1l1 -1l3 -1l0 2l-1 1l0 2l3 0l-1 2l-2 -1l-2 3l1 2l0 2l4 1l0 1l4 -1l2 -1l5 2l1 1l3 -1l6 -2l5 -1l4 0l1 1l4 0l1 -1l5 -2l-1 -3l0 -3l2 -3l4 -1l3 3l3 0l1 -3l1 -3l-2 1l-2 -1l-1 -3l5 -1l5 0l5 0l4 0l4 -2l-4 -2l-7 0l-7 2l-7 1l-2 -3l-4 -1l1 -4l-2 -3l2 -3l4 -2l9 -5l3 0l-1 -2l-5 -2l-7 1l-4 3l0 2l-6 4l-8 3l-3 6l3 2l4 3l-4 4l-4 1l-1 7l-2 4l-5 -1l-3 3l-4 1l-2 -4l-3 -5l-3 -5l-3 -3l-7 5l-6 1l-5 -2l-2 -5l-1 -9l4 -2l10 -4l8 -4l7 -6l10 -7l7 -3l11 -5l9 -2l6 0l6 -3l7 0l8 -1l12 3l-5 1l4 3l5 -2l6 3l11 1l15 4l3 2l1 3l-5 2l-6 1l-18 -3l-3 0l6 3l1 6l5 2l3 1l1 -2l-3 -2l3 -2l9 3l4 -1l-3 -3l9 -4l4 0l4 2l2 -3l-3 -2l2 -3l-3 -2l11 1l2 2l-5 1l0 2l3 1l7 -1l1 -2l8 -2l14 -3l3 0l-4 2l5 1l3 -2l7 0l6 -2l5 3l4 -3l-4 -2l2 -1l12 1l6 1l14 5l3 -2l-4 -3l-5 -1l1 -2l-2 -3l0 -1l7 -4l3 -3l3 -1l10 1l1 2l-4 3l3 2l1 2l-1 6l5 2l-2 3l-8 6l5 0l1 -1l5 -1l1 -2l3 -2l-2 -2l2 -3l-5 0l-1 -3l4 -4l-6 -3l8 -2l-1 -3l2 0l2 2l-2 4l4 0l-1 -2l6 -2l9 0l7 2l-4 -3l0 -5l7 0l10 0l8 -1l-3 -2l5 -2l4 -1l8 -2l11 0l1 -1l10 -1l4 1l9 -2l7 0l1 -1l4 -2l9 -2l7 2l-5 0l9 1l1 2l4 -1l11 0l9 2l4 2l-1 2l-5 1l-10 2l-3 1l5 1l5 1l4 -1l2 3l2 -1l6 -1l13 1l1 2l17 0l0 -3l9 1l6 0l6 2l2 2l-2 2l5 3l6 2l4 -4l6 1l7 -1l8 2l3 -2l6 1l-2 -4l5 -1l36 2l3 3l11 3l16 -1l8 1l3 1l0 3l5 1l5 -1l7 0l8 1l7 0l7 3l5 -1l-3 -3l2 -1l13 1l8 -1l11 2l6 2ZM1440 84l10 3l10 4l0 3l3 1l-1 -3l11 0l7 4l-4 2l-6 0l0 4l-2 1l-4 0l-3 -2l-5 -1l-1 -1l-4 -1l-4 0l-3 -1l1 -1l-5 1l2 1l-2 2l-5 2l-5 0l3 2l3 3l1 1l1 2l-1 1l-8 -1l-11 3l-3 0l-6 3l-6 3l-2 1l-5 -2l-11 3l-2 -2l-3 2l-6 0l-1 2l-5 4l0 2l5 1l-1 5l-3 1l-2 3l1 2l-7 2l-1 4l-6 1l-1 4l-6 4l-1 -3l-2 -6l-2 -9l2 -5l3 -2l0 -2l6 -1l8 -5l6 -4l8 -4l3 -5l-5 0l-2 3l-11 5l-3 -5l-10 1l-10 7l3 2l-9 1l-6 1l0 -3l-6 -1l-5 2l-12 0l-13 1l-13 8l-15 9l6 1l2 2l4 1l2 -2l5 0l5 5l1 3l-4 4l0 5l-2 6l-6 6l-1 3l-6 4l-5 5l-3 2l-5 3l-2 0l-3 -2l-5 3l-1 1l-1 0l-2 1l-1 2l0 2l-2 1l-1 1l-1 1l-3 1l-2 1l0 2l1 1l2 2l4 4l1 3l0 4l-2 3l-3 0l-3 2l-4 0l-1 -2l1 -3l-2 -4l3 -1l-2 -3l-2 -1l-1 1l-1 0l-1 -1l-1 0l1 -2l1 -1l1 -3l-1 0l-2 -1l-2 -1l-6 1l-2 2l-5 1l2 -1l0 -2l3 -3l-2 -2l-4 2l-4 2l-3 3l-4 0l-2 2l2 3l4 0l0 2l3 1l4 -2l4 1l2 0l1 2l-6 1l-1 3l-4 2l-2 2l4 3l1 3l3 4l3 3l0 3l-3 1l1 2l2 2l0 3l-1 3l-2 0l-3 5l-4 5l-3 5l-6 3l-5 4l-5 0l-2 2l-2 -1l-2 2l-6 2l-4 0l-1 5l-2 0l-1 -3l0 -2l-5 -1l-2 1l-5 3l-3 4l-1 3l3 4l3 5l4 3l3 3l1 7l0 7l-4 3l-4 3l-3 3l-5 4l-2 -3l1 -3l-3 -2l-3 -1l-2 -2l-2 -4l-3 -2l-4 0l1 -3l-4 0l0 5l-2 6l-1 3l0 3l2 0l2 4l1 3l2 3l2 0l3 2l3 3l2 3l0 2l-1 2l1 1l0 3l1 1l2 3l0 2l-3 0l-4 -3l-4 -3l-1 -2l-2 -3l-1 -3l-1 -2l0 -3l-1 -2l-1 -1l-1 -2l-2 -3l-2 -2l-1 3l0 -2l0 -3l1 -4l0 -3l1 -3l-1 -2l0 -4l-2 -3l-1 -4l-1 -5l-1 -4l-3 2l-5 3l-2 0l-2 -1l1 -5l-1 -4l-3 -4l1 -2l-3 0l-3 -4l-1 -2l0 -2l-1 -2l-1 -2l-4 0l0 1l-1 3l-2 -1l0 1l-1 -1l-2 0l0 1l-3 0l-5 1l0 3l-2 2l-6 3l-4 5l-3 2l-4 3l0 2l-2 1l-4 1l-2 0l-1 3l1 6l0 3l-2 4l0 7l-2 0l-1 3l1 1l-4 1l-1 3l-2 1l-4 -4l-1 -5l-2 -4l-1 -2l-3 -4l-1 -5l0 -2l-4 -6l-2 -8l-1 -5l0 -5l0 -3l-6 2l-3 -1l-5 -4l2 -2l-2 -1l-4 -4l-3 -1l-1 -3l-4 -3l-7 1l-6 0l-6 1l-8 -2l-4 0l-4 -1l-2 -5l-2 -1l-3 1l-4 2l-5 -1l-4 -3l-4 -1l-3 -4l-3 -6l-2 1l-2 -1l-2 1l-2 0l1 2l-1 1l2 3l1 3l2 1l1 2l3 1l0 2l-1 1l1 2l1 1l1 1l0 1l0 -3l1 -2l1 0l1 1l0 2l0 2l0 2l1 0l0 1l3 -1l4 0l2 1l3 -3l3 -3l2 -2l1 -2l1 1l0 1l-1 1l1 3l1 3l3 1l3 1l2 1l2 2l1 1l1 1l0 1l-1 2l-1 1l-2 2l-1 2l-2 0l-1 1l0 2l0 3l-2 0l-3 2l0 2l-1 0l-2 0l-2 1l0 2l-2 1l-2 0l-3 1l-2 0l-2 1l-1 2l0 2l-4 1l-7 2l-3 3l-2 0l-1 0l-3 2l-2 0l-3 1l-1 0l-1 1l-1 0l-1 1l-2 0l-1 1l-3 -1l-1 -2l0 -2l-1 -1l0 -3l-2 -2l1 0l0 -2l0 -1l0 -1l0 -2l-2 -1l0 -2l-2 -1l-2 -4l-1 -3l-3 -3l-2 0l-2 -4l-1 -3l0 -2l-2 -5l-2 -1l-2 -1l-1 -2l0 -1l-1 -2l-1 -1l-2 -3l-2 -4l-2 -2l-2 0l0 -2l0 -2l1 -1l0 -1l-1 2l-1 3l-1 2l-1 0l-2 -1l-1 -2l-3 -5l-1 0l2 4l2 4l3 6l2 3l1 2l4 4l-1 1l0 3l5 3l0 1l2 4l-1 1l0 4l2 5l1 1l3 1l2 5l1 3l2 2l6 4l2 2l2 3l1 1l2 1l1 1l0 2l-2 1l2 1l1 1l1 2l1 1l2 0l4 -1l5 0l3 -2l2 0l2 -1l2 0l1 0l2 0l2 -1l2 -1l1 0l1 1l-1 2l0 2l-1 2l-1 4l-2 5l-2 5l-4 6l-3 4l-5 6l-4 3l-6 4l-3 3l-5 5l-1 2l-1 1l-2 1l-1 2l-2 0l-1 3l-1 2l-1 2l-1 2l-2 5l0 2l3 1l0 1l-1 3l0 1l0 2l1 2l2 4l1 1l1 2l0 4l0 4l0 6l1 2l-1 3l-2 2l-2 3l-4 1l-4 2l-5 5l-1 0l-3 3l-2 1l0 3l2 3l0 2l1 2l0 -1l0 4l-1 2l1 1l0 1l-2 2l-3 1l-5 2l-2 2l1 2l1 0l-1 2l-1 3l0 3l-1 2l-3 2l-1 1l-1 2l-2 2l-2 3l-4 4l-3 2l-3 2l-4 1l-2 1l-1 1l-2 -1l-2 1l-5 -1l-2 1l-2 -1l-4 2l-3 1l-3 1l-2 0l-1 -1l-2 0l-1 -2l0 1l-1 -2l0 -2l-1 -3l1 0l0 -3l-3 -4l-2 -3l-3 -6l-3 -3l-1 -3l-1 -4l-1 -2l-1 -7l0 -4l-1 -3l-2 -1l-2 -4l-2 -4l-1 -3l-3 -4l0 -3l0 -2l0 -4l1 -3l1 -2l1 -4l1 -1l2 -3l2 -2l0 -3l0 -2l-1 -2l-2 -2l0 -2l0 -1l1 -2l-1 -4l-1 -2l-2 -3l0 -1l0 -1l-1 -3l-4 -4l-4 -4l-2 -3l-3 -5l0 -1l1 -1l1 -3l1 -3l-1 -1l2 -4l0 -3l-1 -3l-2 -1l-1 -1l-1 -1l0 -1l-4 1l-2 0l-1 1l-3 0l-3 -3l-1 -2l-3 -3l-3 0l-3 0l-4 0l-3 1l-6 3l-2 1l-4 1l-3 -1l-2 0l-3 -1l-3 0l-4 1l-3 1l-4 2l-1 0l-1 0l-4 -2l-4 -3l-3 -3l-3 -2l-1 0l-3 -2l-2 -2l0 -2l-1 -3l-2 -2l-1 -2l-1 0l-1 -1l-1 -2l0 -1l-2 0l-2 -2l-1 0l-1 -1l0 -1l-1 -1l-1 -1l0 -3l0 -1l-2 -3l-1 -2l1 -1l2 -2l1 -3l0 -2l1 -2l0 -3l0 -4l-1 -2l1 -2l-1 -2l-2 -2l0 -2l0 -2l2 -1l1 -2l0 -1l1 -3l2 -2l2 -1l1 -2l0 -3l1 -2l3 -1l2 -5l3 -1l3 -1l3 -2l2 -1l4 -4l-1 -5l1 -3l1 -2l2 -3l4 -2l3 -1l3 -5l1 -2l3 0l3 2l3 -1l5 1l1 0l4 -2l4 -1l3 -1l4 -1l7 -1l6 0l2 0l4 -1l4 0l2 0l3 0l4 -1l3 0l0 2l3 -1l-2 2l0 2l2 1l-1 4l-2 2l0 2l2 0l1 2l2 0l5 2l1 -1l4 1l5 2l2 3l3 1l6 2l4 2l2 -1l2 -2l-1 -3l2 -2l2 -2l3 0l6 0l1 2l1 0l2 1l4 0l1 2l5 0l4 1l4 1l2 1l3 -2l1 -1l4 0l3 0l1 2l1 -1l3 1l3 0l2 -1l1 -1l1 -2l1 -3l0 -1l1 0l1 -4l2 -2l0 -1l0 -3l1 -1l-2 -2l2 -2l-3 1l-3 -1l-3 2l-6 1l-3 -3l-5 0l0 2l-3 0l-4 -2l-4 0l-3 -4l-3 -2l2 -3l-2 -2l4 -4l6 0l2 -3l8 1l4 -3l5 -1l7 0l7 3l5 1l5 0l3 0l5 -2l1 -2l-1 -3l-2 -1l-3 -1l-1 -1l-5 -3l-5 -2l-3 -2l3 -1l3 -3l-2 -2l6 -1l-1 -1l-3 1l-3 0l-3 1l-4 0l-3 2l0 2l2 1l4 0l-1 2l-4 0l-5 3l-3 -1l1 -2l-4 -1l1 -1l3 -1l-1 -1l-6 -1l0 -2l-4 1l-1 2l-4 3l1 1l-2 1l-2 -1l-1 5l-2 2l-1 3l1 2l0 2l4 1l-1 1l-5 0l-1 1l-4 2l-1 -1l0 -1l-2 0l-2 -1l-5 1l3 3l-2 0l-3 0l-2 -2l0 1l0 2l2 2l-1 1l2 2l2 1l0 2l-4 -1l2 2l-3 1l2 3l-3 0l-3 -1l-2 -4l-1 -2l-1 -2l-2 -2l0 -2l-1 0l0 -1l-2 -1l-1 -2l1 -3l0 -1l-1 -1l-1 -1l-2 -1l-4 -1l-2 -2l-4 -1l-3 -3l1 0l-2 -2l0 -1l-3 -1l-1 2l-1 -2l0 -1l1 0l-3 -1l-4 1l1 2l-1 2l1 2l4 2l2 3l5 3l3 0l1 1l-1 1l3 1l3 1l4 3l-1 2l-2 -2l-4 -1l-1 3l3 1l-1 2l-1 1l-3 3l-1 0l0 -1l1 -2l0 -1l-1 -2l-1 -2l-2 -1l-1 -1l-3 -1l-1 -2l-3 0l-4 -2l-3 -2l-3 -3l-1 -4l-2 0l-3 -1l-2 0l-3 2l-1 0l-4 2l-8 -1l-6 2l0 2l0 2l-4 3l-5 1l0 1l-3 3l-1 3l1 2l-2 2l-1 2l-3 1l-3 3l-5 0l-3 0l-3 2l-2 1l-1 0l-2 -1l-1 -3l-4 0l-1 1l-3 -1l-2 1l1 -4l0 -2l-2 0l-1 -2l0 -3l2 -1l0 -2l1 -2l0 -2l-1 -1l0 -2l0 -2l-2 -2l6 -3l5 1l5 0l5 0l3 0l6 0l2 -2l1 -8l-4 -4l-3 -2l-6 -2l0 -3l5 -1l7 1l-2 -4l4 2l9 -4l2 -3l3 -1l3 0l2 -1l4 -6l5 -2l4 0l0 -1l4 0l0 1l3 -2l-1 -2l0 -2l-2 -2l0 -4l1 -1l1 -1l4 -1l1 -1l3 -1l0 2l-1 1l0 2l3 0l-1 2l-2 -1l-2 3l1 2l0 2l4 1l0 1l4 -1l2 -1l5 2l1 1l3 -1l6 -2l5 -1l4 0l1 1l4 0l1 -1l5 -2l-1 -3l0 -3l2 -3l4 -1l3 3l3 0l1 -3l1 -3l-2 1l-2 -1l-1 -3l5 -1l5 0l5 0l4 0l4 -2l-4 -2l-7 0l-7 2l-7 1l-2 -3l-4 -1l1 -4l-2 -3l2 -3l4 -2l9 -5l3 0l-1 -2l-5 -2l-7 1l-4 3l0 2l-6 4l-8 3l-3 6l3 2l4 3l-4 4l-4 1l-1 7l-2 4l-5 -1l-3 3l-4 1l-2 -4l-3 -5l-3 -5l-3 -3l-7 5l-6 1l-5 -2l-2 -5l-1 -9l4 -2l10 -4l8 -4l7 -6l10 -7l7 -3l11 -5l9 -2l6 0l6 -3l7 0l8 -1l12 3l-5 1l4 3l5 -2l6 3l11 1l15 4l3 2l1 3l-5 2l-6 1l-18 -3l-3 0l6 3l1 6l5 2l3 1l1 -2l-3 -2l3 -2l9 3l4 -1l-3 -3l9 -4l4 0l4 2l2 -3l-3 -2l2 -3l-3 -2l11 1l2 2l-5 1l0 2l3 1l7 -1l1 -2l8 -2l14 -3l3 0l-4 2l5 1l3 -2l7 0l6 -2l5 3l4 -3l-4 -2l2 -1l12 1l6 1l14 5l3 -2l-4 -3l-5 -1l1 -2l-2 -3l0 -1l7 -4l3 -3l3 -1l10 1l1 2l-4 3l3 2l1 2l-1 6l5 2l-2 3l-8 6l5 0l1 -1l5 -1l1 -2l3 -2l-2 -2l2 -3l-5 0l-1 -3l4 -4l-6 -3l8 -2l-1 -3l2 0l2 2l-2 4l4 0l-1 -2l6 -2l9 0l7 2l-4 -3l0 -5l7 0l10 0l8 -1l-3 -2l5 -2l4 -1l8 -2l11 0l1 -1l10 -1l4 1l9 -2l7 0l1 -1l4 -2l9 -2l7 2l-5 0l9 1l1 2l4 -1l11 0l9 2l4 2l-1 2l-5 1l-10 2l-3 1l5 1l5 1l4 -1l2 3l2 -1l6 -1l13 1l1 2l17 0l0 -3l9 1l6 0l6 2l2 2l-2 2l5 3l6 2l4 -4l6 1l7 -1l8 2l3 -2l6 1l-2 -4l5 -1l36 2l3 3l11 3l16 -1l8 1l3 1l0 3l5 1l5 -1l7 0l8 1l7 0l7 3l5 -1l-3 -3l2 -1l13 1l8 -1l11 2l6 2ZM916 195l2 3l2 0l2 1l-4 0l0 3l-1 2l-2 1l1 2l1 3l4 1l2 2l6 0l6 -1l1 -1l-1 -3l1 -4l-4 -1l1 -3l-2 0l1 -4l3 1l4 -1l-3 -2l-1 -2l-3 1l-1 2l-1 -2l0 -1l1 -2l-1 -1l-5 -2l-1 -3l-3 -1l0 -1l4 0l0 -3l4 -1l3 1l1 -4l-1 -2l-4 0l-3 -1l-5 2l-4 0l-1 3l-4 0l-4 5l3 3l0 3l4 5l2 2ZM337 84l-2 1l-5 -1l-4 0l-5 -2l3 -1l3 -2l4 2l3 0l1 1l2 2ZM0 74l0 3l-4 0l-1 -1l5 -2ZM1440 74l0 3l-4 0l-1 -1l5 -2ZM0 74l1 0l3 0l6 1l-1 0l-4 1l-5 1l0 -3ZM1440 74l1 0l3 0l6 1l-1 0l-4 1l-5 1l0 -3ZM358 82l0 4l5 -3l5 3l-1 3l4 2l4 -3l3 -3l0 -5l6 1l6 0l5 2l0 2l-3 2l3 3l-1 2l-7 2l-6 1l-4 -1l-1 2l-4 3l-1 2l-5 3l-6 0l-3 2l0 2l-5 1l-5 3l-4 4l-2 4l0 4l6 1l2 4l2 3l5 -1l8 2l4 1l3 2l5 1l4 2l7 0l4 0l-1 4l1 4l3 4l6 4l3 -1l3 -4l-2 -7l-3 -2l6 -2l5 -2l2 -3l0 -3l-3 -3l-5 -3l5 -4l-2 -4l-1 -6l2 -1l7 1l4 0l4 -1l3 2l5 2l2 1l7 1l0 3l1 5l4 1l2 2l6 -2l4 -4l3 -2l3 3l5 5l4 5l-1 3l5 2l4 2l6 1l3 1l1 4l3 0l2 2l0 4l-3 2l-3 1l-6 2l-5 3l-7 1l-8 -1l-6 0l-5 0l-3 3l-5 2l-6 5l-4 4l3 -1l6 -5l9 -4l6 0l3 2l-3 3l1 4l1 3l5 2l7 -1l4 -4l0 3l3 1l-5 3l-9 2l-4 2l-4 3l-3 0l-1 -4l7 -3l-6 0l-5 0l1 2l-4 2l-4 1l-4 1l-3 3l0 1l0 2l1 2l2 0l-1 -2l1 1l0 1l-3 1l-1 0l-3 1l-2 0l-3 0l-3 1l6 0l1 0l-5 1l-3 0l-1 1l1 0l-1 3l-3 3l0 -1l-1 0l-1 -1l1 2l1 1l0 1l-2 2l-2 3l1 -3l-2 -1l0 -4l-1 2l1 3l-3 -1l3 1l0 4l1 0l1 2l0 4l-2 3l-5 1l-2 2l-2 1l-2 1l-1 1l-4 3l-2 2l-2 2l-1 3l1 3l1 3l2 3l0 2l2 4l0 3l-1 2l-1 2l-1 1l-2 -1l0 -2l-2 0l-2 -4l-2 -3l0 -2l0 -2l-1 -2l-3 -4l-1 0l-4 1l-1 0l-2 -2l-3 -1l-4 1l-4 -1l-3 1l-1 0l0 1l0 2l1 1l-1 0l-1 0l-2 1l-3 -1l-3 -2l-3 1l-3 -1l-2 0l-4 1l-3 3l-4 2l-3 2l0 1l-1 3l1 2l0 2l-1 3l-1 3l0 5l0 2l0 2l1 2l1 3l3 3l1 3l1 2l5 1l1 1l4 -1l3 0l3 -1l2 -1l3 -1l1 -2l0 -4l1 -1l3 -1l4 -1l3 0l3 0l1 1l0 2l-3 2l0 2l0 1l0 2l-1 3l-1 -1l-1 0l0 1l1 0l0 1l-1 1l0 1l0 1l0 1l0 2l-1 1l-1 0l-1 1l2 1l1 0l1 0l2 -1l0 1l1 0l1 0l2 0l2 -1l1 0l1 0l1 0l1 0l2 1l1 0l1 0l1 1l1 1l1 1l0 1l0 2l-1 1l0 2l0 1l0 2l0 1l-1 1l0 1l0 1l0 2l0 1l1 2l2 2l2 2l1 1l0 1l2 0l1 1l2 0l2 -1l2 -1l2 -1l2 0l2 0l2 1l1 1l2 1l2 0l3 -2l1 -1l0 -1l1 -3l2 -2l3 0l0 -1l3 0l3 -2l2 -1l2 -2l1 0l1 2l0 1l0 1l-3 0l2 2l-1 2l-1 3l1 3l2 -1l1 -2l-1 -2l-1 -3l5 -2l0 -1l1 -2l2 3l2 0l3 2l0 2l4 0l4 -1l2 2l3 1l3 -2l0 -1l5 0l4 0l-3 1l1 2l4 1l3 1l0 4l2 0l2 1l3 1l2 3l0 2l2 0l2 2l1 1l5 1l1 -1l3 0l4 1l2 0l2 1l5 4l0 1l2 0l1 2l2 7l2 1l0 3l-3 3l1 1l8 1l0 4l3 -3l5 2l6 2l2 3l0 2l4 -1l8 2l6 -1l6 4l5 4l3 1l4 1l1 1l1 5l1 2l-2 7l-2 3l-5 5l-3 5l-3 3l-1 0l-1 3l0 8l-1 6l0 2l-1 2l-1 5l-4 6l-1 4l-3 1l-1 3l-4 0l-7 1l-2 2l-5 1l-5 4l-3 4l-1 2l1 3l-1 4l-1 2l-2 2l-5 7l-3 3l-3 2l-2 4l-2 2l-2 3l-5 2l-3 -1l-2 0l-4 -1l-2 0l-3 -2l0 2l5 3l0 3l2 2l0 2l-4 5l-6 2l-8 1l-4 -1l1 3l-1 3l0 2l-2 1l-4 1l-4 -2l-1 1l0 4l3 1l2 -1l1 2l-4 1l-3 3l0 4l-1 2l-4 0l-3 2l-1 3l4 3l3 1l-1 4l-5 2l-2 4l-4 2l-2 2l2 4l2 2l-1 0l-4 0l-2 1l-3 2l-1 3l-2 0l-4 -1l-5 -3l-5 -2l-1 -2l1 -3l-2 -2l0 -7l1 -4l4 -3l-6 -1l4 -4l2 -7l4 2l2 -8l-3 -2l-1 5l-2 0l1 -6l1 -7l2 -3l-1 -4l0 -4l1 -1l3 -6l3 -6l1 -6l-1 -6l2 -4l-1 -5l2 -4l1 -8l1 -8l2 -9l-1 -7l0 -6l-5 -2l0 -2l-8 -4l-7 -4l-3 -2l-2 -4l1 -1l-3 -5l-4 -7l-4 -8l-2 -2l-1 -3l-3 -3l-3 -1l1 -2l-2 -4l2 -3l3 -2l2 -3l-1 -2l-1 2l-3 -2l1 -1l-1 -4l2 0l0 -3l2 -2l0 -2l2 -1l3 -2l-1 -1l2 0l-1 -2l1 -2l2 0l2 -2l1 -2l-1 -1l1 -3l-1 -3l1 -1l-1 -4l-2 -2l-1 -1l-1 -2l1 -1l-1 -1l0 -1l-2 -1l-2 0l-1 2l-2 1l-1 0l0 1l2 2l-1 0l-1 1l-2 0l0 -2l-1 0l-1 0l-1 -1l-2 -1l-1 0l-1 0l0 1l-1 -1l-2 -1l-1 -1l1 0l-1 -1l-1 -1l-1 -1l-2 0l0 -2l-1 0l0 1l0 1l-1 -1l-2 -1l0 -1l0 -1l0 -1l-1 -1l1 0l-1 -2l-2 -1l-1 -2l-2 -1l-2 -2l1 0l1 0l-1 -1l-1 -1l-1 1l-2 0l-1 0l-2 -1l-2 0l-1 -1l-2 -1l-3 0l-2 -1l-2 -1l-4 -4l-3 -2l-3 -1l-2 0l-3 2l-2 0l-3 -1l-3 0l-4 -2l-3 -1l-4 -2l-4 -2l-1 -1l-2 0l-4 -1l-2 -2l-4 -2l-2 -3l-1 -2l1 0l0 -1l1 -1l0 -2l-1 -1l-1 -2l-1 -2l-4 -4l-4 -3l-2 -3l-3 -1l-1 -1l1 -3l-2 -1l-3 -2l-1 -2l-2 -1l-2 -2l-2 -2l0 -1l-2 -3l-2 -3l0 -2l-2 -1l-2 0l-2 -1l-1 1l1 2l0 3l2 2l3 3l0 1l1 0l0 1l1 0l1 3l1 1l1 1l3 2l1 4l1 2l1 2l0 2l2 0l2 2l1 2l-1 2l-1 0l-1 -3l-3 -2l-3 -2l-2 -1l0 -3l0 -2l-2 -1l-3 -2l-1 -1l-3 -1l-2 -2l2 0l1 -1l0 -2l-3 -3l-2 -1l-2 -3l-1 -2l-2 -4l-2 -3l0 -2l-3 -2l-2 -1l0 -1l-2 0l-2 -1l-3 -1l-1 0l-1 -3l-4 -4l-3 -5l0 -1l-2 -1l-3 -4l0 -3l-3 -2l1 -4l0 -3l-1 -3l1 -4l1 -7l0 -5l-2 -4l-1 -2l1 -1l6 2l2 4l1 -1l-1 -4l-1 -3l-1 0l-8 -4l-3 -2l-7 -1l-2 -4l1 -2l-6 -2l0 -3l-5 -3l0 -2l-2 -2l-4 -1l-1 -3l-5 -4l-2 -3l-4 -1l-7 0l-4 -1l-8 -4l-4 -1l-7 -1l-6 0l-8 -2l-4 -2l-5 1l1 3l-2 0l-5 1l-3 2l-5 0l0 -2l1 -4l5 -1l-1 -1l-6 2l-2 3l-6 3l3 2l-4 2l-4 2l-4 1l-1 2l-6 2l-2 2l-4 2l-3 -1l-4 2l-4 1l-3 1l-7 1l-1 0l5 -2l4 -1l4 -3l5 0l2 -2l5 -2l1 -1l3 -1l1 -3l2 -3l-5 2l-1 -1l-2 1l-3 -2l-1 2l-1 -2l-4 1l-3 0l0 -2l1 -2l-3 -1l-5 1l-4 -2l-2 -1l0 -2l-3 -2l1 -2l3 -3l2 -2l3 0l3 1l3 -2l3 0l3 -1l-1 -2l-2 -1l3 -1l-3 0l-4 1l-1 1l-3 -1l-6 0l-6 -1l-1 -1l-5 -3l5 -1l9 -2l3 0l0 2l8 0l-3 -3l-5 -1l-3 -2l-4 -2l-5 -1l2 -3l7 0l5 -1l1 -2l4 -2l4 -1l8 -2l4 1l6 -2l6 0l3 2l1 -1l7 1l0 1l6 0l4 0l9 1l7 1l3 0l6 -1l6 2l4 0l8 1l6 2l4 0l3 -1l5 -2l6 1l6 -2l7 -1l3 2l3 -1l0 -2l3 0l7 4l5 -3l1 3l5 0l1 -1l5 0l6 1l10 2l5 1l4 -1l5 2l-5 2l7 1l11 0l3 -1l4 2l5 -2l-4 -1l2 -2l5 0l3 0l4 1l4 2l4 0l7 1l6 0l6 0l0 -3l3 0l7 1l-1 4l3 -3l3 0l2 -4l-4 -3l-5 -1l0 -5l5 -3l5 1l4 2l6 4l-4 2l8 1ZM263 68l-2 1l9 -1l6 2l4 -2l4 1l3 4l2 -1l-3 -4l4 -1l4 1l4 1l3 4l1 3l7 2l7 2l0 2l-7 0l3 2l-2 1l-7 -1l-7 -1l-4 1l-8 1l-12 1l-5 0l-2 -2l-6 -1l-3 0l-5 -3l2 0l6 -1l6 0l5 0l-7 -1l-9 0l-6 0l-2 -2l10 -1l-7 0l-7 -1l4 -3l3 -2l10 -2l4 1ZM302 66l-4 3l-6 -3l2 0l5 -1l3 1ZM415 68l0 1l-4 0l-5 -1l-4 1l-1 0l-5 -2l1 -2l2 0l9 0l7 3ZM374 67l3 3l4 -3l10 -2l7 4l-1 3l8 -1l4 -2l9 2l5 2l1 2l7 -1l4 2l10 2l3 2l4 3l-7 2l9 3l7 1l5 3l7 1l-2 2l-7 5l-5 -2l-6 -4l-5 1l-1 2l5 3l5 1l2 1l2 4l-1 3l-5 -1l-10 -3l6 3l4 3l0 1l-11 -1l-8 -3l-5 -2l1 -1l-6 -2l-5 -2l0 1l-12 1l-3 -1l2 -3l8 0l8 -1l-1 -1l1 -2l5 -4l-1 -2l-1 -1l-6 -2l-8 -2l2 -1l-4 -2l-4 0l-3 -2l-2 2l-7 0l-15 -1l-8 -1l-7 -1l-3 -1l4 -2l-6 0l-1 -4l3 -4l4 -1l11 -1l-3 2ZM319 65l4 0l7 0l2 1l-4 2l6 2l-1 3l-6 2l-4 0l-3 -2l-10 -3l0 -1l8 0l-4 -2l5 -2ZM1294 67l-6 0l-8 0l-1 0l4 -2l5 0l6 1l0 1ZM347 69l-4 3l-5 0l-2 -4l0 -2l2 -1l4 -2l8 1l8 1l-6 3l-5 1ZM238 74l-10 2l-2 -1l-10 -2l2 -2l3 -3l3 -3l-4 -2l14 -1l6 1l10 0l4 1l4 2l-5 1l-10 3l-5 3l0 1ZM1323 60l-5 1l-6 0l-8 -2l1 -1l8 1l10 1ZM346 60l-3 2l-5 -1l-5 -1l2 -2l6 -1l3 2l2 1ZM1300 58l-3 3l-15 0l-6 1l-8 -3l2 -3l5 -1l11 1l14 2ZM326 53l3 2l0 2l-2 3l-6 0l-5 0l1 -3l-7 1l0 -3l4 0l6 -2l6 1l0 -1ZM287 55l2 2l3 -1l4 0l1 2l-2 2l-14 1l-10 1l-6 0l0 -1l8 -2l-18 1l-6 -1l6 -4l3 -1l12 1l7 3l7 0l-6 -4l4 -1l4 0l1 2ZM950 77l-2 0l-13 0l-1 -2l-8 -1l0 -2l4 -1l0 -2l8 -4l-4 0l10 -4l-1 -1l8 -2l14 -3l13 -1l7 -1l8 -1l2 2l-2 1l-14 2l-13 2l-12 4l-6 4l-6 4l0 3l8 3ZM341 52l5 1l8 0l3 1l-1 2l5 1l2 1l6 0l5 0l7 -1l8 0l6 0l5 2l1 1l-3 1l-6 1l-5 0l-11 0l-9 0l-6 0l-11 -1l-1 -3l-1 -2l-4 -1l-8 -1l-4 -1l1 -2l8 1ZM255 49l0 3l-3 2l-4 0l-8 2l-6 0l-5 0l6 -3l9 -3l6 0l5 -1ZM345 50l-2 0l-8 0l-1 -1l8 0l3 0l0 1ZM279 49l-7 1l-6 -1l3 -1l6 -1l6 1l-2 1ZM819 49l-9 1l-7 -1l3 -1l-3 -1l9 -1l1 2l6 1ZM281 46l-5 0l-6 0l4 -1l2 0l5 1ZM337 48l-6 1l-3 -1l-2 -2l-1 -1l6 0l2 0l5 1l-1 2ZM320 47l1 1l-6 0l-7 -1l-9 -1l4 -1l-5 -1l0 -1l8 0l11 2l3 2ZM1140 47l-22 1l7 -5l3 0l3 0l10 2l-1 2ZM793 41l13 3l-10 2l-2 3l-4 0l-2 4l-4 0l-9 -3l4 -1l-6 -1l-8 -3l-3 -4l11 -1l2 1l6 0l1 -1l6 0l5 1ZM822 38l8 2l-6 2l-12 0l-12 0l0 -1l-6 0l-5 -2l13 -1l6 1l4 -2l10 1ZM925 38l-6 0l-3 1l-1 0l-5 1l-4 -1l2 -1l-9 0l8 -1l6 0l1 1l2 -1l4 -1l6 1l-1 1ZM1120 44l-9 1l-11 -1l-7 -2l-3 -3l-5 0l10 -3l9 -1l8 2l9 4l-1 3ZM372 41l5 2l-6 1l-7 3l-7 0l-9 0l-4 -2l0 -1l3 -2l-7 1l-4 -2l-3 -2l3 -1l3 -2l4 0l-2 -1l9 0l5 2l7 1l7 1l3 2ZM446 28l11 0l8 0l8 1l-1 2l-9 1l-10 1l-4 1l9 0l-9 2l-7 2l-7 3l-8 0l-3 1l-12 1l6 0l-3 1l3 2l-3 1l-7 1l-1 2l-6 1l1 1l6 0l0 1l-10 2l-11 -1l-11 1l-6 -1l-8 0l0 -2l7 -1l-2 -3l2 0l11 2l-5 -3l-7 0l3 -2l7 -1l2 -1l-6 -2l-2 -2l11 0l3 1l7 -2l-9 0l-14 0l-7 -1l-4 -2l-4 -1l-1 -2l6 0l4 0l8 -1l6 -2l5 1l4 1l3 -2l6 -1l7 -1l12 0l2 1l12 -1l8 0l9 1ZM612 26l25 3l-8 2l-15 0l-22 0l2 1l15 -1l12 2l7 -1l4 1l-5 2l11 -1l19 -2l12 1l2 2l-16 3l-2 1l-13 0l9 0l-5 3l-3 3l0 4l5 3l-6 0l-7 1l8 3l1 3l-5 0l6 4l-9 0l4 2l-1 1l-6 1l-5 0l5 2l0 2l-8 -1l-2 1l5 1l5 2l2 3l-7 1l-3 -1l-5 -3l1 3l-4 2l10 0l6 0l-11 4l-11 3l-12 2l-4 0l-4 1l-6 4l-8 3l-3 0l-5 1l-6 1l-4 3l0 2l-2 3l-6 3l1 3l-1 4l-3 4l-5 0l-6 -3l-8 0l-4 -3l-3 -4l-7 -5l-2 -2l0 -4l-6 -3l2 -3l-3 -2l4 -4l6 -2l2 -2l1 -3l-5 2l-2 0l-4 1l-5 -1l0 -3l2 -2l3 0l8 1l-6 -3l-4 -1l-4 0l-3 -1l4 -3l-2 -2l-3 -3l-5 -4l-5 -1l0 -2l-11 -2l-9 -1l-10 0l-10 1l-5 -2l-7 -2l11 -1l8 -1l-17 -1l-9 -1l0 -2l16 -2l14 -2l2 -1l-11 -1l3 -2l14 -3l6 0l-2 -2l10 -1l12 -1l12 0l5 1l10 -2l10 2l6 0l8 1l-10 -2l1 -2l13 -2l14 0l6 -1l14 -1l32 1Z"/>
+      <g id="dots"></g>
+    </svg>
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>Where</th><th class="n">Saying</th></tr>
+    </thead>
+    <tbody id="rows">
+      <tr><td class="dim" colspan="2">Loading.</td></tr>
+    </tbody>
+  </table>
+
+  <p class="faint">Positions are rounded to whole degrees, which is about a hundred
+  kilometres. The board holds a statement for two epochs and then forgets it, so this shows
+  who has spoken recently rather than who exists.</p>
+
+  <hr>
+
+  <p><a href="/">the333.dev</a> &#183; <a href="/333">the board itself</a> &#183;
+  <a href="https://github.com/needmoretruth/333">the repository</a></p>
+
+</main>
+<script>
+  // Off until asked. One fetch when the page opens, and nothing after that unless the
+  // person turns it on, because a page that quietly polls for ever is a page that costs
+  // somebody money on a metered connection.
+  var EVERY = 30000;
+  var timer = null;
+  var naming = null;
+  try { naming = new Intl.DisplayNames(["en"], { type: "region" }); } catch (e) { naming = null; }
+
+  function nameOf(code) {
+    if (code === "TOR") return "Tor";
+    if (!naming) return code;
+    try { return naming.of(code) || code; } catch (e) { return code; }
+  }
+
+  function draw(data) {
+    var dots = document.getElementById("dots");
+    dots.textContent = "";
+    var seen = {};
+    for (var i = 0; i < data.dots.length; i++) {
+      var lon = data.dots[i][0], lat = data.dots[i][1];
+      var key = lon + "," + lat;
+      seen[key] = (seen[key] || 0) + 1;
+    }
+    for (var at in seen) {
+      if (!Object.prototype.hasOwnProperty.call(seen, at)) continue;
+      var parts = at.split(",");
+      var x = (Number(parts[0]) + 180) / 360 * 1440;
+      var y = (90 - Number(parts[1])) / 180 * 720;
+      var many = seen[at];
+      var ring = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      ring.setAttribute("class", "ring");
+      ring.setAttribute("cx", x); ring.setAttribute("cy", y);
+      ring.setAttribute("r", 9 + Math.min(many, 9) * 3);
+      dots.appendChild(ring);
+      var dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      dot.setAttribute("class", "dot");
+      dot.setAttribute("cx", x); dot.setAttribute("cy", y);
+      dot.setAttribute("r", 5 + Math.min(many, 9));
+      var title = document.createElementNS("http://www.w3.org/2000/svg", "title");
+      title.textContent = many + (many === 1 ? " node" : " nodes");
+      dot.appendChild(title);
+      dots.appendChild(dot);
+    }
+
+    var rows = document.getElementById("rows");
+    rows.textContent = "";
+    function row(where, count, klass) {
+      var tr = document.createElement("tr");
+      if (klass) tr.className = klass;
+      var a = document.createElement("td"); a.textContent = where;
+      var b = document.createElement("td"); b.className = "n"; b.textContent = String(count);
+      tr.appendChild(a); tr.appendChild(b); rows.appendChild(tr);
+    }
+    for (var j = 0; j < data.countries.length; j++) {
+      row(nameOf(data.countries[j].c), data.countries[j].n, null);
+    }
+    if (data.tor) row("Tor", data.tor, null);
+    if (data.unplaced) row("Nowhere the edge could place", data.unplaced, null);
+    if (!data.countries.length && !data.tor && !data.unplaced) {
+      var tr = document.createElement("tr");
+      var td = document.createElement("td");
+      td.className = "dim"; td.colSpan = 2;
+      td.textContent = "Nobody is saying where they are.";
+      tr.appendChild(td); rows.appendChild(tr);
+    } else {
+      row("All of us saying", data.saying, "sum");
+    }
+    document.getElementById("said").textContent =
+      "Read at " + new Date(data.as_of).toISOString().replace("T", " ").slice(0, 19) + " UTC.";
+  }
+
+  function look() {
+    fetch("/333/where-we-are", { cache: "no-store" })
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+      .then(draw)
+      .catch(function () {
+        document.getElementById("said").textContent = "The board could not be read just now.";
+      });
+  }
+
+  document.getElementById("live").addEventListener("click", function () {
+    var on = timer !== null;
+    if (on) {
+      clearInterval(timer); timer = null;
+    } else {
+      timer = setInterval(look, EVERY);
+      look();
+    }
+    this.setAttribute("aria-pressed", String(!on));
+    this.textContent = on ? "Watch it live" : "Stop watching";
+    document.getElementById("lamp").className = on ? "lamp" : "lamp on";
+  });
+
+  look();
+</script>
+</body>
+</html>
