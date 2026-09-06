@@ -1,3 +1,5 @@
+import { opened, type Said } from "./whereabouts";
+
 // The meeting point.
 //
 // It is one fixed address in a design that wanted none. A node with an invitation never
@@ -98,14 +100,14 @@ export default {
     const path = new URL(request.url).pathname;
 
     if (path === "/" || path === "/index.html") return theFrontPage(request, env);
-    if (path === "/meet/where") return whereYouAre(request);
-    if (path === "/meet") {
-      return request.method === "GET" ? readTheBoard(request, env) : plain(405, "GET /meet\n");
+    if (path === "/333/where") return whereYouAre(request);
+    if (path === "/333") {
+      return request.method === "GET" ? readTheBoard(request, env) : plain(405, "GET /333\n");
     }
-    if (path.startsWith("/meet/")) {
+    if (path.startsWith("/333/")) {
       return request.method === "PUT"
-        ? speak(request, env, path.slice("/meet/".length))
-        : plain(405, "PUT /meet/<node name in hex>\n");
+        ? speak(request, env, path.slice("/333/".length))
+        : plain(405, "PUT /333/<node name in hex>\n");
     }
     return plain(404, "Nothing is kept at this address.\n");
   },
@@ -156,18 +158,25 @@ function whereYouAre(request: Request): Response {
 
 /** Hand back every statement being held, newest last.
  *
- *  The body is the same shape as the logs the client already reads: a four-byte length in
- *  network order, then that many bytes, repeated. Nothing here says which of them verify. */
+ *  To a program, the body is the same shape as the logs the client already reads: a
+ *  four-byte length in network order, then that many bytes, repeated. Everything is
+ *  handed over, including anything that does not verify, because the client checks for
+ *  itself and a server that filters is a server that can filter somebody out.
+ *
+ *  To a browser, the same board with the signatures checked here and the ones that fail
+ *  left out, written as invitations a person can copy. Checking here proves nothing to
+ *  anybody and is not meant to: it is so that a page for people is a page of things that
+ *  are at least real statements by real keys. */
 async function readTheBoard(request: Request, env: Env): Promise<Response> {
   const lines = alive((await held(env)).e);
 
   if ((request.headers.get("accept") ?? "").includes("text/html")) {
-    return plain(
-      200,
-      `${lines.length} ${lines.length === 1 ? "node is saying where it" : "nodes are saying where they"}` +
-        ` can be reached.\n\nThis address answers a program, not a browser. The program is at\n` +
-        `https://github.com/needmoretruth/333\n`,
-    );
+    const said: Said[] = [];
+    for (const line of lines) {
+      const one = await opened(unbase64(line.b));
+      if (one !== null) said.push(one);
+    }
+    return page(said);
   }
 
   let total = 0;
@@ -186,6 +195,53 @@ async function readTheBoard(request: Request, env: Env): Promise<Response> {
   }
   return new Response(body, {
     headers: { "content-type": "application/octet-stream", "cache-control": "no-store" },
+  });
+}
+
+/** Nothing here is written by us, so nothing here goes into a page unescaped. */
+function safe(text: string): string {
+  return text.replace(/[&<>"]/g, (mark) => `&#${mark.charCodeAt(0)};`);
+}
+
+/** The board, for somebody with a browser rather than a client. */
+function page(said: Said[]): Response {
+  const rows =
+    said.length === 0
+      ? "<p>Nobody has left an address here in the last two epochs.</p>"
+      : `<ul>${said
+          .map(
+            (one) =>
+              `<li><code>333:${safe(one.address)}</code><span> said in epoch ${one.epoch}` +
+              ` by ${safe(one.node.slice(0, 12))}</span></li>`,
+          )
+          .join("")}</ul>`;
+  const body = `<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>333 — where people are</title>
+<style>
+:root{color-scheme:light dark;--g:#fff;--i:#141414;--d:#575757;--l:#e3e3e3;--r:#f5f5f5}
+@media(prefers-color-scheme:dark){:root{--g:#0b0b0b;--i:#ededed;--d:#a6a6a6;--l:#262626;--r:#151515}}
+body{margin:0;background:var(--g);color:var(--i);padding:2.5rem 1.25rem 5rem;
+font:1rem/1.7 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;overflow-wrap:anywhere}
+main{max-width:40rem;margin:0 auto}h1{font-size:2rem;font-weight:600;margin:0 0 1.5rem}
+p{margin:0 0 1.1rem}ul{list-style:none;padding:0;margin:0 0 1.5rem}
+li{border:1px solid var(--l);border-radius:14px;padding:.9rem 1.1rem;margin-bottom:.6rem;background:var(--r)}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.95em}
+li span{display:block;color:var(--d);font-size:.85rem;margin-top:.35rem}
+a{color:inherit;text-underline-offset:4px}.d{color:var(--d)}
+</style></head><body><main>
+<h1>Where people are</h1>
+<p class="d">These are the addresses nodes have signed for themselves in the last two epochs.
+Each signature was checked here, and your client checks it again before it believes any of
+it. Nothing on this page hands over the file. The node at the far end decides that, and it
+will want you to have been introduced.</p>
+${rows}
+<p class="d">To knock on one of them, run <code>333 join 333:address:port</code>. If you do
+not have the client yet, it is at
+<a href="https://github.com/needmoretruth/333">github.com/needmoretruth/333</a>.</p>
+</main></body></html>`;
+  return new Response(body, {
+    headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
   });
 }
 

@@ -14,13 +14,13 @@ workers_dev = false
 enabled = true
 
 # The pages are served straight from the edge. Two paths run code first: the meeting point, so
-# that a file called "meet" could never quietly shadow it, and the front page, which has one
+# that a file called "333" could never quietly shadow it, and the front page, which has one
 # number in it that is read out of the board on the way past. Everything else is a file.
 [assets]
 directory = "site"
 binding = "ASSETS"
 not_found_handling = "404-page"
-run_worker_first = ["/", "/index.html", "/meet", "/meet/*"]
+run_worker_first = ["/", "/index.html", "/333", "/333/*"]
 
 [[routes]]
 pattern = "the333.dev"

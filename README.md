@@ -8,12 +8,18 @@
 
 # 333
 
-**[the333.dev](https://the333.dev)** is the one address written into the client. It says
-what this is, it carries the Law, and it is where two nodes on two different networks find
-each other: it holds the signed statements nodes make about where they can be reached, keeps
-each one for two epochs, and verifies none of them, because the client that reads them does
-that. It hands out no file and it is not a node. If it went away tomorrow, every node that
-had already met somebody would carry on unchanged.
+**[the333.dev](https://the333.dev)** is the one address written into the client, and this
+repository is where everything actually lives. The site is a shop window: it says what this
+is, it carries the Law, and it does one job the repository cannot do, which is sit still at
+a known address so that two nodes on two different networks can find each other.
+
+The part that does that job is **[the333.dev/333](https://the333.dev/333)**. Nodes leave the
+statements they sign about where they can be reached; it keeps each one for two epochs, and
+hands them back to anybody who asks. Open it in a browser and you get the addresses as
+invitations you can copy. Your client asks the same address and gets the same statements as
+bytes, and then checks every signature itself, because nothing there is trusted. It hands
+out no file. It is not a node. If it went away tomorrow, every node that had already met
+somebody would carry on unchanged.
 
 **[The latest release](https://github.com/needmoretruth/333/releases/latest)** has a binary
 for Linux, for the Raspberry Pi down to the Zero, for both kinds of Mac and for Windows.
@@ -196,8 +202,9 @@ you are sitting on is the one thing an onion address exists to prevent.
 
 And when neither of those has happened — nobody handed you an invitation, nobody is on
 your network — there is one fixed address both of us are already looking at:
-**the333.dev**. Your node leaves the same signed statement it already writes about
-where it can be reached, and reads the ones other people left there. Every one of them
+**[the333.dev/333](https://the333.dev/333)**. Your node leaves the same signed statement it
+already writes about where it can be reached, and reads the ones other people left there.
+You can open that address in a browser yourself and read them as invitations. Every one of them
 is verified here, by the signature it carries, so that address cannot invent one of
 us, cannot forge anybody's whereabouts and cannot vouch for anyone; it holds a
 statement for two epochs and then forgets it. `--no-meet` keeps your node away from it
@@ -256,15 +263,17 @@ mkdir -p ~/.local/bin && mv 333-x86_64-linux ~/.local/bin/333
 333 id
 ```
 
-| your machine | the file |
-|---|---|
-| Linux, ordinary desktop or server | `333-x86_64-linux` |
-| Linux, and you want the small one | `333-light-x86_64-linux` |
-| Raspberry Pi 3, 4, 5 on 64-bit | `333-light-aarch64-linux` |
-| Raspberry Pi Zero, or anything ARMv6 | `333-light-armv6-linux` |
-| Mac, Apple silicon | `333-aarch64-macos` |
-| Mac, Intel | `333-x86_64-macos` |
-| Windows | `333-light-x86_64-windows.exe` |
+Both forms are built for every system, so pick the row for your machine and then the
+column for the form you want.
+
+| your machine | Standard | Light |
+|---|---|---|
+| Linux, desktop or server | `333-x86_64-linux` | `333-light-x86_64-linux` |
+| Raspberry Pi 3, 4, 5, on 64-bit | `333-aarch64-linux` | `333-light-aarch64-linux` |
+| Raspberry Pi Zero, or anything ARMv6 | `333-armv6-linux` | `333-light-armv6-linux` |
+| Mac, Apple silicon | `333-aarch64-macos` | `333-light-aarch64-macos` |
+| Mac, Intel | `333-x86_64-macos` | `333-light-x86_64-macos` |
+| Windows | `333-x86_64-windows.exe` | `333-light-x86_64-windows.exe` |
 
 Standard is around 17 MB and has the screen and Tor in it. Light is around 5 MB, links
 nothing but the C library, and is the smallest thing that still counts as keeping the

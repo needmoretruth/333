@@ -4,10 +4,10 @@
 # reach and attaches the results to the release of that tag. Nothing here builds on
 # an ordinary push: a release is a thing somebody meant to do.
 #
-# Standard carries Tor, and Tor wants a system TLS and a system SQLite, which is why
-# it is built only where those exist. Light carries neither and links nothing but the
-# C library, which is why it is the one that reaches a Raspberry Pi and a Windows
-# machine.
+# Both forms are built for every system. Standard carries Tor, and Tor wants a TLS and
+# an SQLite; where the system has neither, or where this is a cross build and the
+# system's are the wrong architecture, `--features bundled` compiles both into the
+# binary instead. Light carries neither and links nothing but the C library.
 name: release
 
 on:
@@ -46,7 +46,7 @@ jobs:
             os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             features: ""
-            packages: pkg-config libssl-dev libsqlite3-dev
+            packages: "pkg-config libssl-dev libsqlite3-dev"
             binary: "333"
             asset: 333-x86_64-linux
           - name: Light, Linux on x86-64
@@ -56,18 +56,32 @@ jobs:
             packages: ""
             binary: "333"
             asset: 333-light-x86_64-linux
+          - name: Standard, Linux on 64-bit ARM
+            os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            features: --features bundled
+            packages: "gcc-aarch64-linux-gnu"
+            binary: "333"
+            asset: 333-aarch64-linux
           - name: Light, Linux on 64-bit ARM
             os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
             features: --no-default-features
-            packages: gcc-aarch64-linux-gnu
+            packages: "gcc-aarch64-linux-gnu"
             binary: "333"
             asset: 333-light-aarch64-linux
+          - name: Standard, Linux on ARMv6, which is a Raspberry Pi Zero
+            os: ubuntu-latest
+            target: arm-unknown-linux-gnueabihf
+            features: --features bundled
+            packages: "gcc-arm-linux-gnueabihf"
+            binary: "333"
+            asset: 333-armv6-linux
           - name: Light, Linux on ARMv6, which is a Raspberry Pi Zero
             os: ubuntu-latest
             target: arm-unknown-linux-gnueabihf
             features: --no-default-features
-            packages: gcc-arm-linux-gnueabihf
+            packages: "gcc-arm-linux-gnueabihf"
             binary: "333"
             asset: 333-light-armv6-linux
           - name: Standard, macOS on Apple silicon
@@ -77,6 +91,13 @@ jobs:
             packages: ""
             binary: "333"
             asset: 333-aarch64-macos
+          - name: Light, macOS on Apple silicon
+            os: macos-latest
+            target: aarch64-apple-darwin
+            features: --no-default-features
+            packages: ""
+            binary: "333"
+            asset: 333-light-aarch64-macos
           - name: Standard, macOS on Intel
             os: macos-latest
             target: x86_64-apple-darwin
@@ -84,12 +105,26 @@ jobs:
             packages: ""
             binary: "333"
             asset: 333-x86_64-macos
+          - name: Light, macOS on Intel
+            os: macos-latest
+            target: x86_64-apple-darwin
+            features: --no-default-features
+            packages: ""
+            binary: "333"
+            asset: 333-light-x86_64-macos
+          - name: Standard, Windows on x86-64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            features: --features bundled
+            packages: ""
+            binary: "333.exe"
+            asset: 333-x86_64-windows.exe
           - name: Light, Windows on x86-64
             os: windows-latest
             target: x86_64-pc-windows-msvc
             features: --no-default-features
             packages: ""
-            binary: 333.exe
+            binary: "333.exe"
             asset: 333-light-x86_64-windows.exe
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
@@ -104,8 +139,10 @@ jobs:
         env:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
           CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
+          AR_aarch64_unknown_linux_gnu: aarch64-linux-gnu-ar
           CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER: arm-linux-gnueabihf-gcc
           CC_arm_unknown_linux_gnueabihf: arm-linux-gnueabihf-gcc
+          AR_arm_unknown_linux_gnueabihf: arm-linux-gnueabihf-ar
       - shell: bash
         run: cp target/${{ matrix.target }}/release/${{ matrix.binary }} ${{ matrix.asset }}
       - shell: bash

@@ -182,8 +182,17 @@ impl Meeting {
     }
 
     /// The address of one part of the meeting point.
+    ///
+    /// A place given with a scheme in front of it is taken as written. That is for
+    /// pointing a node at a meeting point running on the same machine while somebody
+    /// works on one, and it is the only way to reach one over plain HTTP: a bare host
+    /// is always https, so nobody arrives there by accident or by being told to.
     fn url(&self, tail: &str) -> String {
-        format!("https://{}/meet{tail}", self.place)
+        if self.place.starts_with("http://") || self.place.starts_with("https://") {
+            format!("{}/333{tail}", self.place.trim_end_matches('/'))
+        } else {
+            format!("https://{}/333{tail}", self.place)
+        }
     }
 }
 
@@ -280,7 +289,14 @@ mod tests {
     #[test]
     fn every_part_of_the_meeting_point_is_under_one_path() {
         let meeting = Meeting::at("example.test");
-        assert_eq!(meeting.url(""), "https://example.test/meet");
-        assert_eq!(meeting.url("/where"), "https://example.test/meet/where");
+        assert_eq!(meeting.url(""), "https://example.test/333");
+        assert_eq!(meeting.url("/where"), "https://example.test/333/where");
+    }
+
+    #[test]
+    fn a_place_given_with_a_scheme_is_taken_as_written() {
+        let meeting = Meeting::at("http://127.0.0.1:8787/");
+        assert_eq!(meeting.url(""), "http://127.0.0.1:8787/333");
+        assert_eq!(meeting.url("/where"), "http://127.0.0.1:8787/333/where");
     }
 }

@@ -21,6 +21,20 @@ tor = [
     "dep:tor-error",
     "dep:safelog",
 ]
+# Compile TLS and SQLite into the binary rather than linking the ones the system has.
+#
+# For building somewhere the system has neither, which is every cross build and every
+# Windows machine, and which is why the downloadable releases are built this way. A
+# binary built like this carries its own copies and will not get the security updates
+# the system libraries would have brought it. That is the trade any downloaded binary
+# makes; somebody building from source keeps the system ones by leaving this off.
+bundled = [
+    "tor",
+    "dep:libsqlite3-sys",
+    "dep:openssl-sys",
+    "libsqlite3-sys/bundled",
+    "openssl-sys/vendored",
+]
 
 [dependencies]
 n333-core.workspace = true
@@ -39,6 +53,11 @@ tor-rtcompat = { workspace = true, optional = true }
 tor-error = { workspace = true, optional = true }
 safelog = { workspace = true, optional = true }
 ureq.workspace = true
+
+# Named here only so that their features can be turned on from the outside. Nothing in
+# this crate calls either of them: arti reaches them through native-tls and rusqlite.
+libsqlite3-sys = { workspace = true, optional = true }
+openssl-sys = { workspace = true, optional = true }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "io-util", "time", "net"] }

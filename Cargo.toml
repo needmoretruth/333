@@ -91,6 +91,11 @@ mdns-sd = { version = "0.21.2", default-features = false, features = ["async"] }
 # dependency — on the smallest edition, it is the only one.
 ureq = { version = "3.4.0", default-features = false, features = ["rustls"] }
 
+# Pinned to what arti already resolves. They are declared only so that `--features
+# bundled` can turn their vendoring on; nothing in this workspace calls either one.
+libsqlite3-sys = "0.37.0"
+openssl-sys = "0.9.117"
+
 # --- the screen ----------------------------------------------------------------
 # The Standard edition's screen. Pure Rust, and the only part of the client a person
 # looks at for hours, which is why it is a library rather than hand-rolled escape

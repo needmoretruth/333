@@ -19,6 +19,8 @@ tor = ["n333-net/tor"]
 # The Standard edition's screen. Dropping it leaves the client saying the same
 # things in lines, which is what a machine with no terminal to look at wants.
 screen = ["dep:ratatui"]
+# Carry TLS and SQLite inside the binary. See the same feature on n333-net.
+bundled = ["n333-net/bundled"]
 
 [dependencies]
 n333-core.workspace = true
