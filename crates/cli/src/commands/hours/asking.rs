@@ -58,6 +58,10 @@ pub(super) async fn trade_news(node: &Node, dialer: &Dialer, now: Epoch) {
     if addresses.is_empty() {
         return;
     }
+    // Before the rounds, not inside one: a round is bounded by the response window and
+    // a bootstrap is allowed longer than that, so paying for it inside a round means
+    // giving up on a peer for being slow when what was slow was this node starting.
+    dialer.wake_for(&addresses).await;
     // Concurrently and under a deadline, because the alternative is a node that spends
     // its whole epoch dialling. A hundred and twelve addresses nobody answers, one after
     // another at three minutes each, is longer than an epoch — the questions this node

@@ -115,6 +115,41 @@ impl Dialer {
         self.common.timeout
     }
 
+    /// Start Tor now, if any of these addresses will need it and it is not up yet.
+    ///
+    /// WHY THIS EXISTS. A round with one peer is bounded by the response window,
+    /// because an answer that arrives later would not count anyway. A Tor bootstrap
+    /// takes seconds to minutes and is allowed longer than that on purpose. Put the
+    /// first onion dial inside a round and the bootstrap is cut off by the shorter of
+    /// the two deadlines, and what this node then says is that the peer did not
+    /// answer — which is a sentence about somebody else's node describing a state of
+    /// this one. Waking here, before any round starts, spends the time where it is
+    /// actually being spent and lets a failure to wake say so.
+    pub(crate) async fn wake_for(&self, addresses: &[String]) {
+        if self.tor.get().is_some() {
+            return;
+        }
+        let any_unseen = addresses
+            .iter()
+            .filter_map(|address| address.parse::<PeerAddress>().ok())
+            .any(|address| address.needs_tor());
+        if !any_unseen {
+            return;
+        }
+        aloud!(
+            "waking   somebody worth reaching is at an unseen address and Tor is not up.\n\
+             \x20        The first bootstrap takes seconds to minutes, and nothing is\n\
+             \x20        asked of anybody until it is over."
+        );
+        if let Err(e) = self.tor().await {
+            aloud!(
+                "unwoken  Tor did not start: {e:#}\n\
+                 \x20        Unseen addresses are skipped this epoch. The nodes behind them\n\
+                 \x20        have not failed to answer — nothing reached them to ask."
+            );
+        }
+    }
+
     /// The Tor client, started on the first call and shared from then on.
     ///
     /// # Errors
@@ -143,6 +178,9 @@ impl Dialer {
 /// What a build without arti can do, which is say so.
 #[cfg(not(feature = "tor"))]
 impl Dialer {
+    /// Nothing to wake. An onion address is refused by name when it is dialled.
+    pub(crate) async fn wake_for(&self, _addresses: &[String]) {}
+
     /// Refuse an onion address by name, rather than fail further down with a
     /// name-resolution error that reads like a broken network.
     async fn through_tor(&self, address: &PeerAddress) -> anyhow::Result<Stream> {
