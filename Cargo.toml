@@ -41,6 +41,13 @@ arti-client = { version = "=0.46.0", default-features = false, features = [
     "onion-service-service",
     "onion-service-client",
     "vanguards",
+    # Bridges: relays that are not in the public directory, for a network where the
+    # public ones are blocked. `pt-client` is what makes an obfs4 bridge line mean
+    # anything; the program that speaks obfs4 is not bundled and is named in the
+    # configuration, because shipping somebody else's censorship-circumvention binary
+    # inside this is a promise about a moving target that this cannot keep.
+    "bridge-client",
+    "pt-client",
 ] }
 tor-hsservice = "=0.46.0"
 tor-cell = "=0.46.0"

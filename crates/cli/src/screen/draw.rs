@@ -353,6 +353,22 @@ fn the_silence<'a>(watch: &'a Watch, wide: bool) -> Paragraph<'a> {
 
 /// What the keys do, or what is being typed.
 fn the_keys<'a>(watch: &'a Watch, saying: &'a Saying, wide: bool) -> Paragraph<'a> {
+    if let Saying::Typing(typed) = saying {
+        let mut asked = vec![
+            Span::styled(" : ", Style::new().add_modifier(Modifier::BOLD)),
+            Span::styled(
+                format!("{typed}\u{258f}"),
+                Style::new().add_modifier(Modifier::BOLD),
+            ),
+        ];
+        if wide {
+            asked.push(Span::styled(
+                "   ping · join · bootstrap · say · tor on · tor off · bridge · status · quit",
+                Style::new().fg(Color::DarkGray),
+            ));
+        }
+        return Paragraph::new(Line::from(asked));
+    }
     if let Saying::Which(typed) = saying {
         let mut asked = vec![
             Span::styled(
@@ -383,7 +399,13 @@ fn the_keys<'a>(watch: &'a Watch, saying: &'a Saying, wide: bool) -> Paragraph<'
         Span::raw(if wide {
             format!(" say one of the {SIGNAL_COUNT}   ")
         } else {
-            " say".to_owned()
+            " say  ".to_owned()
+        }),
+        Span::styled(" : ", Style::new().add_modifier(Modifier::REVERSED)),
+        Span::raw(if wide {
+            " everything else   "
+        } else {
+            " more   "
         }),
     ];
     if wide {

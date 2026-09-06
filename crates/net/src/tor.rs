@@ -13,8 +13,11 @@ pub mod host;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use arti_client::config::CfgPath;
+use arti_client::config::pt::TransportConfigBuilder;
+use arti_client::config::{BridgeConfigBuilder, CfgPath};
 use arti_client::{DataStream, TorClient, TorClientConfig};
+
+pub use crate::bridges::Bridges;
 use tor_rtcompat::PreferredRuntime;
 
 /// The nickname arti files this node's onion-service keys under.
@@ -52,6 +55,13 @@ pub enum Error {
     /// The peer's address is not one arti will dial.
     #[error("address: {0}")]
     Address(#[from] arti_client::TorAddrError),
+    /// A bridge line was not one arti could read.
+    ///
+    /// Carried as text rather than as arti's error type: a person who has pasted a
+    /// bridge line wants to be told which line and what is wrong with it, and both of
+    /// those are already in the message.
+    #[error("bridge: {0}")]
+    Bridge(String),
 }
 
 /// Start a Tor client and wait until it has bootstrapped.
@@ -65,13 +75,20 @@ pub enum Error {
 /// and containers with odd ownership; a real node should leave it off and fix the
 /// permissions instead.
 ///
+/// `bridges` is how to get in where the ordinary way in is blocked. Empty is the
+/// ordinary case and changes nothing.
+///
 /// # Errors
 /// Fails if the configuration is invalid or arti cannot start.
 ///
 /// # Panics
 /// Arti panics rather than returning an error when there is no async runtime in
 /// context. Call this from inside a Tokio runtime.
-pub async fn bootstrap(paths: &Paths, trust_directory_permissions: bool) -> Result<Client, Error> {
+pub async fn bootstrap(
+    paths: &Paths,
+    trust_directory_permissions: bool,
+    bridges: &Bridges,
+) -> Result<Client, Error> {
     let mut builder = TorClientConfig::builder();
     builder
         .storage()
@@ -80,6 +97,7 @@ pub async fn bootstrap(paths: &Paths, trust_directory_permissions: bool) -> Resu
     if trust_directory_permissions {
         builder.storage().permissions().dangerously_trust_everyone();
     }
+    put_the_bridges_in(&mut builder, bridges)?;
     let config = builder.build()?;
     Ok(TorClient::create_bootstrapped(config)
         .await
@@ -101,4 +119,42 @@ pub async fn connect(client: &Client, onion_address: &str, port: u16) -> Result<
         .connect((onion_address, port))
         .await
         .map_err(Box::new)?)
+}
+
+/// Add whatever bridges were given, and the program that speaks for them.
+///
+/// Nothing is set when nothing was given: arti's own default is to use bridges when
+/// bridges are configured, so an empty list leaves the ordinary way in exactly as it
+/// was rather than turning something off.
+fn put_the_bridges_in(
+    builder: &mut arti_client::config::TorClientConfigBuilder,
+    bridges: &Bridges,
+) -> Result<(), Error> {
+    if bridges.is_empty() {
+        return Ok(());
+    }
+    for line in &bridges.lines {
+        let bridge: BridgeConfigBuilder = line
+            .parse()
+            .map_err(|e| Error::Bridge(format!("{line}: {e}")))?;
+        builder.bridges().bridges().push(bridge);
+    }
+    let named = bridges.transports();
+    if named.is_empty() {
+        return Ok(());
+    }
+    let mut protocols = Vec::with_capacity(named.len());
+    for name in &named {
+        protocols
+            .push(name.parse().map_err(|e| {
+                Error::Bridge(format!("{name} is not a transport arti knows: {e}"))
+            })?);
+    }
+    let mut transport = TransportConfigBuilder::default();
+    transport
+        .protocols(protocols)
+        .path(CfgPath::new(bridges.helper().to_owned()))
+        .run_on_startup(true);
+    builder.bridges().transports().push(transport);
+    Ok(())
 }

@@ -25,6 +25,15 @@ pub(crate) struct Common {
     pub(crate) timeout: Duration,
     /// How much of the past this node holds on to.
     pub(crate) keeping: crate::node::Keeping,
+    /// How to get into Tor where the ordinary way in is blocked. Empty is ordinary.
+    ///
+    /// Here rather than on the one command that starts Tor, because every command
+    /// that can reach an onion address can need it, and a person on a network that
+    /// blocks Tor needs it on all of them or on none.
+    /// Behind a lock because the screen can add one while the node is running, and
+    /// the next Tor start is the one that reads it. Once Tor is up, adding is a thing
+    /// that has no effect, and the screen says so rather than pretending.
+    pub(crate) bridges: std::sync::Arc<std::sync::Mutex<n333_net::bridges::Bridges>>,
     /// Whether to accept state directories other users can read.
     ///
     /// One bool, not two policies: arti and this client have to agree about whether a
@@ -120,10 +129,28 @@ impl Common {
 #[cfg(feature = "tor")]
 pub(crate) async fn bootstrap(common: &Common) -> anyhow::Result<n333_net::tor::Client> {
     use anyhow::Context as _;
-    aloud!("waking   Tor. the unseen road takes a while to open.");
+    // Copied out under the lock and not held across the wait: starting Tor is minutes,
+    // and a lock held for minutes is a screen that stops answering keys.
+    let bridges = common
+        .bridges
+        .lock()
+        .map_or_else(|held| held.into_inner().clone(), |held| held.clone());
+    if bridges.is_empty() {
+        aloud!("waking   Tor. the unseen road takes a while to open.");
+    } else {
+        aloud!(
+            "waking   Tor, through {} bridge{}. the unseen road takes a while to open.",
+            bridges.lines.len(),
+            if bridges.lines.len() == 1 { "" } else { "s" }
+        );
+    }
     tokio::time::timeout(
         common.timeout,
-        n333_net::tor::bootstrap(&common.paths.tor(), common.trust_directory_permissions),
+        n333_net::tor::bootstrap(
+            &common.paths.tor(),
+            common.trust_directory_permissions,
+            &bridges,
+        ),
     )
     .await
     .with_context(|| format!("no Tor connection after {} s", common.timeout.as_secs()))?

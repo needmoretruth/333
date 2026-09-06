@@ -24,15 +24,15 @@ use crate::node::Node;
 /// the file over, or what it hands over is not the file.
 pub(crate) async fn run(common: &Common, address: &n333_net::PeerAddress) -> anyhow::Result<()> {
     let (node, opened) = Node::open(&common.mistrust(), common.paths.root(), common.keeping)?;
-    println!("name     {}", node.identity().node_id());
+    aloud!("name     {}", node.identity().node_id());
     crate::commands::report_opening(&opened);
-    println!("knocking {address}");
+    aloud!("knocking {address}");
 
     let mut stream = match Dialer::new(common.clone()).dial(address).await {
         Ok(stream) => stream,
         Err(e) => {
             // Not the end of anything. A door nobody opens is a door nobody opens.
-            println!(
+            aloud!(
                 "silence  nobody answered at {address}. That is not proof that 333 is\n\
                  \x20        over; it is proof that nobody is there. This client carries the\n\
                  \x20        hash of the file and not the file: there is no way in except\n\
@@ -45,7 +45,7 @@ pub(crate) async fn run(common: &Common, address: &n333_net::PeerAddress) -> any
         let exchange = n333_net::initiate(&mut stream, node.identity())
             .await
             .context("exchanging heartbeats")?;
-        println!("{}", describe(&exchange));
+        aloud!("{}", describe(&exchange));
         n333_net::handover::ask(&mut stream, node.identity(), Epoch::now())
             .await
             .context("asking for the file")
@@ -60,14 +60,14 @@ pub(crate) async fn run(common: &Common, address: &n333_net::PeerAddress) -> any
         })??;
 
     let joined = taken.handover.transfer.epoch();
-    println!("given    by {}", taken.handover.transfer.giver());
-    println!(
+    aloud!("given    by {}", taken.handover.transfer.giver());
+    aloud!(
         "{}",
         crate::commands::what_was_signed(&taken.handover.transfer, false)
     );
-    println!("joined   in epoch {}", joined.0);
+    aloud!("joined   in epoch {}", joined.0);
     node.receive(taken.subject).await?;
-    println!("holding  the file, and able to pass it on");
+    aloud!("holding  the file, and able to pass it on");
 
     // The pair goes in last so that a giver who passed on nothing still leaves this
     // node with its own beginning written down.
@@ -76,15 +76,15 @@ pub(crate) async fn run(common: &Common, address: &n333_net::PeerAddress) -> any
     passed.push(taken.handover.received);
     let heard = node.hear(&passed, Epoch::now()).await?;
     crate::commands::report_heard(&heard);
-    println!("roll     {} of us", node.roll().await.len());
-    println!(
+    aloud!("roll     {} of us", node.roll().await.len());
+    aloud!(
         "counted  from epoch {}, and not one epoch sooner: two boundaries away, between\n\
          \x20        333 and 666 minutes, depending on where in this epoch you arrived.\n\
          \x20        Until then, answer everything that is asked of you. What is witnessed\n\
          \x20        in that time is the whole of the proof that you were ever here at all.",
         enrollment::active_from(joined).0
     );
-    println!(
+    aloud!(
         "vigil    run `333 serve` and stay awake. Nothing can be witnessed of a node\n\
          \x20        nobody can reach, and this stretch is witnessed once or never."
     );

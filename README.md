@@ -402,9 +402,26 @@ There is no Windows file yet, for the reason at the end of the previous section.
 
 The screen shows what this node is doing while it does it: how many of us are
 answering, where you stand over the window, the shape of what everybody said this
-epoch, and how long is left of it. `q` leaves the vigil. `s` says one of the 333.
-Nothing on it is anybody else's number — it is what this one machine has seen, and
-the machine beside you is showing something else.
+epoch, and how long is left of it. Nothing on it is anybody else's number — it is what
+this one machine has seen, and the machine beside you is showing something else.
+
+`q` leaves the vigil, `s` says one of the 333, and `:` opens a line where you can type
+anything the terminal can be told, in the terminal's own words:
+
+| typed | what it does |
+|---|---|
+| `ping 333:somewhere:3333` | reach a node and exchange one heartbeat |
+| `join 333:somewhere:3333` | ask whoever is there to hand the file over |
+| `bootstrap`, `bootstrap anyway` | begin a line of your own, if nobody has begun one |
+| `say 42` | say one of the 333 in this epoch |
+| `tor on`, `tor off` | raise an onion address, or stop answering on it |
+| `bridge <a bridge line>`, `helper <program>` | for the next time Tor starts |
+| `status` | what this node is holding, in the log |
+| `quit` | the same as `q` |
+
+That is not a convenience. The node holding these files is this process, and a second
+terminal running `333 join` against the same directory would be a second program
+writing files the first one is in the middle of writing.
 
 The ordinary way in is an invitation. Somebody who already has the file hands it over,
 the two of you sign for it, and those two signatures are what everybody else reads as
@@ -521,6 +538,32 @@ The client tells you at once rather than in a month. At startup it knocks on its
 address and prints `open` or `shut`; and after three epochs with nothing signed about it, on
 a roll with somebody else on it who could have asked, it says that too, rather than leaving
 you to work out why your standing never moves.
+
+### Where Tor itself is blocked
+
+Somewhere that blocks Tor does it by taking the public list of relays and refusing
+everything on it. A bridge is a relay that was never on that list. You are given bridge
+lines a few at a time, by people, deliberately slowly, because a list that could be
+collected could be blocked in turn; nothing here fetches them for you.
+
+```sh
+333 serve --tor --bridge "Bridge 198.51.100.25:443 7DD62766BF2052432051D7B7E08A22F7E34A4543"
+```
+
+Give `--bridge` once for each line you were handed, exactly as it was handed to you.
+Inside the screen, `bridge <line>` does the same for the next time Tor starts.
+
+Where the block is not a list but a machine reading the shape of the traffic, the bridge
+has to speak something that does not look like Tor, and the bridge line says which. The
+program that speaks it is not in here: it is separate, it is chasing something that
+moves, and a copy frozen inside this client would be the wrong copy within a year while
+looking like the right one. Install it (`apt install lyrebird`, `dnf install lyrebird`,
+the AUR on Arch; older systems call it `obfs4proxy`) and `--bridge-helper` names it if
+it is not called `lyrebird` or is not on your path.
+
+Without any of this, Tor is reached the ordinary way, which is what almost everybody
+wants. Bridges are slower and scarce, and using them where they are not needed spends
+somebody else's.
 
 Without `--data-dir` a node lives in the conventional place for the system:
 

@@ -44,6 +44,7 @@
 )]
 
 pub mod asked;
+pub mod bridges;
 pub mod direct;
 pub mod frame;
 pub mod gossip;

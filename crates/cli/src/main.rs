@@ -32,6 +32,7 @@ mod commands;
 mod dial;
 mod identity_file;
 mod node;
+mod orders;
 mod paths;
 #[cfg(feature = "screen")]
 mod screen;
@@ -84,6 +85,25 @@ struct Cli {
     /// existed somewhere, which nothing here requires of anyone.
     #[arg(long, global = true)]
     keep_everything: bool,
+
+    /// A bridge line, for a network that blocks the ordinary way into Tor.
+    ///
+    /// Give it once for each bridge you were handed, exactly as it was handed to you.
+    /// Nothing here fetches bridges for you: they are scarce and they are given out by
+    /// people, slowly and on purpose, because a list that could simply be collected
+    /// would simply be blocked. Without any of these Tor is reached the ordinary way,
+    /// which is what almost everybody wants.
+    #[arg(long = "bridge", global = true, value_name = "LINE")]
+    bridges: Vec<String>,
+
+    /// The program that speaks an obfuscated bridge, by name or by path.
+    ///
+    /// Only needed when a bridge line asks for one, and only when it is not called
+    /// `lyrebird` or is not on the path. It is not bundled: it is a separate program
+    /// chasing a moving target, and a copy frozen inside this would be the wrong copy
+    /// within a year while looking like the right one.
+    #[arg(long, global = true, value_name = "PROGRAM")]
+    bridge_helper: Option<String>,
 
     #[command(subcommand)]
     command: Command,
@@ -225,6 +245,10 @@ async fn main() -> anyhow::Result<()> {
         } else {
             node::Keeping::TheWindow
         },
+        bridges: std::sync::Arc::new(std::sync::Mutex::new(n333_net::bridges::Bridges {
+            lines: cli.bridges,
+            helper: cli.bridge_helper,
+        })),
         trust_directory_permissions: cli.dangerously_trust_directory_permissions,
     };
 

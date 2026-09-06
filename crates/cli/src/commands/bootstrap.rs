@@ -33,7 +33,7 @@ use crate::node::Node;
 /// what comes back is not the file.
 pub(crate) async fn run(common: &Common, meet: &str, anyway: bool) -> anyhow::Result<()> {
     let (node, opened) = Node::open(&common.mistrust(), common.paths.root(), common.keeping)?;
-    println!("name     {}", node.identity().node_id());
+    aloud!("name     {}", node.identity().node_id());
     crate::commands::report_opening(&opened);
 
     if node.subject().await.is_some() {
@@ -48,7 +48,7 @@ pub(crate) async fn run(common: &Common, meet: &str, anyway: bool) -> anyhow::Re
         } else {
             format!("{already} of us are")
         };
-        println!(
+        aloud!(
             "stop     {some} saying where they can be reached at {meet}. Beginning on\n\
              \x20        your own now would start a second line beside theirs for no\n\
              \x20        reason. Open {} in a browser, take one of the invitations, and\n\
@@ -63,7 +63,7 @@ pub(crate) async fn run(common: &Common, meet: &str, anyway: bool) -> anyhow::Re
     let subject = Subject::recognise(&bytes).context("what came back is not the file")?;
     node.receive(subject).await?;
 
-    println!(
+    aloud!(
         "begun    the file is in this node's directory and this node is the start of its\n\
          \x20        own line. Nobody signed for handing it over, because nobody did, and\n\
          \x20        anybody reading this node's record can see that.\n\
@@ -93,7 +93,7 @@ async fn look_first(meeting: &Meeting) -> anyhow::Result<usize> {
 
 /// Ask the meeting point for the file itself.
 async fn ask_for_it(meeting: &Meeting, meet: &str) -> anyhow::Result<Vec<u8>> {
-    println!("asking   {meet} for the file");
+    aloud!("asking   {meet} for the file");
     let asking = meeting.clone();
     tokio::task::spawn_blocking(move || asking.the_file())
         .await

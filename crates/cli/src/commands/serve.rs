@@ -14,6 +14,7 @@
 //! for once it is through is [`answering`].
 
 pub(crate) mod answering;
+mod carrying;
 mod door;
 mod reach;
 
@@ -107,10 +108,16 @@ pub(crate) async fn run(
     // when the port was left to the system to choose.
     let mut bound_at: Option<SocketAddr> = None;
     let mut listening = tokio::task::JoinSet::new();
+    // What the person types into the screen, carried out where the dialler is. A node
+    // with no screen never sends anything down it and the task simply waits.
+    let (asked, orders) = tokio::sync::mpsc::unbounded_channel();
+    let (order_node, order_common, order_dialer) =
+        (Arc::clone(&node), common.clone(), dialer.clone());
     #[cfg(feature = "screen")]
     if let Some(lines) = watching {
-        listening.spawn(crate::screen::keep(Arc::clone(&node), lines));
+        listening.spawn(crate::screen::keep(Arc::clone(&node), lines, asked.clone()));
     }
+    drop(asked);
 
     if let Some(bind) = bind {
         let listener = direct::Listener::bind(bind)
@@ -180,6 +187,21 @@ pub(crate) async fn run(
             );
         }
     }
+
+    // What the screen asked for, done where the dialler is. Spawned before the hours
+    // so that a person who opens the screen and types at once is answered rather than
+    // queued behind a round.
+    listening.spawn(async move {
+        carrying::until_the_screen_goes(
+            orders,
+            order_node,
+            order_common,
+            order_dialer,
+            found_address,
+        )
+        .await;
+        Ok(())
+    });
 
     // The hours run alongside the listeners rather than after them: answering is what
     // this node owes others, and keeping the hours is what it owes itself.
@@ -427,6 +449,7 @@ mod tests {
 
     fn common(root: PathBuf) -> Common {
         Common {
+            bridges: std::sync::Arc::new(std::sync::Mutex::new(n333_net::bridges::Bridges::none())),
             paths: NodePaths::at(root),
             timeout: Duration::from_secs(10),
             keeping: Keeping::TheWindow,

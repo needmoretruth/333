@@ -20,8 +20,8 @@ use crate::identity_file;
 pub(crate) async fn run(common: &Common, address: &PeerAddress) -> anyhow::Result<()> {
     let (identity, _origin) =
         identity_file::load_or_create(&common.mistrust(), common.paths.root())?;
-    println!("name     {}", identity.node_id());
-    println!("knocking {address}");
+    aloud!("name     {}", identity.node_id());
+    aloud!("knocking {address}");
 
     let mut stream = Dialer::new(common.clone()).dial(address).await?;
     let exchange = tokio::time::timeout(common.timeout, initiate(&mut stream, &identity))
@@ -29,6 +29,6 @@ pub(crate) async fn run(common: &Common, address: &PeerAddress) -> anyhow::Resul
         .context("the peer accepted the connection but did not finish the exchange")?
         .context("exchanging heartbeats")?;
 
-    println!("{}", describe(&exchange));
+    aloud!("{}", describe(&exchange));
     Ok(())
 }

@@ -29,6 +29,7 @@ use n333_core::Epoch;
 use n333_core::signal::SIGNAL_COUNT;
 
 use crate::node::Node;
+use crate::orders::Order;
 use watch::Watch;
 
 /// How often everything is read off the disk again.
@@ -49,6 +50,8 @@ pub(super) enum Saying {
     Nothing,
     /// Typing which of the 333 to say.
     Which(String),
+    /// Typing anything the terminal can be told, in the terminal's own words.
+    Typing(String),
 }
 
 /// Is there a terminal here that wants a screen?
@@ -63,9 +66,13 @@ pub(crate) fn wanted() -> bool {
 ///
 /// # Errors
 /// Fails if the terminal cannot be taken over or put back.
-pub(crate) async fn keep(node: Arc<Node>, lines: UnboundedReceiver<String>) -> anyhow::Result<()> {
+pub(crate) async fn keep(
+    node: Arc<Node>,
+    lines: UnboundedReceiver<String>,
+    orders: tokio::sync::mpsc::UnboundedSender<Order>,
+) -> anyhow::Result<()> {
     let mut terminal = ratatui::try_init()?;
-    let watching = draw_until_they_leave(&mut terminal, &node, lines).await;
+    let watching = draw_until_they_leave(&mut terminal, &node, lines, &orders).await;
     ratatui::try_restore()?;
     watching
 }
@@ -75,6 +82,7 @@ async fn draw_until_they_leave(
     terminal: &mut ratatui::DefaultTerminal,
     node: &Arc<Node>,
     mut lines: UnboundedReceiver<String>,
+    orders: &tokio::sync::mpsc::UnboundedSender<Order>,
 ) -> anyhow::Result<()> {
     let (mut keys, reading) = read_keys();
     let mut log: Vec<String> = Vec::new();
@@ -96,7 +104,7 @@ async fn draw_until_they_leave(
             key = keys.recv() => {
                 let Some(key) = key else { break };
                 if key.kind != KeyEventKind::Release {
-                    match pressed(node, &mut saying, key.code, key.modifiers).await {
+                    match pressed(node, &mut saying, orders, key.code, key.modifiers).await {
                         Pressed::Carry => {}
                         // Read again at once: a person who has just said something is
                         // looking for it to appear, and ten seconds of it not being
@@ -138,6 +146,7 @@ enum Pressed {
 async fn pressed(
     node: &Arc<Node>,
     saying: &mut Saying,
+    orders: &tokio::sync::mpsc::UnboundedSender<Order>,
     key: KeyCode,
     with: KeyModifiers,
 ) -> Pressed {
@@ -150,6 +159,51 @@ async fn pressed(
             KeyCode::Char('s' | 'S') => {
                 *saying = Saying::Which(String::new());
                 Pressed::Carry
+            }
+            // Everything the terminal can be told, told here instead. The node holding
+            // these files is this one, so a second terminal is not another way of
+            // doing it — it is another program opening files this one is writing.
+            KeyCode::Char(':') => {
+                *saying = Saying::Typing(String::new());
+                Pressed::Carry
+            }
+            _ => Pressed::Carry,
+        },
+        Saying::Typing(typed) => match key {
+            KeyCode::Esc => {
+                *saying = Saying::Nothing;
+                Pressed::Carry
+            }
+            KeyCode::Char(letter) => {
+                typed.push(letter);
+                Pressed::Carry
+            }
+            KeyCode::Backspace => {
+                typed.pop();
+                Pressed::Carry
+            }
+            KeyCode::Enter => {
+                // Echoed as it was typed rather than as it was understood. A person who
+                // mistyped wants to see what they typed, and the shape of the thing this
+                // program turned it into is not something they asked to be shown.
+                let said = format!("asked    {}", typed.trim());
+                let asked = Order::read(typed);
+                *saying = Saying::Nothing;
+                match asked {
+                    Ok(Order::Leave) => Pressed::Leave,
+                    // Carried out where the dialler and the listeners are, which is not
+                    // here: this is a drawing, and a drawing that opened connections
+                    // would be a second node inside the first.
+                    Ok(order) => {
+                        if orders.send(order).is_err() {
+                            return Pressed::Said(
+                                "unheard  nothing is carrying orders out any more".to_owned(),
+                            );
+                        }
+                        Pressed::Said(said)
+                    }
+                    Err(why) => Pressed::Said(format!("unread   {why}")),
+                }
             }
             _ => Pressed::Carry,
         },

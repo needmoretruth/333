@@ -150,6 +150,14 @@ impl Dialer {
         }
     }
 
+    /// Whether Tor has already been started.
+    ///
+    /// Asked before offering to change something that only the start reads, so that a
+    /// person is told their bridge will do nothing rather than left believing it will.
+    pub(crate) fn tor_is_up(&self) -> bool {
+        self.tor.get().is_some()
+    }
+
     /// The Tor client, started on the first call and shared from then on.
     ///
     /// # Errors
@@ -180,6 +188,11 @@ impl Dialer {
 impl Dialer {
     /// Nothing to wake. An onion address is refused by name when it is dialled.
     pub(crate) async fn wake_for(&self, _addresses: &[String]) {}
+
+    /// Never, in a build with no Tor in it to be up.
+    pub(crate) const fn tor_is_up(&self) -> bool {
+        false
+    }
 
     /// Refuse an onion address by name, rather than fail further down with a
     /// name-resolution error that reads like a broken network.
