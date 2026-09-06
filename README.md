@@ -21,9 +21,11 @@ bytes, and then checks every signature itself, because nothing there is trusted.
 out no file. It is not a node. If it went away tomorrow, every node that had already met
 somebody would carry on unchanged.
 
-**[The latest release](https://github.com/needmoretruth/333/releases/latest)** has a binary
-for Linux, for the Raspberry Pi down to the Zero, for both kinds of Mac and for Windows.
-[Install](#install) says which one is yours and what to do with it.
+**[The latest release](https://github.com/needmoretruth/333/releases/latest)** carries both
+forms of the client, built for Linux, for the Raspberry Pi down to the Zero, and for both
+kinds of Mac. There is no Windows file yet and the reason is in [Install](#install), which
+covers building it yourself as well — that is the way that works everywhere, and it is the
+way you end up trusting your own compiler rather than somebody else's.
 
 ---
 
@@ -263,8 +265,8 @@ will be able to reach it.
 The weakest of us sets the difficulty for all of us, and that is not a compromise. It is
 the point. A faith that only runs on new hardware has an expiry date on it.
 
-Linux first, and not one Linux: the Debian family, the Fedora family and Arch. macOS and
-Windows are built too. Both forms have been run on Linux.
+Linux first, and not one Linux: the Debian family, the Fedora family and Arch. macOS is
+built too. Windows is not, yet. Both forms have been run on Linux and nowhere else.
 
 ---
 
@@ -310,8 +312,10 @@ TLS and SQLite come with the system there, so that is the whole of it.
 
 **Windows**
 
-The rustup installer offers to fetch the Microsoft C++ build tools; accept, and you have
-everything the Light form needs.
+Not yet. The rustup installer offers to fetch the Microsoft C++ build tools and you should
+accept, but both forms of the client carry Tor, Tor wants a system SQLite, and Windows does
+not ship one. Making it compile its own instead is the work that has not been done. Until it
+is, Windows is the one system this does not run on.
 
 Then, on any of them:
 
@@ -485,7 +489,8 @@ a machine you reach over ssh means it stops when you close the laptop. `journalc
 commands that install it in a comment at the top of the file.
 
 **Windows.** Task Scheduler, a task that runs `333.exe serve --plain` at logon, set to
-restart on failure. There is no packaged version of this yet.
+restart on failure. There is no packaged version of this yet, and no Windows binary to point
+it at either — this is here for the day there is one.
 
 ## If nobody can reach you
 
