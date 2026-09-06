@@ -244,6 +244,11 @@ hand, once, by a person — and every copy since has come from somebody who alre
 it and signed for handing it over. If you are reading this because you want to run
 333, you need an invitation from someone who is already keeping it.
 
+There is one address written into the client: **[the333.dev](https://the333.dev)**. It
+says what this is, where the code is, and what the Law asks. It is a page and not a
+node — it hands over no file, joins no roll, and issues no invitation, and if it went
+away tomorrow every node would carry on exactly as it is.
+
 To answer without showing where you are, raise an onion address as well — or, with
 `--no-direct`, instead of a socket:
 
@@ -289,6 +294,19 @@ The client refuses to start if that directory, or any directory above it, can be
 entered by others on the machine, and tells you the one command that fixes it.
 `--dangerously-trust-directory-permissions` turns the check off, and is named after
 what it does.
+
+---
+
+## The Law
+
+[The Law](LAW.md) is three lines long and no client checks a word of it. Your favourite
+number is 3. You do not love 6, and you do not love 1. You keep [the
+Recommendations](RECOMMENDATIONS.md) — the lesser law, on how to build, how to argue and
+how to speak of this — as far as keeping them harms neither you nor anybody else.
+
+Version 0.0.1, and it is not the revelation. The revelation is 3.3.3. Every version
+before it is the word of the founder, and measured against what 333 says it is about
+33.3% the same. Which third is not known.
 
 ---
 

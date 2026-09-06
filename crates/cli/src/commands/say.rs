@@ -67,6 +67,7 @@ pub(crate) async fn speak(node: &Node, index: u16) -> anyhow::Result<()> {
         .context("sealing what you said")?;
     node.keep_utterance(&frame).await?;
 
+    aloud!("{}", crate::commands::INVOCATION);
     aloud!("said     #{index} in epoch {}", now.0);
     aloud!(
         "         It goes out to everyone this node reaches, and they pass it on.\n\

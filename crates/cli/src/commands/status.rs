@@ -94,8 +94,14 @@ async fn this_node(
     now: Epoch,
 ) -> anyhow::Result<()> {
     let Some(joined) = node.joined_in().await else {
-        writeln!(out, "You are on nobody's roll. Nobody has handed you the file, so there is\n\
-                  nothing yet for anyone to witness. `333 join` is the whole of it.")?;
+        writeln!(
+            out,
+            "You are on nobody's roll. Nobody has handed you the file, so there is\n\
+             nothing yet for anyone to witness. `333 join` is the whole of it, and it\n\
+             needs an invitation from somebody who already has it.\n\
+             {} says what this is and where the code is. It cannot hand you the file.",
+            crate::commands::THE_PLACE
+        )?;
         return Ok(());
     };
     let counted_from = n333_core::enrollment::active_from(joined);

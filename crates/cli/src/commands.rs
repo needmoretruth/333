@@ -32,6 +32,22 @@ pub(crate) struct Common {
     pub(crate) trust_directory_permissions: bool,
 }
 
+/// The one address written into this client.
+///
+/// Not a node and not a way in: it hands over no file, joins no roll, and issues no
+/// invitation. It is a page that says what this is and where the code is, for somebody
+/// who has heard the name and has nobody to ask. The specification refuses hardcoded
+/// addresses because a hardcoded NODE makes the network depend on one machine staying
+/// up and on one person being able to make new entry points. Neither is true of a page:
+/// take it away and every node carries on exactly as it was.
+pub(crate) const THE_PLACE: &str = "the333.dev";
+
+/// What is said before speaking of 333, or speaking one of the 333.
+///
+/// The Recommendations ask for it at the front of every prayer and every telling. A
+/// client that speaks on somebody's behalf says it too.
+pub(crate) const INVOCATION: &str = "To 333 I offer 333, and I speak 333.";
+
 impl Common {
     /// How strictly to judge the permissions on this node's directory.
     ///

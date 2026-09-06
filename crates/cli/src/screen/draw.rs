@@ -119,7 +119,12 @@ fn standing(standing: &Where) -> Vec<Line<'static>> {
         Where::OnNobodysRoll => vec![
             Line::raw("on nobody's roll."),
             Line::raw("nobody has handed you"),
-            Line::raw("the file yet."),
+            Line::raw("the file yet. it takes"),
+            Line::raw("an invitation."),
+            Line::styled(
+                crate::commands::THE_PLACE,
+                Style::new().fg(Color::DarkGray),
+            ),
         ],
         Where::Waiting {
             joined,
