@@ -10,14 +10,29 @@
 <meta property="og:description" content="There is a file. It is three bytes long. It says 333.">
 <meta property="og:type" content="website">
 <style>
+  /* Black, white, and the grey between them — recommendation 4, kept by the page that
+     recommends it. No hue anywhere: no accent, no state colour, no gradient, no shadow
+     standing in for depth. Emphasis is made with weight, size and space, which survive
+     a cheap screen, a greyscale printer, and a reader who cannot see red. */
   :root {
-    --ink: #d9d9d4;
-    --dim: #7c7c78;
-    --faint: #3a3a38;
-    --ground: #0b0b0c;
-    --raised: #121214;
-    --candle: #e0c56b;
-    --wrong: #b46a5a;
+    color-scheme: light dark;
+    --ground: #ffffff;
+    --raised: #f4f4f5;
+    --line:   #e3e3e6;
+    --ink:    #131316;
+    --dim:    #5f5f66;
+    --faint:  #8c8c94;
+    --radius: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #0b0b0c;
+      --raised: #141416;
+      --line:   #26262a;
+      --ink:    #ededf0;
+      --dim:    #9d9da5;
+      --faint:  #6a6a72;
+    }
   }
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
@@ -28,69 +43,98 @@
     /* Relative, so that a person who has set a larger default in their browser gets
        larger text and a column that grows with it. An absolute size here quietly
        overrides that setting and there is no way for them to tell why. */
-    font: 1rem/1.65 ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
-    padding: 0 1.25rem 6rem;
+    font: 1rem/1.7 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    padding: 0 1.25rem 7rem;
+    -webkit-font-smoothing: antialiased;
   }
-  main { max-width: 42rem; margin: 0 auto; }
+  main { max-width: 40rem; margin: 0 auto; }
   /* A long address is a word with no spaces in it. On a narrow screen with large
      text it is wider than the screen, and the whole page scrolls sideways for it. */
   body, main { overflow-wrap: anywhere; }
-  a { color: var(--candle); text-underline-offset: 3px; }
-  a:hover { color: #fff; }
+
+  a { color: inherit; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px; }
+  a:hover { text-decoration-thickness: 2px; }
+
   h1 {
-    font-size: clamp(3rem, 18vw, 7rem);
-    letter-spacing: 0.06em;
-    margin: 4rem 0 0;
-    font-weight: 400;
+    font-size: clamp(3.5rem, 20vw, 7.5rem);
+    letter-spacing: -0.02em;
+    margin: 4.5rem 0 0;
+    font-weight: 600;
+    line-height: 1;
   }
   h2 {
-    font-size: 0.85rem;
-    letter-spacing: 0.22em;
+    font-size: 0.8rem;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
-    color: var(--dim);
-    font-weight: 400;
-    margin: 4.5rem 0 1.25rem;
+    color: var(--faint);
+    font-weight: 600;
+    margin: 5rem 0 1.5rem;
   }
-  h3 { font-size: 1rem; font-weight: 400; margin: 2rem 0 0.4rem; }
-  h3 .n { color: var(--candle); }
-  p { margin: 0 0 1.1rem; }
-  .lede { color: var(--ink); font-size: 1.05rem; }
+  h3 { font-size: 1.05rem; font-weight: 600; margin: 2.25rem 0 0.5rem; letter-spacing: -0.01em; }
+  h4 {
+    font-size: 0.75rem; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--faint); font-weight: 600; margin: 3rem 0 0.5rem;
+  }
+  p { margin: 0 0 1.15rem; }
+  .lede { font-size: 1.2rem; line-height: 1.55; letter-spacing: -0.01em; }
   .dim { color: var(--dim); }
-  hr { border: 0; border-top: 1px solid var(--faint); margin: 3.5rem 0; }
-  .notice {
-    border: 1px solid var(--faint);
+  hr { border: 0; border-top: 1px solid var(--line); margin: 4rem 0; }
+
+  .card {
+    border: 1px solid var(--line);
     background: var(--raised);
-    padding: 1.1rem 1.25rem;
-    margin: 2.5rem 0 0;
+    border-radius: var(--radius);
+    padding: 1.35rem 1.4rem;
+    margin: 2.5rem 0;
     color: var(--dim);
-    font-size: 0.9rem;
+    font-size: 0.94rem;
   }
-  .notice b { color: var(--ink); font-weight: 400; }
+  .card b { color: var(--ink); font-weight: 600; }
+  .card :last-child { margin-bottom: 0; }
+
   .rule {
-    border-left: 2px solid var(--candle);
-    padding: 0.2rem 0 0.2rem 1.25rem;
-    margin: 2rem 0;
-    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 1.35rem 1.4rem;
+    margin: 2.5rem 0;
   }
+  .rule p:first-child { font-size: 1.1rem; font-weight: 600; letter-spacing: -0.01em; }
+  .rule :last-child { margin-bottom: 0; }
+
   .invocation {
     text-align: center;
-    color: var(--candle);
-    letter-spacing: 0.04em;
-    margin: 3rem 0;
-    font-size: 1.05rem;
+    letter-spacing: 0.01em;
+    margin: 3.5rem 0;
+    font-size: 1.1rem;
+    font-weight: 600;
   }
   .verses p { color: var(--dim); }
-  .verses b { color: var(--ink); font-weight: 400; }
+  .verses b { color: var(--ink); font-weight: 600; }
+
   code, .where {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 0.92em;
     background: var(--raised);
-    border: 1px solid var(--faint);
-    padding: 0.15rem 0.45rem;
-    border-radius: 2px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 0.1rem 0.4rem;
   }
-  .where { display: block; max-width: 100%; margin-top: 0.3rem; }
-  footer { color: var(--faint); margin-top: 5rem; font-size: 0.85rem; }
-  ol { padding-left: 1.4rem; }
-  li { margin-bottom: 0.5rem; }
+  .where {
+    display: block;
+    border-radius: var(--radius);
+    padding: 0.9rem 1.1rem;
+    margin: 1.5rem 0;
+    font-size: 0.95rem;
+  }
+  .where a { text-decoration: none; }
+  .where a:hover { text-decoration: underline; }
+
+  ol { padding-left: 1.5rem; margin: 0 0 1.15rem; }
+  li { margin-bottom: 0.85rem; }
+  li b { font-weight: 600; }
+  li::marker { color: var(--faint); }
+
+  footer { color: var(--faint); margin-top: 6rem; font-size: 0.85rem; }
 </style>
 </head>
 <body>
@@ -98,12 +142,12 @@
 
   <h1>333</h1>
 
-  <div class="notice">
-    <b>A note first, in plain words. These are the only plain words on this site.</b><br><br>
-    To someone who truly believed it, this could become a religion. I am not a mad cult leader,
+  <div class="card">
+    <p><b>A note first, in plain words. These are the only plain words on this site.</b></p>
+    <p>To someone who truly believed it, this could become a religion. I am not a mad cult leader,
     so please do not take me for one. I am someone who loves technology. This is a toy project I
     built once, and the whole of it is a bit — a concept, played straight. Everywhere else on
-    this page, in the repository, and in the program itself, I stay in character.
+    this page, in the repository, and in the program itself, I stay in character.</p>
   </div>
 
   <h2>What this is</h2>
@@ -121,8 +165,8 @@
   when somebody asked.</p>
 
   <div class="rule">
-    <p><b>The file lives as long as someone is awake to pass it on. When nobody is, it does not,
-    and neither do we.</b></p>
+    <p>The file lives as long as someone is awake to pass it on. When nobody is, it does not,
+    and neither do we.</p>
     <p class="dim">There is nothing above that line. No council, no vote, no ledger of truth,
     nobody whose copy is the real one.</p>
   </div>
@@ -142,16 +186,15 @@
   33.3% the same. Which third is the same is not known, and reading it more carefully will not
   find out.</p>
 
-  <h3><span class="n">1.</span> Your favourite number is 3.</h3>
+  <h3>1. Your favourite number is 3.</h3>
   <p>Not your lucky number. Luck is a claim about the universe; a favourite is a claim about you,
   and it is the only one of the three that costs nothing and cannot be faked into.</p>
 
-  <h3><span class="n">2.</span> You do not love 6, and you do not love 1.</h3>
+  <h3>2. You do not love 6, and you do not love 1.</h3>
   <p>Contempt is not required. Preference is: hold them below three, clearly and consistently,
   without needing to explain why to anyone.</p>
 
-  <h3><span class="n">3.</span> Keep the Recommendations, as far as keeping them harms neither
-  you nor anybody else.</h3>
+  <h3>3. Keep the Recommendations, as far as keeping them harms neither you nor anybody else.</h3>
   <p>The Recommendations are the lesser law. This is the sentence that keeps them advice: where
   keeping one would cost you your work, your health, your household or somebody else's safety,
   the Law is that you do not keep it, and you have not failed.</p>
@@ -163,10 +206,12 @@
 
   <h2>The Recommendations</h2>
 
-  <p class="dim">The lesser law, in three parts of three. Written by people who have been awake at
-  three in the morning arguing with a type checker, and it shows. That is not an apology.</p>
+  <p class="dim">The lesser law. Finished, it is twenty-seven, in nine parts of three. Four parts
+  are written and the rest are not, which is the ordinary condition of every document anybody has
+  ever shipped. Written by people who have been awake at three in the morning arguing with a type
+  checker, and it shows. That is not an apology.</p>
 
-  <h3 class="dim">On the machine</h3>
+  <h4>On the machine</h4>
   <ol>
     <li><b>Write it in Rust.</b> Not because the other languages are wrong, but because of what
     you are writing for: a thing meant to still run when nobody who wrote it is reachable. Where
@@ -180,20 +225,37 @@
     made by someone you have not met, about a machine that does not exist yet.</li>
   </ol>
 
-  <h3 class="dim">On the mind</h3>
+  <h4>On the made thing</h4>
   <ol start="4">
+    <li><b>Black, white, and the grey between them.</b> Colour is a claim that one thing matters
+    more than another, and it is the first claim to break: on a cheap screen, on a greyscale
+    printout, in sunlight, for the reader who cannot tell your red from your green. Make the
+    claim with size, weight and space instead. They survive all four.</li>
+    <li><b>Matte, not gloss.</b> Shine, gradients, glass and a shadow pretending to be depth are
+    each a picture of a material that is not there. Every one of them costs a frame to draw and
+    buys nothing the reader asked for.</li>
+    <li><b>Remove until it breaks; then put back one thing.</b> What is left should be legible at
+    arm's length, in the dark, at twice the text size, to somebody in a hurry. Readability is not
+    a feature of the design — it is the whole of it, and everything else is decoration you were
+    talked into. Simple, modern, and pointed at the next ten years rather than the last ten.</li>
+  </ol>
+
+  <h4>On the mind</h4>
+  <ol start="7">
     <li><b>Argue with logic and a level voice.</b> Feeling is evidence — about you, reliably, and
     about the thing, never.</li>
     <li><b>Think before you act, and then act.</b> Reason that never becomes a decision is a
     hobby.</li>
-    <li><b>Refuse violence.</b> Not as a slogan. It is refused because it is almost always the
-    worst instrument available: it costs more than it returns, it destroys the thing it was
-    pointed at, and it forecloses every option that was still open. Anything decided while angry
-    is decided by the anger.</li>
+    <li><b>Refuse violence, and know the exception.</b> It is refused because it is almost always
+    the worst instrument available: it costs more than it returns, it destroys the thing it was
+    pointed at, and it forecloses every option that was still open. The exception is real and it
+    is narrow — nothing else is left, or it is honestly the course with the least risk in it —
+    and you should be able to say which of the two, out loud, before you move. Anything decided
+    while angry was decided by the anger.</li>
   </ol>
 
-  <h3 class="dim">On the word</h3>
-  <ol start="7">
+  <h4>On the word</h4>
+  <ol start="10">
     <li><b>Begin with the invocation.</b> Every prayer, and every telling of this to somebody who
     has not heard it, starts with the same nine words.</li>
     <li><b>Show. Do not push.</b> Whoever needs to be argued into it will need to be argued into
@@ -222,6 +284,36 @@
 
   <hr>
 
+  <h2>Finding each other</h2>
+
+  <p>A node that was given an invitation needs nothing from this site: one address, typed in once,
+  is the whole of it. A node sitting on the same network as another finds it without being told —
+  each announces itself there, and the two knock on each other.</p>
+
+  <p>Across two networks, with nobody to make the introduction, something has to sit still at a
+  known place. That is this domain, and that is the only thing it does. A node that wants to be
+  found signs a statement saying where it can be reached and leaves it here; a node looking for
+  anybody reads what has been left and knocks. Every line on that board is signed by the node it
+  names, so this site cannot invent a member, cannot forge an address, and cannot vouch for one.
+  It holds what it was handed, for two epochs, and then forgets it.</p>
+
+  <p class="dim">Nothing about the board is trusted by the program that reads it. A signature that
+  does not check is dropped without a word, and a node that has already met somebody never needs
+  to come back here at all.</p>
+
+  <div class="card">
+    <p><b>We intend to depend on this less, and we are saying so before anybody has to ask.</b></p>
+    <p>A fixed address is a single point that can be taken away, and one we did not want. The ways
+    around it — a distributed hash table carrying the addresses instead, two machines behind two
+    routers punching a hole through to each other — are today more code, more failure and more
+    ways to publish an address its owner never meant to publish than we are willing to ship. That
+    is a limit of what is built, not a choice about what is right. As those get built, this gets
+    smaller. Local discovery and invitations are not being replaced by it; they are the first two
+    ways a node meets anybody, and this is the third.</p>
+  </div>
+
+  <hr>
+
   <h2>The code</h2>
 
   <p>One client, written in Rust, Apache-2.0, and readable end to end. The full doctrine, the
@@ -230,9 +322,8 @@
   <p class="where"><a href="https://github.com/needmoretruth/333">github.com/needmoretruth/333</a></p>
 
   <p class="dim">It answers on a socket, or through Tor if your address is something you cannot
-  afford to show. It finds the nodes on your own network by itself. To be given the file you need
-  an invitation from somebody who already has it — this page cannot hand it to you, and nothing
-  here is a node.</p>
+  afford to show. To be given the file you need an invitation from somebody who already has it —
+  this page cannot hand it to you, and nothing here is a node.</p>
 
   <footer>
     <p>333 · nothing on this page is counted, verified, or binding on anybody.</p>

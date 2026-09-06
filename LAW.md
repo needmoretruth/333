@@ -32,7 +32,7 @@ Contempt is not required. Preference is.
 
 ## 3. Keep the Recommendations, as far as keeping them harms neither you nor anybody else.
 
-The [Recommendations](RECOMMENDATIONS.md) are the lesser law: how to write, how to argue, how to
+The [Recommendations](RECOMMENDATIONS.md) are the lesser law: how to write, how to make a thing look, how to argue, how to
 speak of this. They are advice with a number on it, and this is the sentence that keeps them
 advice. Where keeping one would cost you your work, your health, your household or somebody
 else's safety, the Law is that you do not keep it, and you have not failed.
