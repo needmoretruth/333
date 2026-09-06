@@ -52,10 +52,23 @@ interface Store {
 interface Limiter {
   limit(of: { key: string }): Promise<{ success: boolean }>;
 }
+/** The static pages, fetched from the edge rather than from anywhere this code can see. */
+interface Pages {
+  fetch(request: Request): Promise<Response>;
+}
 interface Env {
   BOARD: Store;
   SPEAKING: Limiter;
+  ASSETS: Pages;
 }
+
+/** The runtime's streaming HTML editor, declared to the extent this file uses it. */
+declare const HTMLRewriter: new () => {
+  on(
+    selector: string,
+    handlers: { element(element: { setInnerContent(text: string): void }): void },
+  ): { transform(response: Response): Response };
+};
 
 const NAMED = /^[0-9a-f]{64}$/;
 
@@ -63,6 +76,7 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const path = new URL(request.url).pathname;
 
+    if (path === "/" || path === "/index.html") return theFrontPage(request, env);
     if (path === "/meet/where") return whereYouAre(request);
     if (path === "/meet") {
       return request.method === "GET" ? readTheBoard(request, env) : plain(405, "GET /meet\n");
@@ -75,6 +89,40 @@ export default {
     return plain(404, "Nothing is kept at this address.\n");
   },
 };
+
+/** The one page that is not quite static.
+ *
+ *  Everything on it is written by hand except one number: how many statements are being held
+ *  right now. Nobody edits that in, and nothing generates the page — the count is read out of
+ *  the board on the way past, by the same code that serves the board to programs. A node
+ *  arriving at the board changes what the next visitor reads, and no person is in the loop.
+ *
+ *  IT IS NOT A COUNT OF ANYBODY. It is how many signed statements this address is holding, and
+ *  the page says so where it says the number. What that is worth is exactly what the reader can
+ *  check, which from a browser is nothing, and the honest place to ask is a node of your own.
+ *
+ *  A board that cannot be read leaves the page as it was written, with a dash in it. A number
+ *  nobody can produce is better missing than invented. */
+async function theFrontPage(request: Request, env: Env): Promise<Response> {
+  const page = await env.ASSETS.fetch(request);
+  let saying: number;
+  try {
+    saying = alive(await held(env)).length;
+  } catch {
+    return page;
+  }
+  // Rebuilt rather than edited: the response the edge hands over has headers that cannot be
+  // changed in place, and this one must not be cached with a number in it.
+  const fresh = new Response(page.body, page);
+  fresh.headers.set("cache-control", "no-store");
+  return new HTMLRewriter()
+    .on("[data-saying]", {
+      element(element) {
+        element.setInnerContent(String(saying));
+      },
+    })
+    .transform(fresh);
+}
 
 /** Tell a caller the address this server saw it come from.
  *

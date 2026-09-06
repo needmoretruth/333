@@ -2,11 +2,14 @@
 
 The lesser law, under the third law. Advice with a number on it.
 
-Finished, there are twenty-seven of them, in nine parts of three. Four parts are written and the
-rest are not, which is the ordinary condition of every document anybody has ever shipped. None of
-them is worth harming yourself or anybody else to keep — [the Law](LAW.md) says so in the same
-breath that it asks for them. Where one is wrong for your situation, it is wrong. Say so out loud,
-ideally with a reason.
+At 3.3.3 there are three hundred and thirty-three of them. Twelve are written, in four parts of
+three, and the other three hundred and twenty-one are not, which is the ordinary condition of
+every document anybody has ever shipped. The Law above them is finished at three and will still
+be three at 3.3.3: what changes there is the wording, never the count.
+
+None of them is worth harming yourself or anybody else to keep — [the Law](LAW.md) says so in the
+same breath that it asks for them. Where one is wrong for your situation, it is wrong. Say so out
+loud, ideally with a reason.
 
 They are written by people who have been awake at three in the morning arguing with a type
 checker, and it shows. That is not an apology.
@@ -49,6 +52,12 @@ on a cheap screen, on a greyscale printout, in direct sunlight, and for the read
 tell your red from your green. Make the claim with size, weight, order and space instead — all
 four survive all four. A palette of one hue is not a limitation you are working around; it is
 what is left after you stop asking colour to do the work of layout.
+
+Colour is allowed as a dot. A small mark that something is failing, waiting, running or done is
+exactly what a hue is good at, and red, amber, green and blue may be spent there. The rule is
+that a signal is never the main colour: it does not set the mood of the thing, it is not the
+first thing the eye lands on, and it is never the only carrier of the meaning — put the word
+beside it, because a person who cannot see the dot still has to know.
 
 **5. Matte, not gloss.**
 
