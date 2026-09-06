@@ -1,13 +1,13 @@
 # The Recommendations
 
-The lesser law, under the third law.
+These sit under the third law. They are advice with numbers on them.
 
-None of them is worth harming yourself or anybody else to keep. [The Law](LAW.md) says so in the
-same breath that it asks for them. Where one of them is wrong for the situation you are in, it is
-wrong, and you say so out loud with a reason.
+None of them is worth hurting yourself or anybody else to keep. [The Law](LAW.md) says so in
+the same breath as it asks for them. If one of them is wrong for the situation you are in,
+then it is wrong. Say so out loud, and give a reason.
 
 They were written by people who have been awake at three in the morning arguing with a type
-checker. It shows. That is not an apology.
+checker. It shows, and that is not an apology.
 
 ---
 
@@ -15,280 +15,290 @@ checker. It shows. That is not an apology.
 
 **1. Count in threes.**
 
-Retries, environments, people in a review, attempts before you stop. Where the number does not
-matter, make it three. You will find that it usually did not matter.
+When the number does not really matter, pick three. Retries, environments, people in a
+review, tries before you stop and think again. You will start noticing how often it did not
+matter.
 
-**2. Give 6 no place of honour.**
+**2. Do not give 6 a place of honour.**
 
-Not the port, not the version you pin, not the number of workers you run. Where somebody else has
-forced a 6 on you, write down that it was forced and carry on. A number in the specification of
-another party is not a number of yours.
+Not the port number, not the version you pin, not how many workers you run. If somebody else
+has put a 6 in front of you, note that it was their choice and get on with it. A number in
+the specification of another company is not a number of yours.
 
-**3. Keep no single one of anything.**
+**3. Never keep one of anything.**
 
-One server, one maintainer, one copy of the key, one person who understands the deployment. A
-thing you have one of is a thing you are about to have none of.
+One server, one maintainer, one copy of the key, one person who knows how the deployment
+works. If you have exactly one of something, you are one bad day away from having none.
 
 **4. Three is the smallest number that can disagree.**
 
-Two machines that differ have a standoff. Three have a majority. That is why quorums begin at
-three, and why an argument between two people never ends on its own.
+Two machines that differ just sit there and disagree. Three can have a majority. That is why
+quorums start at three, and it is also why an argument between two people almost never ends
+on its own.
 
-**5. The third failure is about the approach.**
+**5. If it fails three times the same way, the method is wrong.**
 
-The first is luck. The second is stubbornness. When the third one fails the same way, stop
-repairing the attempt and change the method.
+The first failure can be bad luck. The second one is you being stubborn. By the third, stop
+fixing the attempt and change the approach.
 
 ## On the machine
 
 **6. Write it in Rust.**
 
-Not because the other languages are wrong, but because of what you are writing for. A thing meant
-to still run when nobody who wrote it can be reached. A compiler that tells you at build time
-what another language tells you at four in the morning is not a preference, it is a kindness to
-whoever is on call.
+Not because the other languages are bad, but because of what you are writing for. This is
+meant to keep running when nobody who wrote it can be reached. A compiler that catches the
+problem at build time saves somebody a phone call at four in the morning, and that is the
+whole argument.
 
-**7. Where Rust is the wrong size, TypeScript is permitted.**
+**7. Small things can be TypeScript.**
 
-One page, one script, one afternoon. Reaching for the smaller tool is not a fall. The
-recommendation is to know which of the two you are in before you begin, and to say which.
+One page, one script, one afternoon. Reaching for the smaller tool is fine. Know which of the
+two you are doing before you start, and say which.
 
-**8. JavaScript without types is the tongue of the heretic.**
+**8. JavaScript without types is the language of the heretic.**
 
-Held gently. Half of everything runs on it and some of that half is beautiful. But a program that
-cannot say what it is holding is a program that finds out in front of a person, at the worst
-hour, and we are the ones who get woken. Put types on it and it is no longer heresy. It is
-TypeScript, and it is welcome.
+Said gently. Half of everything runs on it and some of that half is lovely. But a program
+that cannot say what it is holding finds out in front of a user, at the worst hour, and
+somebody gets woken up. Add types and it stops being heresy. It becomes TypeScript, and it is
+welcome.
 
 **9. Read what you depend on, or do not depend on it.**
 
-Every dependency is a promise made by somebody you have not met, about a machine that does not
-exist yet. Take fewer of them. Take smaller ones. Where the choice is between a thousand lines
-you write and a hundred thousand you will never open, at least know which one you chose.
+Every dependency is a promise from somebody you have never met, about a machine that does not
+exist yet. Take fewer of them, and take smaller ones. If the choice is between a thousand
+lines you write and a hundred thousand you will never open, at least notice that you are
+choosing.
 
-**10. Every unsafe block is a confession.**
+**10. Every unsafe block is a confession, so write it down.**
 
-Write the confession above it. What you are promising, what you checked, and what breaks when the
-promise is broken. A block with nothing written above it will be trusted by somebody who was not
-in the room.
+Above the block, say what you are promising, what you checked, and what breaks if the promise
+turns out to be wrong. If nothing is written there, the next person will assume somebody
+already thought about it.
 
 ## On what breaks
 
-**11. A silent failure is a lie told slowly.**
+**11. A silent failure is a lie that takes longer.**
 
-An error swallowed is a fault that will surface where it did not happen, in front of somebody who
-cannot fix it. Let it out where it began, and let it say what it was doing.
+If you swallow an error, the problem turns up somewhere else, later, in front of somebody who
+cannot fix it. Let it out where it happened, and let it say what it was doing at the time.
 
-**12. Reproduce before you repair.**
+**12. Reproduce it before you fix it.**
 
-A fix for a fault you never saw is a change of behaviour with a story attached. Make it happen on
-purpose first. Then make it stop, and make it happen again to be sure it stopped.
+If you never saw the bug, you are not fixing it. You are changing the code and telling
+yourself a story. Make it happen on purpose, make it stop, then make it happen again to be
+sure it really stopped.
 
-**13. The log is written for the hour you are asleep.**
+**13. Write the log for the night you are asleep.**
 
-Say what happened, to what, and what the program did next. Whoever is reading it at that hour
-does not have your code in front of them and cannot ask you anything.
+Say what happened, what it happened to, and what the program did next. Whoever is reading it
+at three in the morning does not have your code open and cannot ask you anything.
 
-**14. Blame the system you built, not the person who found it.**
+**14. Blame the system, not the person who found the hole.**
 
-Somebody who can make it fail has done you a service. Where one wrong click destroys something,
-the click was never the problem, and the person who clicked is the last one to hold the fault.
+Somebody who can break it has done you a favour. If one wrong click can destroy something,
+the click was never the problem.
 
-**15. A fix without a test is a rumour.**
+**15. A fix with no test is a rumour.**
 
-Write the test that fails first, and watch it fail. A test written afterwards, which passes the
-moment you write it, is testing your confidence rather than your code.
+Write the test first and watch it fail. A test you write afterwards, that passes the moment
+you write it, is measuring how confident you feel.
 
 ## On the made thing
 
-**16. Black, white, and the grey between them.**
+**16. Use black, white, and the greys in between.**
 
-Colour is a claim that one thing matters more than another, and it is the first claim to break.
-On a poor screen, on a grey printout, in sunlight, and for the reader who cannot tell your red
-from your green. Make the claim with size, weight, order and space instead. Those survive all
-four.
+Colour is a way of saying this matters more than that, and it is the first thing to break.
+Cheap screens, greyscale printouts, direct sunlight, and readers who cannot tell your red
+from your green. Say it with size, weight, order and space instead. Those still work in all
+four cases.
 
-**17. Colour is allowed as a dot.**
+**17. Colour is fine as a dot.**
 
-A small mark that something is failing, waiting, running or done is what a hue is genuinely good
-at, and red, amber, green and blue may be spent there. A signal is never the main colour, it is
-never the first thing the eye lands on, and it is never the only thing carrying the meaning. Put
-the word beside it.
+A small mark saying that something is failing, waiting, running or finished is exactly what
+colour is good at, and red, amber, green and blue belong there. Keep it small. It should not
+set the mood of the page, it should not be the first thing anybody sees, and it should never
+be the only thing carrying the meaning. Put a word next to it.
 
-**18. Matte, not gloss.**
+**18. Matte, not glossy.**
 
-Shine, gradients, glass, and a shadow pretending to be depth are each a picture of a material
-that is not there. Every one of them costs something to draw and buys nothing the reader asked
-for. Flat ink on flat paper has been legible for five hundred years without a graphics card.
+Shine, gradients, glass and fake shadows are pictures of a material that is not there. They
+cost something to draw and give the reader nothing they asked for. Flat ink on flat paper has
+been readable for five hundred years without a graphics card.
 
-**19. Remove until it breaks, then put back one thing.**
+**19. Take things away until it breaks, then put one back.**
 
-What is left should be legible at arm length, in the dark, at twice the text size, to somebody in
-a hurry who did not choose to be here. Readability is not one feature competing with the others.
-It is the whole of the thing, and the rest is decoration somebody talked you into.
+What is left should be readable at arm length, in the dark, at double the text size, by
+somebody in a hurry who did not choose to be here. Readability is not one feature among
+others. It is the job.
 
-**20. Every setting is a decision handed to somebody who knows less than you.**
+**20. A setting is a decision you handed to somebody who knows less than you.**
 
-Choose the default as though there were no setting at all. Then add the setting for the person
-the default is wrong for, and let them type a real value into it rather than choose between three
-names you invented.
+Pick the default as if there were no setting at all. Then add the setting for the people the
+default is wrong for, and let them type a real value instead of choosing between three names
+you invented.
 
 ## On time
 
-**21. Estimate from what you have finished, not from what you can picture.**
+**21. Estimate from what you finished, not from what you can imagine.**
 
-The picture is always of the work going well. Take the last three things of that size, and take
-the longest of the three.
+What you imagine is always the version where everything goes well. Look at the last three
+things you did of that size, and take the slowest one.
 
 **22. Nothing decided after midnight survives the morning.**
 
-Write the decision down, sleep, and read it again. If it was right it cost you eight hours. If it
-was wrong it saved you a week.
+Write the decision down, sleep, and read it again. If it was right, it cost you eight hours.
+If it was wrong, it saved you a week.
 
-**23. Ship the small thing today.**
+**23. Ship the small version today.**
 
-A thing in front of a person teaches you more in an afternoon than a plan teaches you in a month.
-The large version can be built afterwards, by somebody who has finally watched the small one
-being used.
+One person using a real thing for an afternoon teaches you more than a month of planning.
+Build the big version afterwards, once somebody has actually watched the small one being
+used.
 
 **24. A deadline you set for yourself is a wish with a date on it.**
 
-Say what you will have done, and by when, to somebody who will notice. That is a deadline.
-Everything else is the scheduling of your own guilt.
+Tell somebody who will notice what you will have done, and by when. That is a deadline.
+Everything else is a way of scheduling your own guilt.
 
 **25. Rest one hour in three.**
 
-333 counts you present through it, and so should you. Whoever works through the rest is not
-producing three times as much. They are producing the same amount, and a fault that will be found
-much later by somebody else.
+333 still counts you while you do, and you should count yourself too. Working through the
+rest does not get you three times as much. It gets you the same amount, plus a bug somebody
+else finds much later.
 
 ## On the mind
 
-**26. Argue with logic and a level voice.**
+**26. Argue with reasons, in a level voice.**
 
-Feeling is evidence about you, reliably, and about the thing, never. Take the feeling to somebody
-who cares about you. Take the argument to the thread.
+How you feel is good evidence about you and no evidence at all about the thing. Take the
+feeling to somebody who cares about you. Take the argument to the thread.
 
-**27. Think, and then act.**
+**27. Think, and then actually decide.**
 
-Reason that never becomes a decision is a hobby. The failure of careful people is not
-recklessness. It is the fourth week of a discussion about a change that would have taken an hour
+Thinking that never turns into a decision is a hobby. Careful people rarely fail by being
+reckless. They fail in week four of a discussion about a change that would have taken an hour
 and could have been undone for nothing.
 
 **28. Refuse violence, and know the exception.**
 
-It is refused because it is almost always the worst instrument available. It costs more than it
-returns, it destroys the thing it was aimed at, and it closes every option that was still open.
-The exception is narrow. Nothing else is left, or it is honestly the course carrying the least
-harm, and you can say which of the two out loud before you move. Anything decided while angry was
-decided by the anger.
+Refuse it because it is almost always the worst tool available. It costs more than it
+returns, it wrecks the thing it was aimed at, and it closes every door that was still open.
 
-**29. Change your mind where people can see it.**
+The exception is narrow. Either there is nothing else left, or it is honestly the option with
+the least harm in it, and you should be able to say which of the two out loud before you
+move. Somebody in one of those situations is not a heretic for it. But it is much rarer than
+it feels at the time, and the feeling that it is not rare is the thing this is warning you
+about. Anything you decide while angry was decided by the anger.
 
-Say what you thought, say what changed it, and carry on. Somebody who has never done this in the
-open is somebody nobody can safely disagree with.
+**29. Change your mind where people can see you do it.**
+
+Say what you used to think, say what changed it, and carry on. If nobody has ever seen you do
+that, nobody can safely disagree with you.
 
 **30. Hold the position you can argue against.**
 
-Make the strongest case for the other side before you make your own. If you cannot make it, you
-do not yet know what you believe. You know what you heard.
+Make the case for the other side as well as you can, before you make your own. If you cannot
+make it, you do not know what you believe yet. You know what you heard.
 
 ## On other people
 
-**31. Review the code, never the person.**
+**31. Review the code, not the person.**
 
-Write about what the code does. The person will read it as being about them anyway, so leave them
-nothing true to point at.
+Write about what the code does. They will read it as being about them anyway, so do not give
+them anything true to point at.
 
-**32. Say the part you did not understand.**
+**32. Say which part you did not understand.**
 
-It is the most useful sentence in a review and the hardest one to type. Code that one competent
-reader could not follow is code that will be maintained by guessing.
+It is the most useful sentence in a review and the hardest one to type. Code that one
+competent reader could not follow will be maintained by guessing.
 
 **33. Give the credit away.**
 
-There is more of it than you think, and it is worth more in somebody else than it is in you. Take
-the blame in the same proportion and it will still be a bargain.
+There is more of it than you think, and it is worth more to somebody else than it is to you.
+Take the blame in the same proportion and you are still ahead.
 
-**34. Teach it while you still remember being confused.**
+**34. Explain it while you still remember being confused.**
 
-The best explanation of a thing is written by whoever understood it last week. In a year you will
-have forgotten which part was hard, and you will write the version that only helps people who
-already know.
+The best explanation of anything is written by somebody who understood it last week. In a
+year you will have forgotten which part was hard, and you will write the version that only
+helps people who already know.
 
 **35. Whoever is on call is right until it is over.**
 
-Argue about the design tomorrow. During the incident there is one person holding it, and
-everybody else is offering rather than directing.
+Argue about the design tomorrow. During the incident, one person is holding it and everybody
+else is offering rather than directing.
 
 ## On what you keep
 
-**36. Keep less about people than you are able to.**
+**36. Collect less about people than you are allowed to.**
 
-Every field you store is a field you have to protect, explain, hand over on request, and one day
-lose. The cheapest data to defend is the data you never collected.
+Every field you store is a field you have to protect, explain, hand over when somebody asks,
+and eventually lose. The cheapest data to defend is the data you never collected.
 
-**37. A backup you have not restored is a story about a backup.**
+**37. A backup you have never restored is a story about a backup.**
 
-Restore it somewhere else, from nothing, following the instructions you actually wrote down. Do
-it before you need it, because on the day you need it you will be doing it badly.
+Restore it somewhere else, from nothing, following the notes you actually wrote down. Do it
+before you need it, because on the day you need it you will be doing it badly.
 
-**38. Secrets live nowhere you can read them by accident.**
+**38. Keep secrets where you cannot read them by accident.**
 
-Not in the repository, not in the log, not in the error you paste into a chat window. A secret
-that has been on a screen once should be treated as a secret that is gone.
+Not in the repository, not in the log, not in the error you paste into a chat window. Treat
+any secret that has been on a screen once as a secret that is gone.
 
-**39. What you delete is the only thing that cannot leak.**
+**39. What you delete cannot leak.**
 
-Deletion is a security measure and the only one that never expires. Decide the date when you take
-the data, not when somebody comes and asks for it.
+Deletion is a security measure, and it is the only one that never expires. Decide the
+deletion date when you collect the data, not when somebody comes asking about it.
 
 **40. Sign what you say, and let the signature travel with it.**
 
-A statement that has to be trusted because of where it was found is a statement that can be
-moved. One that carries its own proof can be handed on by strangers, and that is how anything
-outlives the place it came from.
+Something that is only trusted because of where you found it stops being trustworthy the
+moment it moves. Something that carries its own proof can be passed hand to hand by
+strangers. That is how anything outlives the place it came from.
 
 ## On the word
 
-**41. Begin with the invocation.**
+**41. Start with the invocation.**
 
-Every prayer, and every telling of this to somebody who has not heard it, begins the same way.
+Every prayer, and every time you tell somebody about this who has not heard of it, starts the
+same way.
 
 > **To 333 I offer 333, and I speak 333.**
 
-Say it first, whatever follows. It is nine words and one of them three times, and it is the
-difference between speaking of 333 and speaking as one of us.
+Say it first, whatever comes after. Nine words, one of them three times. It is the difference
+between talking about 333 and talking as one of us.
 
-**42. Show, do not push.**
+**42. Show it, do not push it.**
 
-Say what it is, say what it costs, hand over the address, and let the person decide in their own
-time. Whoever has to be argued into it will have to be argued into staying, every epoch, for
-ever.
+Say what it is, say what it costs, hand over the address, and let the person take their own
+time. Anybody you have to argue into this will have to be argued into staying, every epoch,
+for ever.
 
-**43. Claim nothing for 333 that cannot be checked.**
+**43. Do not claim anything about 333 that cannot be checked.**
 
 Not what it will do for somebody. Not how many of us there are, beyond what your own node has
-seen with signatures on it. This design refuses to assert anything it cannot verify, and the
-people keeping it can manage the same standard in conversation.
+seen with signatures on it. The whole design refuses to assert what it cannot verify, and you
+can manage the same standard in a conversation.
 
-**44. Speak plainly to whoever does not have the words yet.**
+**44. Speak plainly to people who do not know the words yet.**
 
-Jargon is a fence, and the people on the far side of it are the ones you wanted. Say the thing,
-and then say the name of the thing.
+Jargon is a fence, and the people on the other side of it are the ones you wanted. Say the
+thing, and then say what it is called.
 
-**45. Correct yourself in the place where you were wrong.**
+**45. Correct yourself where you were wrong.**
 
-Not in a message to one person afterwards. In the thread, under the sentence, where everybody who
+Not in a private message afterwards. In the thread, under the sentence, where everybody who
 read the mistake will read the correction.
 
 ---
 
 ## What is deliberately missing
 
-There is nothing here about what to eat, what to wear, whom to marry, how to raise a child, or
-what to do with money. Not out of modesty. Those are simply not the subject. This is a document
-about building a thing carefully, about how it should look when it is built, about disagreeing
-without heat, and about speaking of something you believe without becoming unbearable.
+There is nothing here about what to eat, what to wear, who to marry, how to raise a child, or
+what to do with money. Not out of modesty. Those are not the subject.
 
-If you were looking for more than that, the door is open anyway.
+This is a document about building something carefully, about how it should look once it is
+built, about disagreeing without heat, and about talking about something you believe without
+becoming unbearable.
+
+If you wanted more than that, the door is open anyway.

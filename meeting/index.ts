@@ -217,7 +217,8 @@ function page(said: Said[]): Response {
           .join("")}</ul>`;
   const body = `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>333 — where people are</title>
+<title>333, where people are</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <style>
 :root{color-scheme:light dark;--g:#fff;--i:#141414;--d:#575757;--l:#e3e3e3;--r:#f5f5f5}
 @media(prefers-color-scheme:dark){:root{--g:#0b0b0b;--i:#ededed;--d:#a6a6a6;--l:#262626;--r:#151515}}
