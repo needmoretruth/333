@@ -226,6 +226,14 @@ where
     S: AsyncRead + AsyncWrite + Unpin,
 {
     match respond(stream, node.identity()).await {
+        // This node knocking on its own outside address to find out whether the port
+        // reaches it. Nobody else can arrive holding this key, so there is no other
+        // reading of it. It is said plainly rather than through `describe`, which would
+        // put this node's own name where a peer's name goes — and that line is the one
+        // on the screen that is supposed to mean somebody else turned up.
+        Ok(exchange) if exchange.peer.node_id == node.identity().node_id() => {
+            aloud!("knock    this node reached its own front door");
+        }
         Ok(exchange) => aloud!("{}", describe(&exchange)),
         Err(e) => {
             report(&e);

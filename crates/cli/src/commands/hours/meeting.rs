@@ -11,12 +11,17 @@
 //! dropped — and the meeting point is never told, and never learns, whether any of it
 //! was true.
 //!
-//! WHO LEAVES A STATEMENT AND WHO ONLY READS: a node that answers on a socket has an
-//! address the world can already see, and leaving it here costs that node nothing it
-//! has not already spent. A node that answers only through Tor is hiding, and leaving
-//! an onion address here would hand whoever runs the meeting point the one fact the
-//! onion address exists to withhold: which machine is behind it. That node reads and
-//! says nothing, because reading gives away nothing about the reader.
+//! WHO LEAVES A STATEMENT: whoever has an address a stranger could actually dial. For
+//! most people that is an onion address and not a socket, because a socket on a home
+//! network is behind a router that was never told to let anybody in, and no amount of
+//! publishing it makes it answer. An onion address needs nothing opened.
+//!
+//! WHAT LEAVING ONE COSTS: whoever runs the meeting point sees the address the request
+//! came from, and so learns which machine published which onion address. Reading costs
+//! the same request and does not link the two, so this is a real difference and a
+//! narrow one: it is one operator, not the network, and `--no-meet` refuses the whole
+//! arrangement. Saying nothing was the older answer and it left everybody behind a
+//! router unreachable, which is worse than the thing it was avoiding.
 
 use std::sync::Arc;
 
@@ -29,16 +34,13 @@ use crate::node::Node;
 pub(crate) struct Board {
     /// Where it is, and the connection to it.
     place: Arc<Meeting>,
-    /// Whether this node leaves its own address there, or only reads.
-    speaks: bool,
 }
 
 impl Board {
-    /// Deal with the meeting point at `place`, leaving a statement only if `speaks`.
-    pub(crate) fn at(place: &str, speaks: bool) -> Self {
+    /// Deal with the meeting point at `place`.
+    pub(crate) fn at(place: &str) -> Self {
         Self {
             place: Arc::new(Meeting::at(place)),
-            speaks,
         }
     }
 
@@ -68,7 +70,7 @@ impl Board {
     /// blocked by somebody's firewall or gone for good costs this node the addresses
     /// it did not already have, and nothing else.
     pub(crate) async fn visit(&self, node: &Node, mine: Option<Vec<u8>>) {
-        if let Some(statement) = mine.filter(|_| self.speaks) {
+        if let Some(statement) = mine {
             self.say(node, statement).await;
         }
         self.listen(node).await;

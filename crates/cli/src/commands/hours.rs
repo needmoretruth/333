@@ -67,10 +67,22 @@ pub(crate) async fn keep(
     announce_as: tokio::sync::watch::Receiver<Option<PeerAddress>>,
     board: Option<Board>,
 ) -> anyhow::Result<()> {
+    let mut announce_as = announce_as;
     loop {
         let now = Epoch::now();
         let address = announce_as.borrow().clone();
-        one_round(&node, &dialer, address, board.as_ref(), now).await;
+        one_round(&node, &dialer, address.clone(), board.as_ref(), now).await;
+        // A node that had no address to give out when the round ran would otherwise
+        // wait out the whole epoch before anybody could be told where it is, and both
+        // of the ways an address arrives take their time: an onion address is minutes
+        // of Tor waking up, and a socket is not known to be reachable until the knock
+        // has come back. Neither is worth 333 minutes of being unfindable.
+        if address.is_none() && announce_as.changed().await.is_ok() {
+            let arrived = announce_as.borrow().clone();
+            if arrived.is_some() {
+                say_where_i_am(&node, arrived.as_ref(), board.as_ref(), Epoch::now()).await;
+            }
+        }
         sleep_until_the_next_boundary(now).await;
     }
 }
@@ -95,31 +107,42 @@ pub(crate) async fn one_round(
     if let Err(e) = node.keeping(now).await {
         aloud!("failed   marking this epoch as kept: {e:#}");
     }
-    let mine = match &address {
-        Some(address) => say_where(node, address, now).await,
-        None => None,
-    };
-    if let Some(board) = board {
-        // Kept for the neighbours, withheld from the strangers. An address that only means
-        // something on this wire is a correct thing to have written down and a wrong thing to
-        // leave where somebody on the other side of the world will dial it.
-        let worth = address
-            .as_ref()
-            .is_some_and(PeerAddress::worth_telling_a_stranger);
-        if mine.is_some() && !worth {
-            aloud!(
-                "meet     not leaving this address at {}. It reaches this node from here\n\
-                 \x20        and from nowhere else, and a stranger who dialled it would\n\
-                 \x20        reach something of their own.",
-                board.place()
-            );
-        }
-        board.visit(node, mine.filter(|_| worth)).await;
-    }
+    say_where_i_am(node, address.as_ref(), board, now).await;
     trade_news(node, dialer, now).await;
     ask_those_drawn(node, dialer, now).await;
     judge_what_is_ready(node, now).await;
     forget_the_old(node, now).await;
+}
+
+/// Write down where this node can be reached, and go and look where others said to.
+///
+/// Both halves of one visit, because a node with nothing to say still has everybody
+/// else to read. Called once a round, and again the moment an address turns up in the
+/// middle of a round that began without one.
+async fn say_where_i_am(
+    node: &Node,
+    address: Option<&PeerAddress>,
+    board: Option<&Board>,
+    now: Epoch,
+) {
+    let mine = match address {
+        Some(address) => say_where(node, address, now).await,
+        None => None,
+    };
+    let Some(board) = board else { return };
+    // Kept for the neighbours, withheld from the strangers. An address that only means
+    // something on this wire is a correct thing to have written down and a wrong thing to
+    // leave where somebody on the other side of the world will dial it.
+    let worth = address.is_some_and(PeerAddress::worth_telling_a_stranger);
+    if mine.is_some() && !worth {
+        aloud!(
+            "meet     not leaving this address at {}. It reaches this node from here\n\
+             \x20        and from nowhere else, and a stranger who dialled it would\n\
+             \x20        reach something of their own.",
+            board.place()
+        );
+    }
+    board.visit(node, mine.filter(|_| worth)).await;
 }
 
 /// Write down where this node can be reached, and keep it for others to pass on.

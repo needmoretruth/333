@@ -1,14 +1,21 @@
 //! `333 serve` — keep the vigil: answer heartbeats and challenges until interrupted.
 //!
 //! By default this opens a socket and nothing else: no Tor, no bootstrap, no wait.
-//! `--tor` additionally publishes an onion address, for a node whose own address
-//! should not be visible to the peers that reach it.
+//! A socket only answers strangers if the router in front of it was told to send the
+//! port here, which on most home networks nobody has done. [`reach`] knocks on this
+//! node's own outside address and says whether that is the case, rather than leaving
+//! the person to guess.
+//!
+//! `--tor` publishes an onion address instead. It needs no port opened and no router
+//! touched, because the node builds its own way in from the inside out, and it is
+//! therefore the way in that works from an ordinary home connection.
 //!
 //! Each way in is its own door with its own places ([`door`]), and what a peer can ask
 //! for once it is through is [`answering`].
 
 mod answering;
 mod door;
+mod reach;
 
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -96,6 +103,9 @@ pub(crate) async fn run(
     if let Some(announce) = &announce {
         aloud!("invite   {}", Invite::to(announce.clone()));
     }
+    // The address the socket actually got, which is not the one that was asked for
+    // when the port was left to the system to choose.
+    let mut bound_at: Option<SocketAddr> = None;
     let mut listening = tokio::task::JoinSet::new();
     #[cfg(feature = "screen")]
     if let Some(lines) = watching {
@@ -108,6 +118,7 @@ pub(crate) async fn run(
             .with_context(|| format!("listening on {bind}"))?;
         // True the instant the socket is bound, which is why it is printed here.
         let bound = listener.address()?;
+        bound_at = Some(bound);
         aloud!("answer   {bound}");
         if announce.is_none() {
             say_the_invitation(bound, &found_address);
@@ -147,11 +158,11 @@ pub(crate) async fn run(
         ));
     }
 
-    // A node that answers on no socket is hiding. It reads the meeting point, because
-    // reading tells the far end nothing except that somebody asked, and it leaves
-    // nothing there, because leaving an onion address would tie it to the machine the
-    // onion address exists to keep unnamed.
-    let board = meet.map(|place| hours::Board::at(&place, bind.is_some()));
+    // Where a node that nobody introduced goes looking. It reads what others left and
+    // leaves whatever address it has that a stranger could actually dial — which for a
+    // node behind a router is the onion address and nothing else, since that is the
+    // only one of the two that answers when somebody knocks.
+    let board = meet.map(|place| hours::Board::at(&place));
     if let Some(board) = &board {
         aloud!(
             "meet     {} is where this node looks for people nobody introduced it to.\n\
@@ -159,8 +170,14 @@ pub(crate) async fn run(
              \x20        there is believed. --no-meet keeps this node away from it.",
             board.place()
         );
-        if let Some(bind) = bind {
-            suggest_an_address(board.clone(), bind, announce.is_some());
+        if let Some(bound) = bound_at {
+            reach::tell_them(
+                board.clone(),
+                dialer.clone(),
+                Arc::clone(&node),
+                bound,
+                found_address.clone(),
+            );
         }
     }
 
@@ -271,39 +288,13 @@ async fn greet_the_neighbours(
     Ok(())
 }
 
-/// Work out what a stranger would have to type, for a node that cannot say itself.
-///
-/// A wildcard bind is the ordinary case, and the machine behind it has no way to know
-/// which of its addresses — if any — the rest of the world can reach. The meeting
-/// point saw one address arrive, so it can say that much. Whether anything arriving
-/// there reaches this machine depends on a router this node cannot see, which is why
-/// this is printed for a person to act on and never signed as a statement.
-fn suggest_an_address(board: hours::Board, bound: SocketAddr, already_said: bool) {
-    if already_said || !bound.ip().is_unspecified() {
-        return;
-    }
-    tokio::spawn(async move {
-        let Some(seen) = board.what_address_do_i_arrive_from().await else {
-            return;
-        };
-        aloud!(
-            "meet     {} sees this machine at {seen}. If port {} on your router goes\n\
-             \x20        to this machine, `--announce {}` is the invitation to hand out;\n\
-             \x20        if it does not, nobody can reach you and nothing here changes that.",
-            board.place(),
-            bound.port(),
-            PeerAddress::from(SocketAddr::new(seen, bound.port()))
-        );
-    });
-}
-
 /// Say what to hand somebody so they can find this node.
 ///
 /// A wildcard bind is the ordinary case and it is the one where this node genuinely
 /// does not know the answer: it is listening on every interface and has no idea which
 /// address of the machine, if any, a stranger can reach. Printing `333:0.0.0.0:3333`
-/// would look like an invitation and work for nobody, so it says what is missing
-/// instead.
+/// would look like an invitation and work for nobody, so it says what is missing and
+/// leaves [`reach`] to fill it in once the knock has come back.
 fn say_the_invitation(bound: SocketAddr, found_address: &watch::Sender<Option<PeerAddress>>) {
     if bound.ip().is_unspecified() {
         aloud!(

@@ -16,10 +16,11 @@
 //! was before it asked, which is why nothing depends on it twice.
 //!
 //! WHAT IT COSTS TO USE IT. Whoever runs the meeting point learns the address a node speaks
-//! from. That is the whole of the cost and it is not nothing: a node that is hiding behind an
-//! onion address must not leave a statement here, because doing so ties the onion address it
-//! is publishing to the address it is speaking from. Reading is different — a reader sends
-//! nothing about itself — so a hidden node may read the board and must not write to it.
+//! from, and if that node leaves a statement, learns which onion address belongs to it. That
+//! is the whole of the cost. It is one operator rather than the network, it is the same
+//! request either way, and refusing it means refusing the board — which for a node behind a
+//! router means nobody can find it at all. Withholding the statement was the earlier answer
+//! here and it bought a narrow secret at the price of the node being unreachable.
 //!
 //! THE DEPENDENCE IS MEANT TO SHRINK. A fixed address is a single point that can be taken
 //! away, and this design wanted none. The alternatives that need no fixed point cost more

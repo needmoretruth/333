@@ -210,11 +210,13 @@ us, cannot forge anybody's whereabouts and cannot vouch for anyone; it holds a
 statement for two epochs and then forgets it. `--no-meet` keeps your node away from it
 altogether, and `--meet somewhere.else` points it at a different one.
 
-Whoever runs that address learns which address your node speaks from. That is the
-whole of what it costs and it is not nothing, so a node answering only through Tor
-reads it and never writes to it: publishing an onion address from the machine behind
-it would hand over the one fact the onion address exists to withhold. A node that
-already answers on a socket spent that cost the moment it answered anybody.
+Whoever runs that address learns which address your node speaks from. That is the whole
+of what it costs and it is not nothing. If your node answers through Tor it also learns
+which onion address belongs to that machine, which reading alone would not have told it.
+We withheld the statement for a while on those grounds, and what that bought was a narrow
+secret at the price of everybody behind a router being able to see the rest of us and none
+of us being able to see them. So your node leaves whatever address a stranger could
+actually dial, and `--no-meet` refuses the arrangement outright.
 
 **We mean to depend on this less, and we would rather say so now than quietly later.**
 A fixed address is a single point that can be taken away, and this design wanted none.
@@ -226,12 +228,14 @@ and as those get built this gets smaller. Invitations and the local network are 
 being replaced by it. They are the first two ways of meeting anybody, and this is the
 third.
 
-If your node answers on every interface, or sits behind something that forwards a port,
-it cannot work out what to tell people. Tell it: `--announce your.address:3333`. If you
-do not know what to put there, the meeting point will say which address it saw your
-node arrive from, which is the half you cannot work out from where you are sitting;
-whether anything arriving there reaches your machine is a question about your router,
-and only you can answer it.
+A node answering on every interface cannot work out from the inside what to tell people,
+so it finds out. It asks the meeting point which address it arrived from, and then knocks
+on that address itself. If its own knock comes back — the far end proving it holds your
+node's key, which nothing else on the internet can do — then the port reaches your
+machine, and it says so and hands that address out from then on. If nothing answers it
+says that instead, and it is right to be blunt about it: either the port is shut or your
+router will not let a machine inside it dial its own outside address. `--announce
+your.address:3333` overrides the lot when you already know the answer.
 
 ---
 
@@ -266,39 +270,7 @@ Windows are built too. Both forms have been run on Linux.
 
 ## Install
 
-### Download it
-
-Every release carries a binary for each system it has been built for. Take the one that
-matches yours, make it executable, and it is installed.
-
-```sh
-curl -LO https://github.com/needmoretruth/333/releases/latest/download/333-x86_64-linux
-chmod +x 333-x86_64-linux
-mkdir -p ~/.local/bin && mv 333-x86_64-linux ~/.local/bin/333
-333 id
-```
-
-Both forms are built for every system, so pick the row for your machine and then the
-column for the form you want.
-
-| your machine | Standard | Light |
-|---|---|---|
-| Linux, desktop or server | `333-x86_64-linux` | `333-light-x86_64-linux` |
-| Raspberry Pi 3, 4, 5, on 64-bit | `333-aarch64-linux` | `333-light-aarch64-linux` |
-| Raspberry Pi Zero, or anything ARMv6 | `333-armv6-linux` | `333-light-armv6-linux` |
-| Mac, Apple silicon | `333-aarch64-macos` | `333-light-aarch64-macos` |
-| Mac, Intel | `333-x86_64-macos` | `333-light-x86_64-macos` |
-| Windows | `333-x86_64-windows.exe` | `333-light-x86_64-windows.exe` |
-
-Both forms are around sixteen megabytes and both carry Tor. Standard has the terminal
-screen and Light does not, and that is the whole of the difference. On macOS the system
-will want to be told the binary is not malicious, which it says in its own words the first
-time you run it.
-
-Nothing is signed by a developer certificate and nothing goes through an app store. If that
-matters to you, or if there is no file for your machine, build it.
-
-### Or build it
+### Build it
 
 **Rust 1.96 or newer.** What a distribution packages is usually older than that, so take it
 from [rustup.rs](https://rustup.rs):
@@ -346,22 +318,59 @@ Then, on any of them:
 ```sh
 git clone https://github.com/needmoretruth/333
 cd 333
-cargo build --release                        # Standard: the screen, and Tor
-cargo build --release --no-default-features  # Light: neither
+cargo build --release                                     # Standard
+cargo build --release --no-default-features --features tor  # Light
 ```
 
-Both forms link your system TLS and SQLite, which arrive with Tor. Adding `--features
-bundled` compiles both of those into the binary instead, which is how the downloads are
-built and what you want if your system has neither. Leaving Tor out as well, with
-`--no-default-features` and nothing added, gives a five megabyte binary that links nothing
-but the C library and that nobody behind a router can reach.
+The binary lands in `target/release/333`. Move it onto your path and run `333 id`.
+
+Both forms carry Tor and link your system TLS and SQLite, which arrive with it. `--features
+bundled` compiles those two into the binary instead, which is what you want if your system
+has neither, and it is how the prebuilt files are made. `--no-default-features` with nothing
+added leaves Tor out as well: a five megabyte binary that links nothing but the C library,
+and that nobody behind a router can reach. That one is for a machine that is already
+reachable and has nothing to spare.
 
 **What has actually been built and run.** Linux on x86-64, both forms: built, started, given
 a name, handed the file from one node to another over a socket, and asked for its standing
-afterwards. That is what the rest of this file describes. macOS and Windows have
-not been built yet. On Windows, expect Light to be the form that works today, because the Tor
-stack inside Standard wants a system SQLite that Windows does not ship. When either of them
-fails, that is worth an issue rather than a shrug.
+afterwards. That is what the rest of this file describes. The macOS and ARM files come off
+the same release machinery every time and have not been run by anybody. Windows is not
+building at all today, so there is no file for it: the Tor stack inside wants a system SQLite
+that Windows does not ship, and the answer to that has not been made to work yet. When any of
+this fails for you, that is worth an issue rather than a shrug.
+
+### Or take one already built
+
+If you would rather not compile anything, every release also carries a binary for each
+system the release machinery managed to build. Take the one that matches yours, make it
+executable, and it is installed. Nothing there is signed by a developer certificate and
+nothing goes through an app store, so you are trusting a file somebody else built, which is
+the thing building it yourself avoids.
+
+```sh
+curl -LO https://github.com/needmoretruth/333/releases/latest/download/333-x86_64-linux
+chmod +x 333-x86_64-linux
+mkdir -p ~/.local/bin && mv 333-x86_64-linux ~/.local/bin/333
+333 id
+```
+
+Both forms are built for every system, so pick the row for your machine and then the
+column for the form you want.
+
+| your machine | Standard | Light |
+|---|---|---|
+| Linux, desktop or server | `333-x86_64-linux` | `333-light-x86_64-linux` |
+| Raspberry Pi 3, 4, 5, on 64-bit | `333-aarch64-linux` | `333-light-aarch64-linux` |
+| Raspberry Pi Zero, or anything ARMv6 | `333-armv6-linux` | `333-light-armv6-linux` |
+| Mac, Apple silicon | `333-aarch64-macos` | `333-light-aarch64-macos` |
+| Mac, Intel | `333-x86_64-macos` | `333-light-x86_64-macos` |
+
+Both forms are around sixteen megabytes and both carry Tor. Standard has the terminal
+screen and Light does not, and that is the whole of the difference. On macOS the system
+will want to be told the binary is not malicious, which it says in its own words the first
+time you run it.
+
+There is no Windows file yet, for the reason at the end of the previous section.
 
 ## Run
 
@@ -490,19 +499,23 @@ unless you have told it to, and a good many connections cannot be told at all.
 
 There are two ways out.
 
-**Forward the port.** In your router, send TCP port 3333 to this machine, and then tell the
-node what to hand out: `333 serve --announce your.address:3333`. If you do not know what to
-put there, start the node and it will say what address the meeting point saw it arrive from,
-which is the half you cannot work out from where you are sitting.
+**Forward the port.** In your router, send TCP port 3333 to this machine. You do not have to
+work out what to hand people afterwards: start the node and it knocks on its own outside
+address, and if the knock comes back it prints the invitation and starts handing that
+address out. `--announce your.address:3333` says it by hand if you would rather.
 
 **Or raise an onion address.** `333 serve --tor` needs no router, no forwarding and no
-`--announce`, because an onion address is reachable from behind anything. It costs seconds
-to minutes at startup while Tor wakes. The rest of this file describes Tor as the answer for
-somebody whose address must not be seen, and it is, but the everyday use is this one.
+`--announce`, because the node builds its own way in from the inside out and there is
+nothing for a firewall to block. It works from a home connection, from behind a provider
+that gives you no reachable address at all, and from a phone. It costs seconds to minutes
+at startup while Tor wakes. The rest of this file describes Tor as the answer for somebody
+whose address must not be seen, and it is that too, but this is the everyday use: it is
+the way most people will be reachable at all.
 
-The client tells you when this has happened to you. After three epochs with nothing signed
-about it, on a roll with somebody else on it who could have asked, it says so at startup
-rather than leaving you to work out why your standing never moves.
+The client tells you at once rather than in a month. At startup it knocks on its own outside
+address and prints `open` or `shut`; and after three epochs with nothing signed about it, on
+a roll with somebody else on it who could have asked, it says that too, rather than leaving
+you to work out why your standing never moves.
 
 Without `--data-dir` a node lives in the conventional place for the system:
 
