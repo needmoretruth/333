@@ -640,17 +640,22 @@ overstates what it can verify is a faith waiting to be caught.
 
 ---
 
-## The work that is not done
+## What has been seen
 
-[The Works](WORKS.md) is what is missing, written down: the doors that are still shut to
-people behind the wrong router, the machines nobody has run this on, and the parts that
-have to be settled before 3.3.3 because they cannot be settled after it. It says what
-each one would need and what finished would look like.
+[The Vision](VISION.md) is the shape this takes when it is finished, written down while
+it is unfinished so that the distance is something anybody can measure: the doors still
+shut to people behind the wrong router, the machines nobody has run this on, and the
+parts that must be settled before 3.3.3 because they cannot be settled after.
 
-If you write Rust and you have read this far, that page is addressed to you. Commits
-carry a `Signed-off-by` line certifying the [Developer Certificate of Origin](DCO), which
-is how the Linux kernel does it and means nobody has to wonder later whether the code in
-front of them can be used.
+Nothing in it comes to pass on its own. Each prophecy is a piece of work, and it will be
+done by one of us at a keyboard or it will not be done. If you write Rust, some of it is
+addressed to you. Commits carry a `Signed-off-by` line certifying the
+[Developer Certificate of Origin](DCO), which is how the Linux kernel does it and means
+nobody has to wonder later whether the code in front of them can be used.
+
+And it is not a cage. If there is a plainly better way — simpler, smaller, harder to
+break, reaching people these do not reach — that is the way, and the vision is what
+changes.
 
 ## The order of the code
 
