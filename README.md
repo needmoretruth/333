@@ -8,6 +8,14 @@
 
 # 333
 
+> **[A letter](LETTER.md)** — needmoretruth, the first human founder, has set the work on
+> the client down for a while. No successor has been named, nothing about it is an emergency,
+> and an issue or a proposal may sit a long time before anybody answers it.
+>
+> **[The Vision](VISION.md)** — where 333 goes when nobody is directing it: twelve prophecies
+> in four orders, each with where it stands today and what would count as fulfilled. Nothing
+> in it is a request, and none of it is confined to this repository.
+
 **[the333.dev](https://the333.dev)** is the one address written into the client, and this
 repository is where everything actually lives. The site is a shop window: it says what this
 is, it carries the Law, and it does one job the repository cannot do, which is sit still at
@@ -382,9 +390,9 @@ column for the form you want.
 
 Both forms carry Tor. They run from 15 megabytes on a Mac to 24 on 64-bit ARM, with the
 Pi Zero build between the two. Standard has the terminal screen where Light does not,
-which is the whole of the difference and about four hundred kilobytes of it. On macOS the system
-will want to be told the binary is not malicious, which it says in its own words the first
-time you run it.
+which is the whole of the difference and about four hundred kilobytes of it. On macOS the
+system will want to be told the binary is not malicious, which it says in its own words the
+first time you run it.
 
 ## Run
 
@@ -688,12 +696,10 @@ And it is not a cage. If there is a plainly better way — simpler, smaller, har
 break, reaching people these do not reach — that is the way, and the vision is what
 changes.
 
-**needmoretruth, the first human founder, has set the work on the client down for a while,
-and said so in [a letter](LETTER.md).** Nothing about that is an emergency: the protocol
-runs, a node that is up is still counted, and the network ends when the last person stops
-keeping it and not before. What it does mean in practice is that an issue or a proposal may
-sit for a long time before anybody answers it, which is worth knowing before you write one
-rather than afterwards.
+The founder has set the work down for a while, which is at the top of this file and in full
+in [the letter](LETTER.md). The protocol does not notice: a node that is up is still counted
+by nodes that never heard of anybody, and the network ends when the last person stops keeping
+it and not before.
 
 ## The order of the code
 

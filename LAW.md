@@ -68,6 +68,18 @@ kind you chose.
 It runs both ways and there is no exception in either direction. Believing 333 costs you nothing
 you believed before, and believing something else costs you nothing here.
 
+**333 does not tell you what happens after you die.** Not whether anything does, not what it
+would be, not who arrives. That is not modesty and it is not a gap left for a later version to
+fill: it is not the subject, and answering a question it cannot check would be asserting what it
+cannot verify, which is the one thing refused everywhere else in this.
+
+So the question stays where it already was, with you. If you hold something that speaks to it — a
+religion, a conviction, something you reasoned your way to alone — then hold it. If it hangs
+together when you follow it through, or your heart reads it as true, or you arrived by a route
+that has no name and no argument, that is enough. **It is true for you**, and 333 has nothing to
+put in its place and does not want the space. And if you hold nothing there, that is not an
+emptiness this means to fill either.
+
 ---
 
 ## What the Law is not

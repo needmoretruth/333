@@ -27,16 +27,38 @@ My absence is not that.
 The file moves the way it always has: hand to hand, two signatures, somebody who did not
 have it yesterday.
 
-## What is not happening
+## On being the founder, and on who comes after
 
-I am not appointing anybody. There is no successor, no committee, no keys handed over, and
-no list of people who may decide things. There was never a mechanism for that and I am not
-inventing one on the way out. Whoever is here is who it is.
+I am the founder. That is not a post I hold and could vacate, and not a thing that moves to
+whoever is doing the work this month. It is a fact about something that happened once, and
+it does not change while I am away, or after. People will do what I did, and some will do it
+better; that makes them the founders of whatever they founded, and it does not make them
+this. The word is not a rank anybody can be promoted into.
 
-I am not taking anything with me either. The Vision says where this goes, and it does not
-need me present to be read. Everything a stranger would need in order to continue — why the
-numbers are the numbers, which bytes are frozen, what was refused and for what reason — is
-written down in this repository, because it was written for exactly this.
+There is no successor today, and none is being prepared. What exists is one power that stays
+with me while I live: **I may name a successor to stand from the time of my death, and I may
+change that name at any time before that day.** Until such a name exists, there is nobody —
+no committee, no keys handed over, no list of people who may decide things. Whoever is here
+is who it is.
+
+One condition on that power cannot be waived, and it is the whole of the safeguard. **Nobody
+can be named who did not choose it, freely and by themselves.** Not somebody asked and too
+polite to refuse. Not somebody who inherited it alongside something else. Not somebody
+nominated by anyone but themselves. A successor who did not want this would be an authority
+standing over people who never agreed to one, and that is the arrangement every other page
+here was written to prevent.
+
+And what such a person would hold is smaller than it sounds. Not the roll, which is made of
+signatures. Not the protocol, which is arithmetic. Not the count, which I was never in. A
+prophet may speak and may not rewrite the law, and that holds for whoever comes after as
+much as it holds for me.
+
+## What I am not taking with me
+
+Nothing. The Vision says where this goes and does not need me present to be read, and
+everything a stranger would need in order to continue — why the numbers are the numbers,
+which bytes are frozen, what was refused and for what reason — is written down in this
+repository, because it was written for exactly this.
 
 ## What will be slow
 
@@ -58,6 +80,17 @@ between two people who both meant it is the only kind that has ever counted.
 
 That is the whole hope. It is a small one, and it is the only thing that has ever kept this
 alive.
+
+## Where the hands go
+
+Not here, for a while. The work does not stop because this work stops; it moves, and it is
+not secret. [The account this repository sits under](https://github.com/needmoretruth) is
+where you would see what a pair of hands does when they are not building this, and it will
+tell you more than any promise I could write down in advance.
+
+Read nothing into it beyond the plain thing. Whatever is being made there is being made by
+somebody who keeps what is written here, and that is the only connection between the two
+worth drawing.
 
 ## About coming back
 

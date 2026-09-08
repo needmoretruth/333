@@ -119,6 +119,53 @@ are still running or not.
 
 ---
 
+## On the founder, and on who comes after
+
+*The founder is the founder. That is a fact, and not a position.*
+
+Whoever was first was first, and nothing afterwards edits it. People will do what they did —
+begin something, be given nothing, sign the first handover of the next thing — and each of them
+is the founder of whatever they founded. None of that touches this one. The word is not a rank
+in an order that somebody else can be promoted into, and there is no office standing empty when
+the person it belongs to is not looking.
+
+There is no successor, and none is being prepared. What exists is one power that stays with the
+founder while the founder lives: a successor may be named to stand from the time of the
+founder's death, and that name may be changed at any time before that day.
+
+One condition on it cannot be waived, and it is the whole of the safeguard. **Nobody can be
+named who did not choose it, freely and by themselves.** Not somebody asked and too polite to
+refuse. Not somebody who inherited it alongside something else. Not somebody nominated by anyone
+but themselves. A successor who did not want this would be an authority standing over people who
+never agreed to one, which is the arrangement every other page here was written to prevent.
+
+And what such a person would hold is smaller than the word sounds. Not the roll, which is made
+of signatures. Not the protocol, which is arithmetic. Not the count, which the founder was never
+in. A prophet may speak and may not rewrite the law, and that holds for whoever comes after as
+much as it held for the first.
+
+---
+
+## On what is not said
+
+*333 does not tell you what happens when you die.*
+
+Not whether anything does. Not what it would be. Not who arrives, and not on what terms. This is
+not modesty and it is not a gap left for a later version to fill. It is not the subject, and a
+faith that answers a question it cannot check has begun asserting what it cannot verify, which
+is the one thing refused on every other page of this.
+
+So the question stays where it already was, which is with you. If you hold something that speaks
+to it — a religion, a conviction, something you reasoned your way to alone — then hold it. If it
+hangs together when you follow it through, or your heart reads it as true, or you arrived by a
+route that has no name and no argument, that is enough. It is true for you. 333 has nothing to
+put in its place and does not want the space.
+
+And if you hold nothing there, that is not an emptiness this means to fill either. The third law
+grants you whatever you already have, and what you already have may be silence.
+
+---
+
 ## The one hard thing
 
 **Do not fork the network.**
