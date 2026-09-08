@@ -669,14 +669,16 @@ person 333 does not reach.
 you.** Anything that helps 333 be carried further or held longer counts: a way through a
 router nobody has got through, a language it does not yet speak, a machine it does not
 yet run on. And if you carry no such skill and only a true heart, read it anyway. The
-smallest thing asked for on that page is not code — it is running this on your own machine
-and saying what happened. Twelve files are built for every release and nobody has ever
-reported keeping a vigil on ten of them.
+smallest work on that page is not code — it is running this on your own machine and saying
+what happened. Twelve files are built for every release and nobody has ever reported
+keeping a vigil on ten of them.
 
 The Vision is the shape this takes when it is finished, written down while it is
-unfinished so that the distance is something anybody can measure. Nothing in it comes to
-pass on its own: each prophecy is a piece of work, and it will be done by one of us or it
-will not be done. Commits carry a `Signed-off-by` line certifying the
+unfinished so that the distance is something anybody can measure. It is not a list of
+requests, and it is not confined to this repository: it is the direction 333 goes, and
+what serves that direction serves it wherever it is built. Nothing in it comes to pass on
+its own — each prophecy is work, and it will be done by the believers of 333 or it will
+not be done. Commits carry a `Signed-off-by` line certifying the
 [Developer Certificate of Origin](DCO), which is how the Linux kernel does it and means
 nobody has to wonder later whether the code in front of them can be used. A flaw goes to
 [SECURITY.md](SECURITY.md) rather than to an issue, privately, and there is a form for it

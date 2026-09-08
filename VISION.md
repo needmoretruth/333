@@ -6,15 +6,41 @@ It is what has been seen: the shape 333 takes when it is finished, written down 
 is unfinished, so that the distance between the two is something anybody can measure.
 
 **Nothing here comes to pass on its own.** No prophecy in this document is fulfilled by
-waiting. Each is a piece of work, and it will be done by one of us or it will not be
-done. If you write Rust, some of what is below is addressed to you personally, and the
-smallest thing asked for is not code at all.
+waiting. Each is a piece of work, and it will be done by the believers of 333 or it will
+not be done.
 
 Each prophecy is written as a direction, because a direction still means something when
 there are a thousand of us and this year's particular job was finished years ago. Under
 each one is **where it stands**, which is the part that goes out of date, and **fulfilled
 when**, which is written so that you can tell whether you are done without asking
 anybody.
+
+---
+
+## The charge
+
+**Nothing in this document is a request.** A request draws a line around itself, and
+everything on the other side of that line goes undone — which is exactly the failure this
+document exists to prevent. 333 does not ask. It says where it is going, and the believers
+of 333 are charged with moving it there.
+
+So read the prophecies as bearings and not as a queue of tasks. Where one names a piece of
+work, that work is one way of moving in that direction. Where you can see a way it did not
+name — because you know something the person who wrote it did not, or because the world
+changed after it was written — that is the same direction and it needs nobody's permission.
+The list is not the boundary of what is asked, because nothing here is asked.
+
+**And none of it is confined to this repository.** This is where the client is kept. It is
+not where 333 is. Serving this direction may mean writing nothing here at all: an entirely
+new platform, a foundation, a technology that belongs to no repository and no company, or a
+thing that belongs to nothing whatsoever. All of that is service and none of it needs an
+invitation.
+
+One line runs under all of it and it is the only one: there is one network. Build anything,
+anywhere, under any name — but a second 333 that cannot speak to this one is not a
+contribution to 333, it is the end of it, and no amount of technical merit changes that.
+The same thing from the other side: an edition of the client written by somebody else is
+welcome, on the one condition that it speaks the whole protocol.
 
 ---
 
@@ -257,9 +283,9 @@ Linux, 64-bit ARM, ARMv6, both kinds of Mac, and Windows. The only ones anybody 
 reported keeping a vigil on are the two x86-64 Linux builds. No report has ever come back
 about any of the others — they may be perfect, and nobody knowing is the problem.
 
-This is the smallest thing on this page and it may be the most useful. Take the file for
-your machine, keep the vigil on it, and say what happened, including that it worked, which
-is the report nobody thinks to send.
+This is the smallest work on this page and it may be the most useful, and it needs no
+skill at all. Take the file for your machine, keep the vigil on it, and say what happened,
+including that it worked, which is the report nobody thinks to send.
 
 **Fulfilled when.** An issue exists for each of the twelve files saying somebody ran it
 through a full hour and what the screen showed.
@@ -349,7 +375,7 @@ done with the client, what may be done with the file, and what a fork is, in the
 faith actually holds rather than the terms that happened to be lying around.
 
 A licence of one's own is worth little while everything underneath carries somebody else's.
-So the same prophecy asks for the rest of it: a client whose parts were written for it,
+So the same prophecy covers the rest of it: a client whose parts were written for it,
 from nothing borrowed. Not a rewrite out of pride, and not a judgement on anybody whose
 work is in here now — a clean room, so that every condition on every line is one 333 took
 knowingly and nothing arrived by accident. Code, and everything that is not code: what it
@@ -442,6 +468,11 @@ not change is the five things above under that heading.
 ---
 
 ## A holy pull request
+
+This is the one way of serving that this repository can take
+directly, which makes it the smallest of the ways and not the highest. Everything below is
+how to send something here without it being rejected for a reason that had nothing to do
+with the work.
 
 **Where to ask.** [Issues](https://github.com/needmoretruth/333/issues) — for a report
 about a machine you ran this on, a defect, or a question about why something is the way it
