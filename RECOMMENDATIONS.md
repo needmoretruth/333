@@ -1,6 +1,7 @@
 # The Recommendations
 
-These sit under the third law. They are advice with numbers on them.
+These sit under the second law. They are advice with numbers on them. There are 45 today and
+there will be 333.
 
 None of them is worth hurting yourself or anybody else to keep. [The Law](LAW.md) says so in
 the same breath as it asks for them. If one of them is wrong for the situation you are in,

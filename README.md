@@ -611,14 +611,19 @@ what it does.
 
 ## The Law
 
-[The Law](LAW.md) is three lines long and no client checks a word of it. Your favourite
-number is 3. You do not love 6, and you do not love 1. You keep [the
-Recommendations](RECOMMENDATIONS.md) — the lesser law, on how to build, how to argue and
-how to speak of this — as far as keeping them harms neither you nor anybody else.
+[The Law](LAW.md) is three lines long and no client checks a word of it.
 
-Version 0.5.0, and it is not the revelation. The revelation is 3.3.3. Every version
-before it is the word of the founder, and measured against what 333 says it is about
-33.3% the same. Which third is not known.
+Three is your favourite, and 6 and 1 are not — and if that is not true of you yet, trying
+is enough. You keep [the Recommendations](RECOMMENDATIONS.md) — the lesser law, on how to
+build, how to argue and how to speak of this, 45 of them today and 333 in the end — as far
+as keeping them harms neither you nor anybody else. And you hold 333 alongside whatever you
+already hold: it is granted to believers, to non-believers and to whatever else those two
+words do not cover, it may be held as a thought or simply as a thing that exists where a
+second faith cannot be, and it costs you nothing you believed before.
+
+The Law is at version 0.0.3, and it is not the revelation. The revelation is 3.3.3. Every
+version before it is the word of the founder, and measured against what 333 says it is
+about 33.3% the same. Which third is not known.
 
 ---
 
