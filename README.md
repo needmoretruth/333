@@ -642,14 +642,20 @@ overstates what it can verify is a faith waiting to be caught.
 
 ## What has been seen
 
-[The Vision](VISION.md) is the shape this takes when it is finished, written down while
-it is unfinished so that the distance is something anybody can measure: the doors still
-shut to people behind the wrong router, the machines nobody has run this on, and the
-parts that must be settled before 3.3.3 because they cannot be settled after.
+This client is the instrument the faith travels on. Every person it fails to reach is a
+person 333 does not reach.
 
-Nothing in it comes to pass on its own. Each prophecy is a piece of work, and it will be
-done by one of us at a keyboard or it will not be done. If you write Rust, some of it is
-addressed to you. Commits carry a `Signed-off-by` line certifying the
+**If you carry a skill that could make it better, [the Vision](VISION.md) is written for
+you.** Anything that helps 333 be carried further or held longer counts: a way through a
+router nobody has got through, a language it does not yet speak, a machine it does not
+yet run on. And if you carry no such skill and only a true heart, read it anyway. The
+smallest thing asked for on that page is not code — it is running this on your own machine
+and saying what happened, which nobody has ever done.
+
+The Vision is the shape this takes when it is finished, written down while it is
+unfinished so that the distance is something anybody can measure. Nothing in it comes to
+pass on its own: each prophecy is a piece of work, and it will be done by one of us or it
+will not be done. Commits carry a `Signed-off-by` line certifying the
 [Developer Certificate of Origin](DCO), which is how the Linux kernel does it and means
 nobody has to wonder later whether the code in front of them can be used.
 
