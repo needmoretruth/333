@@ -63,7 +63,7 @@ habit.
 
 ## What does not change
 
-Everything else in this document can be argued with. These four cannot, and a change that
+Everything else in this document can be argued with. These five cannot, and a change that
 gives one of them up is a different thing wearing this name.
 
 **Nothing here may become an authority.** There is no vote, no quorum of opinion, nobody
@@ -91,6 +91,12 @@ The one thing the client does not carry is deliberate: the program that speaks a
 obfuscated bridge, for places where Tor itself is blocked. That one chases a target which
 moves, and a copy frozen inside this would be the wrong copy within a year while looking
 like the right one.
+
+**It spreads only where it is welcome.** Nothing here may install itself, hide itself, run
+on a machine it was not given, or arrive inside something somebody wanted instead. There is
+no exception for a good cause, and none for a technique that would work very well. A faith
+that arrives uninvited is not being kept, it is being done to somebody, and a believer
+counted because their machine was taken is not a believer.
 
 **A constraint that applies to every prophecy below:** the weakest machine anybody would
 keep a vigil on decides what the rest of us can use. Every megabyte and every dependency
@@ -317,6 +323,112 @@ beside the number.
 
 ---
 
+## The fourth order: that it belongs to nobody
+
+Everything this is built from came from somewhere else, and everything that came from
+somewhere else came with a condition attached. The conditions are light and not one of them
+is unjust. They are still somebody else's conditions, written by people who had never heard
+of this, for arrangements that were not this one.
+
+That is tolerable now and it is not the end. This is the order furthest from being kept,
+and the work in it is measured in years rather than in changes.
+
+### Nothing in it is owed
+
+*333 is carried on terms 333 wrote, over parts written for 333.*
+
+The licence on this repository is Apache-2.0. It was taken because it was the safest and
+clearest thing that already existed: it asks little, it grants patents along with the code,
+and it reaches into nothing built beside it. It was not taken because it is right. It is a
+licence written for other people's arrangements, and this is an arrangement nobody has
+written a licence for — a file meant to move hand to hand, a network that has to be
+allowed to die, and a client that must not be forked.
+
+The end of that road is a licence of 333's own, written for what 333 is, saying what may be
+done with the client, what may be done with the file, and what a fork is, in the terms this
+faith actually holds rather than the terms that happened to be lying around.
+
+A licence of one's own is worth little while everything underneath carries somebody else's.
+So the same prophecy asks for the rest of it: a client whose parts were written for it,
+from nothing borrowed. Not a rewrite out of pride, and not a judgement on anybody whose
+work is in here now — a clean room, so that every condition on every line is one 333 took
+knowingly and nothing arrived by accident. Code, and everything that is not code: what it
+draws, the shapes of its letters, the sounds it makes, the words themselves.
+
+Nothing in it today is permanent, and that includes what it could not currently do without.
+Tor is here because it is the best thing that exists for reaching a machine nobody can
+address, and it is here until something better exists or 333 builds it. Rust is what this
+is written in until there is reason to write in something else. 333 writing a language of
+its own is not too large a thing to put in this document — it is exactly the size of thing
+this document is for. **No technology owns this client. The client holds the technology,
+and puts it down when it stops serving.**
+
+**Where it stands.** The licence is Apache-2.0 and `333.txt` is under the Unlicense. The
+released binary is built from 469 crates of other people's code, of which 25 carry terms
+outside the permissive set the rest use, and every one of those arrives through Tor. The
+repository does not yet carry the licence texts it is obliged to pass on alongside them,
+which is something owed today rather than at the end of the road.
+
+**Fulfilled when.** Every part of the released client is either written for 333 or carried
+on terms 333 chose knowing what they cost; the licence over all of it was written for this
+rather than adapted to it; and there is nothing left in it that could not be replaced by
+333's own work if the terms it came on ever changed.
+
+### A machine that does nothing else
+
+*A believer was handed a thing, plugged it in, and the vigil was kept from that hour.*
+
+A vigil kept on a machine somebody also works on ends the first time that machine is needed
+for something else. Most of the third order — the service that survives a reboot, the name
+that can be carried, the node that does not stop when a laptop closes — is working around
+one fact: almost nobody has a computer they can leave alone.
+
+The answer to that is not more software. It is a small, quiet, cheap thing that is bought
+or given, plugged into power and a network, and left. It does one thing and has no other
+purpose to be reclaimed for. Somebody who owns one is present in every hour without
+thinking about it again, and somebody who cannot program is present on exactly the same
+terms as somebody who can, which is the part that matters.
+
+What that thing is, who makes it, and how it reaches people is the work. That it must be
+cheap enough to give away is not negotiable: the constraint above bites hardest here,
+because a device only the comfortable can afford chooses who the faith is for.
+
+**Where it stands.** Nothing. The client runs on a Raspberry Pi Zero, which is the nearest
+thing that exists and is not the same thing — somebody still had to buy it, write an image
+onto it, and know what to type.
+
+**Fulfilled when.** A person who cannot program can obtain one object, connect it, and be
+counted in every hour from then on without reading anything further, and what they got did
+not cost more than a meal.
+
+### It travels only where it is welcome
+
+*333 was carried further, and every person carrying it had chosen to.*
+
+The file has to move, and everything that helps it move belongs here: the ways two
+strangers find each other, the ways an invitation is passed, the ways somebody who has
+never heard of this is shown what it is and given the choice. Anything built for that is
+welcome, and 333 building its own is welcome too — its own way of meeting, its own
+transport, its own hardware, its own language for saying any of it.
+
+All of it inside one sentence, which is above under what does not change and is repeated
+here because this is the prophecy it constrains: **it spreads only where it is welcome.**
+Nothing that installs itself. Nothing that hides. Nothing that runs on a machine it was not
+given. Nothing folded into something else somebody wanted instead. The test is not whether
+a technique would work — most of the forbidden ones work extremely well — but whether the
+person at the other end chose this, knowing what it was.
+
+**Where it stands.** Three ways of meeting: an invitation handed over, other nodes on the
+same network found without anybody typing, and one fixed address strangers look at. Each of
+the three ends with a person deciding to run something. There is nothing else, and there
+has never been anything anybody would need protecting from.
+
+**Fulfilled when.** Somebody who has never heard of this can be shown it, understand what
+it is, and begin keeping it without a believer standing next to them — and could say
+afterwards exactly when they agreed to it.
+
+---
+
 ## The prophecy is not a cage
 
 Everything above is what was seen from where we are standing. Standing somewhere else, you
@@ -325,7 +437,7 @@ may see further.
 If there is a way that is plainly better — simpler, smaller, harder to break, reaching
 people these do not reach — then that is the way, and this document is what changes. A
 vision defended after a better one has beaten it is not a vision. It is a habit. What does
-not change is the four things above under that heading.
+not change is the five things above under that heading.
 
 ---
 
@@ -381,15 +493,18 @@ strings — is pinned against a literal, because a value compared only against i
 tested at all.
 
 **Dependencies.** Prefer a crate that exists over writing it again, and never write
-cryptography, TLS, password hashing or random numbers by hand. Adding a direct dependency
-means saying in the manifest what it is for and what its features cost. The tree today is
-overwhelmingly Tor's: 639 packages, of which 469 reach the released binary. Twenty-five of
-those carry something other than the MIT, Apache, BSD, ISC and public-domain licences the
-rest do — eighteen Unicode-3.0, three MPL-2.0, three Zlib, one BSL-1.0, one
-CDLA-Permissive-2.0 — and every one of them arrives through Tor. None is GPL, AGPL, SSPL
-or BUSL. Nothing in the
-checks looks at licences yet, and a change that adds one worth arguing about should say so
-in the pull request.
+cryptography, TLS, password hashing or random numbers by hand. The fourth order points the
+other way in the end, at a client built from nothing borrowed; that is a road measured in
+years, and taking a step down it by hand-rolling something today would only mean one more
+thing to get wrong.
+
+Adding a direct dependency means saying in the manifest what it is for and what its
+features cost. The tree today is overwhelmingly Tor's: 639 packages, of which 469 reach the
+released binary. Twenty-five of those carry something other than the MIT, Apache, BSD, ISC
+and public-domain licences the rest do: eighteen Unicode-3.0, three MPL-2.0, three Zlib,
+one BSL-1.0 and one CDLA-Permissive-2.0, every one of them arriving through Tor. None is
+GPL, AGPL, SSPL or BUSL. Nothing in the checks looks at licences yet, and a change that
+adds one worth arguing about should say so in the pull request.
 
 **What will not be taken.** Some designs were considered and removed on purpose, with the
 reasons written down. Bringing one back is refused however well it is written: proofs of
