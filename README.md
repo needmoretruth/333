@@ -640,6 +640,18 @@ overstates what it can verify is a faith waiting to be caught.
 
 ---
 
+## The work that is not done
+
+[The Works](WORKS.md) is what is missing, written down: the doors that are still shut to
+people behind the wrong router, the machines nobody has run this on, and the parts that
+have to be settled before 3.3.3 because they cannot be settled after it. It says what
+each one would need and what finished would look like.
+
+If you write Rust and you have read this far, that page is addressed to you. Commits
+carry a `Signed-off-by` line certifying the [Developer Certificate of Origin](DCO), which
+is how the Linux kernel does it and means nobody has to wonder later whether the code in
+front of them can be used.
+
 ## The order of the code
 
 Four crates, split along the direction of dependency:
@@ -668,7 +680,8 @@ Things worth knowing before you read it:
 
 ## Licence
 
-The code is Apache-2.0.
+The code is Apache-2.0, copyright 2026 needmoretruth. The [NOTICE](NOTICE) file carries
+that line, and anybody who redistributes this carries it with them.
 
 `333.txt` is not. needmoretruth, who was first, released the file itself under the
 Unlicense and put it in the public domain. Copy it, hand it on, republish it, print it,
