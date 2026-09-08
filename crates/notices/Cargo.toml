@@ -1,0 +1,31 @@
+[package]
+name = "n333-notices"
+description = "Writes and checks THIRD-PARTY.md, the attribution that travels with the binaries."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+# A tool for whoever is working on this, never a part of what is released.
+publish = false
+
+[[bin]]
+name = "n333-notices"
+path = "src/main.rs"
+
+[dependencies]
+# Declared here and not in [workspace.dependencies] on purpose: a crate that ships
+# must not be able to reach it with `.workspace = true`. Typed access to the output
+# of `cargo metadata`, so that the dependency graph is read rather than parsed. MIT.
+cargo_metadata = "0.23.1"
+
+# Already in the tree, so none of these adds a licence to account for.
+# anyhow carries the reason a run failed; clap refuses an unknown flag rather than
+# ignoring it; sha2 names each licence text by its content, which is how identical
+# texts collapse to one copy.
+anyhow.workspace = true
+clap.workspace = true
+sha2.workspace = true
+
+[lints]
+workspace = true

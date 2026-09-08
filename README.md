@@ -719,6 +719,11 @@ Things worth knowing before you read it:
 The code is Apache-2.0, copyright 2026 needmoretruth. The [NOTICE](NOTICE) file carries
 that line, and anybody who redistributes this carries it with them.
 
+The released binaries are statically linked, so 540 other people's packages are inside
+them, under licences that ask for their notices to travel along. Those notices are in
+[THIRD-PARTY.md](THIRD-PARTY.md), which is attached to every release and generated from
+the dependency graph rather than kept by hand, and every push checks that it is current.
+
 `333.txt` is not. needmoretruth, who was first, released the file itself under the
 Unlicense and put it in the public domain. Copy it, hand it on, republish it, print it,
 put it anywhere you like. There is no copyright in it to fall foul of and nobody to ask

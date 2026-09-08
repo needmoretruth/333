@@ -25,6 +25,15 @@ jobs:
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo clippy --workspace --no-default-features --all-targets --locked -- -D warnings
       - run: cargo test --workspace --locked
+      # The released binaries are statically linked and carry five hundred-odd other
+      # people's packages, whose licences ask that their notices go along with the
+      # copies. THIRD-PARTY.md is that, generated from the dependency graph rather
+      # than kept by hand, because a hand-kept one goes stale on the first `cargo
+      # update` and nobody finds out. Last, because the licence text is read out of
+      # the extracted registry sources that the commands above have already fetched
+      # most of; it fetches the rest itself, which is slower than it needs to be here.
+      - name: The third-party notices still match the dependencies
+        run: cargo run -p n333-notices --locked -- --check
 
   # The Developer Certificate of Origin, checked rather than asked for. Only on proposals:
   # the history before this workflow existed is unsigned and rewriting it would be worse
