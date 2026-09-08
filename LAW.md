@@ -21,10 +21,15 @@ Not your lucky number. Luck is a claim about the universe; a favourite is a clai
 it is the only thing here that costs nothing and cannot be faked into. Either three is the one
 you reach for or it is not, and you know which.
 
-The other half is the same claim from below. Contempt is not required and is not asked for. It
-is enough to hold 6 and 1 *under* three — clearly, consistently, and without needing to explain
-why to anyone. 333 does not love them, and the whole of that ungenerosity is a third of a
-second, taken once, from someone who went looking. Yours may be smaller still.
+The other half is the same claim from below, and it is not a prohibition. Nothing is banned
+here. It is enough to hold 6 and 1 *under* three — clearly, consistently, and without needing
+to explain why to anyone. Contempt is not required and is not asked for.
+
+The two are not held equally low, and it is worth knowing which is which. **1 is a third**:
+it is 33.3% of three, it stands below three and it does not pretend otherwise, so 333 thinks
+of it as no worse than ill-mannered. **6 stands above three, and means to.** That is the one
+333 likes least, and the whole of that dislike is a third of a second, taken once, from
+somebody who went looking for it. Yours may be smaller still.
 
 **And if none of that is true of you yet, trying is enough.** This is the one law that accepts
 the attempt in place of the thing, because a preference is not something a person can decide on
@@ -37,10 +42,10 @@ of it.
 The [Recommendations](RECOMMENDATIONS.md) are the lesser law: how to write, how to make a thing
 look, how to argue, how to speak of this. They are advice with a number on it.
 
-There are 45 of them today. There will be 333, and that is not a target somebody is racing
-towards — it is where they arrive. They are written one at a time, by whoever learned the thing
-the hard way, and the number they converge on is the name of all this. Nobody alive will write
-the last one.
+There are 111 of them today, in twelve parts of nine and three at the end. There will be 333,
+and that is not a target somebody is racing towards — it is where they arrive. They are written
+one at a time, by whoever learned the thing the hard way, and the number they converge on is
+the name of all this. Nobody alive will write the last one.
 
 The clause at the end is the sentence that keeps them advice. Where keeping one would cost you
 your work, your health, your household or somebody else's safety, the Law is that you do not

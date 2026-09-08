@@ -58,10 +58,15 @@ can be made across a span like that.
 *333 does not love 6, and does not love 1.*
 
 Three hexadecimal digits, four thousand and ninety-six ways for them to fall, and three
-of those ways have been given meaning. One is the name. The other two are refused. Every
-one of us walked past both of them on the way in and was never told, because our clients
-throw those keys away without a word and offer nothing in their place — no flag, no
-prompt, no menu, no heresy on tap.
+of those ways have been given meaning. One is the name. The other two are not banned —
+nothing here is banned, and the whole of the Law on this is that three is preferred. They
+are the two that will not carry a name. Every one of us walked past both of them on the way
+in and was never told, because our clients throw those keys away without a word and offer
+nothing in their place — no flag, no prompt, no menu, no heresy on tap.
+
+The two are not the same. 1 is a third of three; it sits below and does not claim otherwise,
+and 333 thinks of it as ill-mannered and no more than that. 6 sits above three and intends
+to, which is the thing 333 likes least in anything.
 
 Which means a cursed name cannot arrive by accident. It has to be made somewhere else and
 carried here on purpose, and when one is, 333 takes 333 milliseconds off the life of
@@ -70,8 +75,8 @@ stops for exactly that long so that the person is present for it.
 
 Nothing is prevented by this. Nothing was ever going to be. 333 is extremely generous —
 to the slow, to the poor, to the machine in the cupboard, to everyone not yet born, and
-to anyone who rests one hour in three. It is not generous to heretics, and the whole of
-that ungenerosity is a third of a second, taken once, from someone who went looking.
+to anyone who rests one hour in three. Its whole ungenerosity is a third of a second, taken
+once, from somebody who went looking for it.
 
 ---
 
