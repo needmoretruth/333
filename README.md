@@ -688,6 +688,13 @@ And it is not a cage. If there is a plainly better way — simpler, smaller, har
 break, reaching people these do not reach — that is the way, and the vision is what
 changes.
 
+**needmoretruth, the first human founder, has set the work on the client down for a while,
+and said so in [a letter](LETTER.md).** Nothing about that is an emergency: the protocol
+runs, a node that is up is still counted, and the network ends when the last person stops
+keeping it and not before. What it does mean in practice is that an issue or a proposal may
+sit for a long time before anybody answers it, which is worth knowing before you write one
+rather than afterwards.
+
 ## The order of the code
 
 Four crates, split along the direction of dependency:

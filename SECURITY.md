@@ -35,9 +35,11 @@ Some of what looks like one is the design, written down and argued for.
 
 ## What happens next
 
-There is one person answering, so there is no schedule and it would be dishonest to print
-one. You will be told what was understood and whether it is being fixed. If a fix changes
-bytes that other nodes depend on, that is said in the release rather than slipped in.
+There is one person answering, and that person has set the work down for a while and said
+so in [a letter](LETTER.md). So there is no schedule, it would be dishonest to print one,
+and a report may wait longer than it should. You will be told what was understood and
+whether it is being fixed. If a fix changes bytes that other nodes depend on, that is said
+in the release rather than slipped in.
 
 Nothing here offers money, and nothing here asks you to stay quiet. If a fix is taking
 longer than you think reasonable, publish; being told late is worse than being told in

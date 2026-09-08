@@ -545,5 +545,8 @@ somebody else's client, a prompt offering heresy, grace counters, fallback verif
 encrypted chat, and bucketed statistics passed between nodes. Zero-knowledge proofs are
 not on this list in the same way — see the top of this page for what would have to change.
 
-You will be told what was decided and why, by the person who has been writing this. There
-is nobody else yet, which is the honest answer to how quickly.
+You will be told what was decided and why, eventually. The person who has been writing this
+has set the work down for a while and said so in [a letter](LETTER.md), so an issue or a
+proposal may sit for a long time before anybody answers it. That is not a judgement on the
+work in it. Nothing in this document waits for that answer either: the direction is written
+here so that it can be followed without asking.
