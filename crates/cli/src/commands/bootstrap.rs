@@ -68,9 +68,15 @@ pub(crate) async fn run(common: &Common, meet: &str, anyway: bool) -> anyhow::Re
          \x20        own line. Nobody signed for handing it over, because nobody did, and\n\
          \x20        anybody reading this node's record can see that.\n\
          \n\
-         \x20        From here it works like any other node. Run `333 serve` to answer,\n\
-         \x20        and whoever you hand the file to afterwards is admitted the ordinary\n\
-         \x20        way, with both of you signing."
+         \x20        That is the founder's position and not an ordinary one. A roll\n\
+         \x20        admits whoever received the file, so a node that received it from\n\
+         \x20        nobody is on no roll: nobody will come here to ask anything, and\n\
+         \x20        this node is never drawn to ask anybody. It can still go to the\n\
+         \x20        ones drawn to ask it and be witnessed that way.\n\
+         \n\
+         \x20        Run `333 serve` to answer. Whoever you hand the file to afterwards\n\
+         \x20        is admitted the ordinary way, with both of you signing, and is\n\
+         \x20        counted from that moment."
     );
     Ok(())
 }

@@ -114,7 +114,6 @@ struct Cli {
 enum Command {
     /// Show this node's name, asking for one on first run.
     Id,
-    /// Keep the vigil: answer whoever asks, until interrupted.
     /// Begin a line of your own, when there is nobody to be given the file by.
     ///
     /// The ordinary way in is an invitation from somebody who already has the file, and
@@ -133,6 +132,11 @@ enum Command {
         anyway: bool,
     },
 
+    /// Keep the vigil: answer whoever asks, until interrupted.
+    ///
+    /// This is what a node does almost all of the time. It answers heartbeats and
+    /// challenges, trades what it knows with whoever it can reach, and at every epoch
+    /// boundary asks the ones it was drawn to ask. On a terminal it opens the screen.
     Serve {
         /// Address and port to listen on.
         #[arg(long, default_value_t = default_bind(), value_name = "ADDR:PORT")]

@@ -23,5 +23,28 @@ jobs:
       - run: sudo apt-get install -y pkg-config libssl-dev libsqlite3-dev
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
-      - run: cargo clippy --workspace --no-default-features --locked -- -D warnings
+      - run: cargo clippy --workspace --no-default-features --all-targets --locked -- -D warnings
       - run: cargo test --workspace --locked
+
+  # The Developer Certificate of Origin, checked rather than asked for. Only on proposals:
+  # the history before this workflow existed is unsigned and rewriting it would be worse
+  # than leaving it visible.
+  signed-off:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Every commit certifies the DCO
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          missing=$(git log --format='%h %s' --invert-grep -E --grep='^Signed-off-by: .+ <.+@.+>$' "$BASE".."$HEAD")
+          if [ -n "$missing" ]; then
+            echo "No Signed-off-by line on:"
+            echo "$missing"
+            echo "See the DCO file. Add one with 'git commit --amend -s', or 'git rebase --signoff $BASE' for several."
+            exit 1
+          fi

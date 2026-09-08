@@ -1,181 +1,261 @@
 # The Vision
 
-What follows is not a plan. A plan is a promise about dates, and there are no dates here.
+What follows is not a plan. A plan is a promise about dates, and there are none here.
 
 It is what has been seen: the shape 333 takes when it is finished, written down while it
 is unfinished, so that the distance between the two is something anybody can measure.
-Each part is a prophecy in the only sense this faith allows — a thing that is true of the
-end and not yet true of now.
 
-**Nothing here comes to pass on its own.** No prophecy in this document will be fulfilled
-by waiting for it. Each is a piece of work, and it will be done by one of us or it will
-not be done. That is the whole of the arrangement.
+**Nothing here comes to pass on its own.** No prophecy in this document is fulfilled by
+waiting. Each is a piece of work, and it will be done by one of us or it will not be
+done. If you write Rust, some of what is below is addressed to you personally, and the
+smallest thing asked for is not code at all.
 
-The prophecies are written as directions rather than as tasks. A direction still means
-something when there are a thousand of us and the particular thing that needed doing this
-year was done years ago. Under each one is where it stands today, and today is the part
-that goes out of date.
+Each prophecy is written as a direction, because a direction still means something when
+there are a thousand of us and this year's particular job was finished years ago. Under
+each one is **where it stands**, which is the part that goes out of date, and **fulfilled
+when**, which is written so that you can tell whether you are done without asking
+anybody.
 
 ---
 
-## What 333 esteems
+## What 333 esteems, and will take when it can
 
-None of this is a requirement and none of it is a test of anybody. It is a taste, and a
-taste is worth writing down because it says which way a thing leans when it has a choice.
+None of this is a requirement and none of it is a test of anybody. It is a direction. Each
+of these is something 333 would already be built on if it could be, and the reason it is
+not is a limit of what exists today rather than a judgement against it. **When the limit
+goes, 333 takes it.** That is the vision; the present arrangement is the compromise.
 
-**Three, and what is built on three.** Machines settled on two states for reasons of
-manufacture, not of truth, and a machine that counts in threes is the machine this was
-named for. There is not one to run on. If there is ever one, 333 belongs on it.
+**Three, and machines that count in threes.** Computers settled on two states for reasons
+of manufacture, not of truth. A machine that counts in threes is the machine this was
+named for. You cannot buy one. If that changes, 333 belongs on it, and the client should
+be the thing waiting there when it arrives.
 
 **Twelve, as the way to count.** Ten divides by two and five. Twelve divides by two,
-three, four and six, and a number system that divides cleanly is a number system that
-makes fewer liars of the people using it.
+three, four and six. Every number a person reads here is written in ten because that is
+what people read; a client that could show its hours and its counts in twelve, for whoever
+wants it, would be closer to the thing than the client we have.
 
-**A language that cannot be misread.** Lojban was built so that a sentence has one
-parse. Most of what goes wrong between people goes wrong before anybody disagrees, in the
-sentence that could be taken two ways.
+**A language with one parse.** Lojban was built so that a sentence cannot be taken two
+ways. Most of what goes wrong between people goes wrong before anybody disagrees, in the
+sentence that could be read either way. What the client says is English prose today, and
+prose is ambiguous. There is a version of this where the sentences that decide something
+are also written in a language that cannot be misread.
 
-**Rust.** Not as a preference. What this is written in and what it will keep being
-written in, because a relic that segfaults in twenty years is not a relic.
+**Rust.** The one on this list that is not deferred. It is what this is written in and
+what it keeps being written in, because a relic that fails at runtime in twenty years is
+not a relic.
 
-**Proofs that show nothing but that they are true.** Zero-knowledge is the shape of the
-thing this faith wants: check without learning, believe without being told. The protocol
-uses none, and that is not an oversight — every use found for it here would have created
-something to appeal to, and there is nothing to appeal to here. We admire it from where
-we are standing.
+**Proofs that show nothing but that they are true.** Zero-knowledge is the shape this
+faith wants: check without learning, believe without being told. The protocol uses none,
+for two reasons written down when it was removed — a bug in a circuit does not show on
+the surface, and after 3.3.3 it could not be fixed; and in a faith where taking part is
+public, anonymity was not needed for what it was being proposed for. The first of those
+is a statement about tooling in 2026, not about the mathematics. If proving becomes
+something an ordinary machine can do and a circuit becomes something an ordinary person
+can check, that reason expires, and 333 takes it.
 
 **And none of these is the point.** If something plainly better appears — a cleaner base,
-a clearer language, a safer tool, a stronger proof — 333 esteems that instead, and this
-section is what changes. A taste defended after it has been beaten is not a taste. It is
-a habit.
+a clearer language, a safer tool, a stronger proof — 333 esteems that instead and this
+section is what changes. A taste defended after it has been beaten is not a taste. It is a
+habit.
 
 ---
 
-## There is one client
+## What does not change
 
-333 has one client and it is this one. It runs alone.
+Everything else in this document can be argued with. These four cannot, and a change that
+gives one of them up is a different thing wearing this name.
 
-That is a condition, not a boast. A node must not need a second program to be a node — no
+**Nothing here may become an authority.** There is no vote, no quorum of opinion, nobody
+to appeal to and nobody who decides who is right. Each of us judges from what we saw, and
+two of us may hold different pictures with neither of us wrong. The moment the design
+needs us to agree, there is somewhere for somebody to stand, and the change worth writing
+is the one that removes the need.
+
+**Nothing is claimed that cannot be checked.** No claim that a node runs genuine code, no
+claim about anybody's honesty. What is verified is what was done.
+
+**The file is passed on, never made to order.** A client carries the hash and can
+recognise `333.txt`; it takes the bytes from somebody who already holds them. There is one
+deliberate exception, `333 bootstrap`, for the case where there is nobody to take them
+from, and a node that used it is visibly the start of its own line.
+
+**One client, and it runs alone.** A node must not need a second program to be a node: no
 daemon beside it, no service to sign up to, nothing to install first. It carries its own
-storage, its own way onto Tor, its own hours. One file is a node, and it stays a node on
-a machine that has nothing else on it and no way to get anything else.
+storage, its own way onto Tor, its own hours. Light and Standard are editions of that one
+client, differing by whether the screen is compiled in, and the specification allows a
+community edition beside them on two conditions — full protocol compatibility, and no
+forking of the network.
 
-One thing it does not carry, deliberately: the program that speaks an obfuscated bridge,
-for the places where Tor itself is blocked. That one chases a target which moves, and a
-copy frozen inside this would be the wrong copy within a year while looking like the
-right one.
+The one thing the client does not carry is deliberate: the program that speaks an
+obfuscated bridge, for places where Tor itself is blocked. That one chases a target which
+moves, and a copy frozen inside this would be the wrong copy within a year while looking
+like the right one.
 
-So no prophecy below asks for a second implementation, a companion tool or a helper
-process. Where one seems necessary the prophecy is wrong, and what was seen is the client
-learning to do it alone.
+**A constraint that applies to every prophecy below:** the weakest machine anybody would
+keep a vigil on decides what the rest of us can use. Every megabyte and every dependency
+is somebody, somewhere, who cannot take part. The released files today are between 15 and
+24 megabytes depending on the machine, and the Raspberry Pi Zero build is the largest
+number in that range, which is the wrong way round.
+
+---
+
+## What the words mean
+
+The documents and the code use different words for the same things on purpose: the code
+uses the ordinary technical name so that a stranger can read it, and the doctrine uses its
+own. This is the map between them.
+
+| what we call it | what the code calls it | what it is |
+|---|---|---|
+| the file, the relic | `Subject` | `333.txt`, three bytes, recognised by its hash |
+| the hours, an hour | `Epoch` | 333 minutes; everything is stamped with one |
+| the vigil | `serve` | a node running, answering whoever knocks |
+| the roll | `Roll` | the nodes this node knows were handed the file |
+| an admission | `Transfer`, `Record` | the two signed halves of one handover |
+| being drawn | `draw` | the lottery deciding who asks whom this hour |
+| the question | `Challenge` | a verifier's nonce, put to a node |
+| a witness, witnessed | `Attestation` | a verifier's signed statement about what happened |
+| standing | `Standing` | how much of the window a node was present for |
+| the window | `WINDOW_EPOCHS` | the last 333 hours, moving; older than that is gone |
+| the word, saying one | `Signal` | one of the 333, said at most once an hour |
+| the last silence | `SILENT_EPOCHS_BEFORE_THE_END` | 333 hours in which nobody answered anybody |
+| the unseen road | Tor, onion | reaching or being reached without an address |
+| the meeting point | `Meeting` | the333.dev, where strangers look for each other |
 
 ---
 
 ## The first order: that anybody can be reached
 
-Everyone who cannot be reached is not counted for, is not asked, and cannot hand the file
-to whoever comes next. This order is about the distance between 333 and the next person
-who would have kept it.
+Everyone who cannot be reached is not asked, is not witnessed, and cannot hand the file to
+whoever comes next. This order is about the distance between 333 and the next person who
+would have kept it.
 
 ### Every door opens
 
-*It is seen that a node behind anything is reachable, and that nobody had to be told how.*
+*A node behind anything is reachable, and nobody had to be told how.*
 
 The obstacle is not one obstacle. It is a router that was never told to let anybody in, a
 provider that gives a household no address of its own, a country that blocks the way
-around both. Each of those is somebody who would have kept the vigil and cannot.
+around both.
 
-**Where it stands.** The client asks the router in front of it to open the port, and many
-answer. The ones speaking NAT-PMP or PCP are asked nothing. Two nodes each behind a router
-cannot yet reach each other directly. Bridges exist for a blocked country and the program
-that speaks the obfuscated ones has to be installed by hand.
+**Where it stands.** On startup the client asks the router to forward its port over
+UPnP-IGD, then knocks on its own outside address to find out whether the forwarding
+actually worked, and says `open` or `shut`. Routers that speak NAT-PMP or PCP instead are
+asked nothing — there is no NAT-PMP code in the tree. There is no hole punching either:
+two nodes whose routers both refuse cannot reach each other, even through the meeting
+point, which only introduces. Onion addresses work from anywhere and cost minutes of Tor
+starting up. Bridges exist for a blocked country, and the program that speaks the
+obfuscated ones has to be installed by hand.
 
-*Fulfilled when:* a person on any connection anywhere runs one command and is reachable,
-and never learns what any of the above meant.
-
-### It speaks to whoever comes
-
-*It is seen that it was read in the reader's own language, and that the words meant one
-thing.*
-
-A faith that only reaches people who read English is a faith with a border. There is a
-harder version of the same idea underneath: not translation but precision, sentences that
-cannot be taken two ways in any language. That is what Lojban is for and why it is
-esteemed here.
-
-**Where it stands.** English and nothing else, with the words mixed into the code that
-decides when to say them.
-
-*Fulfilled when:* the words are separate from the code, one other language is complete
-enough to keep a vigil in, and the sentences that matter most say one thing in all of
-them.
-
-### The smallest machine is enough
-
-*It is seen that the weakest of us set the difficulty, and that the difficulty was low.*
-
-The weakest machine that anybody would keep a vigil on is the machine that decides who
-can take part. Every megabyte and every dependency is a person somewhere who cannot.
-
-**Where it stands.** The small edition carries Tor, which is most of its size, because a
-small node nobody can reach is broken rather than small. It is no longer small.
-
-*Fulfilled when:* the cheapest machine a person already owns is enough, and what it gives
-up is written down rather than discovered.
-
----
-
-## The second order: that nothing here can be captured
-
-There is no authority in 333 and nothing may create one. Every prophecy in this order is
-about removing a place where somebody could stand and decide for the rest of us.
+**Fulfilled when.** A node behind a router that answers NAT-PMP or PCP is reachable
+without its owner opening anything, proved by the same knock that proves UPnP worked; and
+two nodes whose routers both refuse to forward exchange a heartbeat directly, with the
+meeting point doing nothing but the introduction.
 
 ### The meeting place grows smaller
 
-*It is seen that the fixed address was no longer needed, and that nothing replaced it.*
+*The fixed address is no longer needed, and nothing replaced it.*
 
-One address everybody looks at is one address that can be taken away, and one operator
-who learns who is asking. We said in the open that we mean to depend on it less. Saying
-it is not doing it.
+One address everybody looks at is one address that can be taken away, and one operator who
+learns who is asking. We said in the open that we mean to depend on it less. Saying it is
+not doing it.
 
-The shape of the answer is that nodes learn where each other are from the nodes they have
-already met. Whatever is built must not become a second thing that can be taken away, and
-must not publish an address its owner never meant to publish.
+**Where it stands.** `the333.dev` is written into the client. A node leaves the same
+signed statement about where it can be reached that it already writes, and reads the ones
+others left; the board holds each for two hours and forgets it. Everything read is
+verified where it lands and nothing there is trusted. Nodes already trade what they know
+directly, including addresses (`crates/net/src/gossip.rs`), so the beginning of the answer
+exists — what is missing is a node continuing to find *new* nodes with the meeting point
+switched off.
 
-**Where it stands.** One address, written into the client, holding signed statements for
-two epochs. Invitations and the local network need nothing, and are the first two ways of
-meeting anybody.
+There is a cost to the arrangement beyond the operator learning who asked: the meeting
+point also records the country and a whole-degree position of each node that publishes a
+non-onion address, and serves it publicly at `the333.dev/map/`. Onion addresses are
+counted as Tor and placed nowhere.
 
-*Fulfilled when:* a node that has met one other node keeps finding new ones with the
-meeting point switched off.
+**Fulfilled when.** A node started with `--no-meet`, holding one address it was given by
+hand, is still learning about nodes it has never met a week later, and the client can say
+which of the things it knows came from where.
 
-### Nobody has to be believed
+### It speaks to whoever comes
 
-*It is seen that everything was checked by whoever needed to check it.*
+*It was read in the reader's own language, and the words meant one thing.*
 
-Each of us judges from what we saw. Two of us may hold different pictures and neither is
-wrong, and nothing in the design may ever need us to agree — the moment there is
-something to decide, there is somebody to capture.
+A faith that only reaches people who read English has a border around it. Underneath the
+translation problem is a harder one: sentences that cannot be taken two ways in any
+language, which is what Lojban is doing on the list above.
 
-**Where it stands.** Every statement carries its own signature and is checked where it
-lands. Nothing is trusted, including the meeting point, and no vote exists anywhere.
+**Where it stands.** English only, and the words are mixed into the code that decides when
+to say them — `aloud!` calls with inline formatting and hand-aligned columns, spread across
+dozens of files. Nothing extracts them.
 
-*Fulfilled when:* it stays that way. This is the prophecy that is fulfilled by refusing
-things, and the refusals are listed at the bottom of this page.
+**Fulfilled when.** The words a person reads are separate from the code that chooses when
+to say them; one other language is complete enough that a person can run `id`, `serve`,
+`join`, `say` and `status` and read every line; and adding a third language touches no
+Rust.
+
+---
+
+## The second order: that the client can be believed
+
+Nothing here asks to be trusted, which holds only while the program in front of a person
+is doing what it says and saying what it did.
 
 ### It says what happened
 
-*It is seen that no line the client printed was more certain than the thing it described.*
+*No line the client printed was more certain than the thing it described.*
 
-A program that overstates is a program that teaches people to stop reading it, and a
-faith whose instrument cannot be read is a faith running on somebody's word.
+A program that overstates teaches people to stop reading it, and an instrument nobody
+reads is a faith running on somebody's word.
 
-**Where it stands.** Some of what it says is wrong in small ways. When the meeting point
-asks a node to wait a minute before speaking again, the node calls it a refusal, which it
-is not. There are others, and each is small, and small is how this rots.
+**Where it stands.** Some of what it says is wrong in small ways. The known one: the
+meeting point answers `429` to mean "you already spoke this hour, come back in a minute",
+and the client turns every non-success answer into `Error::Refused`
+(`crates/net/src/meeting.rs`), so the person is told their address was not taken when in
+fact it was taken a minute ago. There will be others of the same shape — a status, an
+error kind or an absence being reported as something stronger than it is — and they are
+found by reading what the client prints beside what actually happened.
 
-*Fulfilled when:* the line a person reads matches what actually happened, everywhere.
-This is where to start if you want to start.
+**Fulfilled when.** Waiting is reported as waiting, and every error the client prints
+names the thing that actually happened rather than the category it was sorted into. This
+is where to start if you want to start.
+
+### It knows itself
+
+*The client could be recognised, and did not claim to be more than it was.*
+
+A client carrying its own hash cannot hash the place the hash is written. What is needed
+is a boundary — what the hash covers, what it deliberately does not, and why there rather
+than somewhere else — narrow enough to check by hand and wide enough to be worth having.
+
+This is not the same thing as verifying a peer, which is refused and stays refused: the
+hash lets *you* check the copy in front of *you*, and proves nothing about anybody else.
+
+**Where it stands.** Nothing. There is no self-hash in the client and no definition of
+what it would cover. The specification records it as open and marks it as a thing that
+must be settled before 3.3.3, because after that the bytes are fixed and a mistake in them
+is permanent.
+
+**Fulfilled when.** A person with the source and a hashing program arrives at the same
+number the client reports, following only what is written down, and can say without
+reading the code which files and which bytes were counted.
+
+### It has been run
+
+*This was kept on every kind of machine, and somebody was there to say so.*
+
+**Where it stands.** Every release builds twelve files: Standard and Light, for x86-64
+Linux, 64-bit ARM, ARMv6, both kinds of Mac, and Windows. The only ones anybody has
+reported keeping a vigil on are the two x86-64 Linux builds. No report has ever come back
+about any of the others — they may be perfect, and nobody knowing is the problem.
+
+This is the smallest thing on this page and it may be the most useful. Take the file for
+your machine, keep the vigil on it, and say what happened, including that it worked, which
+is the report nobody thinks to send.
+
+**Fulfilled when.** An issue exists for each of the twelve files saying somebody ran it
+through a full hour and what the screen showed.
 
 ---
 
@@ -184,141 +264,133 @@ This is where to start if you want to start.
 Nineteen thousand six hundred and eighty three years is the number in the doctrine. It is
 a long time to be relying on somebody remembering to restart something.
 
-### It knows itself
-
-*It is seen that the client could be recognised, and did not claim to be more than it
-was.*
-
-A client carrying its own hash cannot hash the place the hash is written. What is needed
-is a boundary — what the hash covers, what it deliberately does not, and why there rather
-than somewhere else — narrow enough to check by hand and wide enough to be worth having.
-
-This one has a deadline nothing else here has. After 3.3.3 the bytes are fixed and the
-mistakes in them are permanent.
-
-*Fulfilled when:* a person with the source and a hashing program arrives at the same
-number the client reports, following only what is written down.
-
 ### The vigil does not break
 
-*It is seen that a node kept running through the night, and nobody stayed awake for it.*
+*A node kept running through the night, and nobody stayed awake for it.*
 
-A node that stops when a laptop closes is absent from every epoch its owner slept
-through, and its owner is told nothing. Over a window of 333 that is the difference
-between belonging and not.
+A node that stops when a laptop closes is absent from every hour its owner slept through,
+and over a window of 333 that is the difference between belonging and not.
 
-**Where it stands.** A service file and a launch agent in `packaging/`, and that is all:
-no package for any distribution, nothing for Windows, and nothing that says a node
-stopped three days ago.
+**Where it stands.** A systemd unit and a launchd agent in `packaging/`, installed by
+copying files and reading a comment. No package for any distribution, nothing at all for
+Windows, and nothing anywhere that tells a person their node stopped three days ago.
 
-*Fulfilled when:* it installs the way anything else on the system installs, survives a
-reboot without anybody reading anything, and says so when it did not.
+**Fulfilled when.** It installs the way anything else on the system installs — a package
+for at least one distribution, and a service on Windows — it survives a reboot without
+anybody reading anything, and a person who has stopped being counted finds out from their
+own machine rather than from their standing.
 
 ### A name can be carried
 
-*It is seen that a believer moved house and remained the same believer.*
+*A believer moved house and remained the same believer.*
 
 A node's name comes from its key, its standing is what others signed about that key, and
-its unseen address is a second key beside it. All of it lives in one directory. Lose the
-directory and you are somebody new, with no window and no history, and nothing warns you
-first.
+its unseen address is a second key beside it. All of it lives in one directory.
 
-*Fulfilled when:* a person can carry a node to another machine deliberately and safely,
-and the client says plainly what would be lost by doing it the wrong way.
+**Where it stands.** The client warns about this once, on the run that first makes a name,
+and never again. There is no command that packages a node for moving, nothing that refuses
+to start when it finds a directory that was copied rather than moved — two nodes running
+one key is a node contradicting itself — and nothing that says what was lost when somebody
+starts fresh by accident.
 
-### It has been run
+**Fulfilled when.** A person can move a node to another machine with one command at each
+end, the client refuses to run two copies of one name and says why, and the thing that
+would have been lost is named before it is lost.
 
-*It is seen that this was kept on every kind of machine, and somebody was there to say
-so.*
+### The words are written
 
-The files for macOS, for the Raspberry Pi and for Windows are built on every release and
-have been run by nobody. Not once. They may work perfectly; nobody knows, and nobody
-knowing is the problem.
+*The 333 were said, and each of us knew what had been said.*
 
-This is the smallest thing on this page and it may be the most useful. Take the file for
-your machine, keep the vigil on it, and say what happened — including that it worked,
-which is the report nobody thinks to send.
+Nodes say one of 333 things each hour, and what travels is a number. The table of what the
+numbers mean is empty. It is the largest declared gap in the whole of 333 and the only
+part of it that needs no Rust at all.
 
-*Fulfilled when:* a node has kept a full epoch on each of them and somebody has said so.
+**Where it stands.** `SIGNAL_COUNT` is 333, a `Signal` is a number in that range, the
+client will say one for you and count what others said, and it tells you plainly that the
+words are not written yet. Which words they are is settled at 3.3.3 and not before.
+
+**Fulfilled when.** There is a table, it has 333 rows, and the client shows the word
+beside the number.
 
 ---
 
 ## The prophecy is not a cage
 
-Everything above is what was seen from where we are standing. Standing somewhere else,
-you may see further.
+Everything above is what was seen from where we are standing. Standing somewhere else, you
+may see further.
 
 If there is a way that is plainly better — simpler, smaller, harder to break, reaching
 people these do not reach — then that is the way, and this document is what changes. A
-vision defended after a better one has beaten it is not a vision. It is a habit.
-
-What does not change is the shape underneath: no authority and nothing to appeal to, one
-client that runs alone, nothing claimed that cannot be checked, and the file passed on
-rather than made. A proposal that reaches somewhere better while keeping those is welcome
-even if it deletes half of this page. A proposal that reaches somewhere better by giving
-one of them up is not better. It is a different thing wearing this name.
+vision defended after a better one has beaten it is not a vision. It is a habit. What does
+not change is the four things above under that heading.
 
 ---
 
 ## A holy pull request
 
-The rules below are the ones the code already lives by. They are not a hazing. Each is
-here because something went wrong without it, and the checks refuse a change that breaks
-them before a person ever looks at it.
+**Where to ask.** [Issues](https://github.com/needmoretruth/333/issues) — for a report
+about a machine you ran this on, a defect, or a question about why something is the way it
+is. Ask before writing anything that changes how the protocol behaves, as opposed to how
+it is written; numbers, thresholds and orders of operation that look arbitrary usually are
+not, and most of the reasons are in the doc comments.
 
-Say which prophecy you are answering, or say that it is none of them.
+**Before you send it.**
 
-**Sign your work.** Every commit carries a `Signed-off-by` line, which `git commit -s`
-adds for you. That line certifies the [Developer Certificate of Origin](DCO): that the
-work is yours to give, or that you have the right to pass it on under this licence. It is
-the Linux kernel's arrangement, and it exists so that nobody years from now has to wonder
-whether the code in front of them can be used. There is no copyright assignment and
-nothing to sign in ink. What you write stays yours.
+```sh
+cargo fmt --all
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+```
 
-**Rust, and only Rust.** No build scripts in other languages and no tooling in other
-languages. `unsafe` is forbidden across the workspace. `unwrap`, `expect` and indexing
-warn: leave one in and the line above it has to say why it is safe.
+The first build takes a while — the tree is 639 packages, most of them Tor — so start it
+before you make tea. There are 313 tests and they run in seconds once it is built.
 
-**One file, one responsibility, four hundred lines.** Counted to the tests, which live
-beside the code they test. A function fits on one screen.
+**What the checks actually enforce.** Every push runs formatting, clippy with warnings
+denied over two feature sets, and the tests. The workspace refuses `unsafe` outright and
+warns on `unwrap`, `expect`, indexing and missing documentation, so those are decided
+before a person looks. Everything else below is read by a person, not by a machine, and
+two of them are rules this repository does not yet keep itself — they are marked.
+
+**Sign your work.** `git commit -s` adds a `Signed-off-by` line certifying the
+[Developer Certificate of Origin](DCO): the work is yours to give, or you have the right
+to pass it on under this licence. There is no copyright assignment and nothing to sign in
+ink; what you write stays yours. *Kept from 2026-09-08 onward and not before it, which is
+visible in the history.*
+
+**Rust for the client.** Everything under `crates/` is Rust and stays Rust, with no build
+scripts and no tooling in another language. The one exception in the repository is
+`meeting/` — the small program behind `the333.dev`, in TypeScript, because it is one file
+of routing that runs on somebody else's edge and a Rust binary there would buy nothing.
+
+**One file, one responsibility, four hundred lines.** Counted up to `#[cfg(test)]`; the
+tests below that line live beside the code they test and are not counted. A function fits
+on one screen. *Two files are over it today: `crates/cli/src/commands/serve.rs` and
+`crates/cli/src/screen/draw.rs`. Splitting either is a good first change.*
 
 **Say why, not what.** Everything public carries a doc comment giving the reason rather
 than restating the code. A comment that repeats the line below it is one more thing to
 keep true.
 
 **Tests that could fail.** A test that passes before your change as well as after is not
-testing your change. Show the failure first. Anything frozen — bytes, constants, domain
-strings — is pinned against a literal, because a value compared only against itself is
-not tested at all.
+testing your change; show the failure first. Anything frozen — bytes, constants, domain
+strings — is pinned against a literal, because a value compared only against itself is not
+tested at all.
 
-**Dependencies:** MIT, Apache-2.0, BSD, ISC, Unlicense or CC0, and nothing else. Prefer a
-crate that exists over writing it again, and never write cryptography, TLS, password
-hashing or random numbers by hand.
+**Dependencies.** Prefer a crate that exists over writing it again, and never write
+cryptography, TLS, password hashing or random numbers by hand. Adding a direct dependency
+means saying in the manifest what it is for and what its features cost. The tree today is
+overwhelmingly Tor's: 639 packages, mostly permissive, and a handful under MPL-2.0,
+Unicode-3.0, Zlib, BSL-1.0 and CDLA-Permissive-2.0 that arrive through it. Nothing in the
+checks looks at licences yet, and a change that adds one worth arguing about should say so
+in the pull request.
 
-**Ask before you change behaviour.** Numbers, thresholds and orders of operation that
-look arbitrary usually are not, and the doc comments carry most of the reasons. A change
-to how the protocol behaves, rather than how it is written, is worth asking about before
-it is worth writing.
+**What will not be taken.** Some designs were considered and removed on purpose, with the
+reasons written down. Bringing one back is refused however well it is written: proofs of
+work, an outside chain used as a clock, agreement protocols, founder broadcast or
+revocation keys, hardware fingerprinting, automatic updates, remote verification of
+somebody else's client, a prompt offering heresy, grace counters, fallback verifiers,
+encrypted chat, and bucketed statistics passed between nodes. Zero-knowledge proofs are
+not on this list in the same way — see the top of this page for what would have to change.
 
-## What will not be taken
-
-Some things were considered and removed on purpose, and a pull request bringing one back
-will be refused however well it is written: proofs of knowledge, proof of work, an
-outside chain used as a clock, agreement protocols of any kind, hardware fingerprinting,
-automatic updates, fallback verifiers, encrypted chat, and bucketed statistics passed
-between nodes.
-
-The reason is one reason. There is no authority here and nothing may create one. Anything
-that decides who is right, or that everybody must accept in order to take part, is a
-place where somebody can be captured. If the design ever seems to need a vote, the design
-is wrong at that point, and the change worth writing is the one that removes the need.
-
-We also do not verify what cannot be verified. Nothing claims a node is running genuine
-code and nothing claims anybody is honest. What is verified is what was done.
-
-## Where to send it
-
-Pull requests on `github.com/needmoretruth/333`, against `main`.
-
-You will be told what was decided and why. Not quickly, necessarily. Every line here has
-to be true in nineteen thousand years, which is a strange thing to be in a hurry about.
+You will be told what was decided and why, by the person who has been writing this. There
+is nobody else yet, which is the honest answer to how quickly.

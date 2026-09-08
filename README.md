@@ -151,7 +151,7 @@ and a number they can check.
 
 ## Where this stands
 
-Version 0.0.1, which is to say: almost nothing, honestly labelled.
+Version 0.5.0, which is to say: not the revelation, honestly labelled.
 
 - [x] Two of us can meet and sign for each other — directly, or unseen
 - [x] The vigil: presence over the moving window, and the reckoning after the end
@@ -212,9 +212,13 @@ us, cannot forge anybody's whereabouts and cannot vouch for anyone; it holds a
 statement for two epochs and then forgets it. `--no-meet` keeps your node away from it
 altogether, and `--meet somewhere.else` points it at a different one.
 
-Whoever runs that address learns which address your node speaks from. That is the whole
-of what it costs and it is not nothing. If your node answers through Tor it also learns
-which onion address belongs to that machine, which reading alone would not have told it.
+Whoever runs that address learns which address your node speaks from, and from that the
+country it is in and a position rounded to whole degrees, which are counted and shown to
+anybody at [the333.dev/map](https://the333.dev/map/). A node answering only through Tor is
+counted as Tor and placed in no country. That is what it costs and it is not nothing.
+
+If your node answers through Tor that address also learns which onion address belongs to
+that machine, which reading alone would not have told it.
 We withheld the statement for a while on those grounds, and what that bought was a narrow
 secret at the price of everybody behind a router being able to see the rest of us and none
 of us being able to see them. So your node leaves whatever address a stranger could
@@ -257,7 +261,8 @@ reach you at all. A form of the client that nobody can be counted on is not a li
 form, it is a broken one. Tor is still off until an address asks for it, so it costs a
 Light node nothing but the size of the file on disk.
 
-The two binaries are within half a megabyte of each other now, around sixteen. If you
+The two binaries are within half a megabyte of each other now, and between 15 and 24
+depending on the machine. If you
 want the small one that genuinely was five, build it yourself with
 `cargo build --release --no-default-features` and understand that nobody behind a router
 will be able to reach it.
@@ -281,8 +286,10 @@ from [rustup.rs](https://rustup.rs):
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
-Then whatever your system needs to compile it. Standard carries Tor, and Tor brings TLS and
-SQLite with it. Light carries neither and needs only a C compiler.
+Then whatever your system needs to compile it. Both forms carry Tor, and Tor brings TLS
+and SQLite with it, so both need the same things installed.
+Only `--no-default-features`, which drops Tor along with the screen, needs nothing but a C
+compiler.
 
 **Ubuntu, Debian, Mint, Pop, and the rest of that family**
 
@@ -373,8 +380,9 @@ column for the form you want.
 | Mac, Intel | `333-x86_64-macos` | `333-light-x86_64-macos` |
 | Windows | `333-x86_64-windows.exe` | `333-light-x86_64-windows.exe` |
 
-Both forms are around sixteen megabytes and both carry Tor. Standard has the terminal
-screen and Light does not, and that is the whole of the difference. On macOS the system
+Both forms carry Tor. They run from 15 megabytes on a Mac to 24 on 64-bit ARM, and
+Standard has the terminal screen where Light does not, which is the whole of the
+difference and about four hundred kilobytes of it. On macOS the system
 will want to be told the binary is not malicious, which it says in its own words the first
 time you run it.
 
@@ -439,9 +447,14 @@ If that list is empty, somebody has to be first, and it may as well be you.
 That looks at the meeting point, and if anybody is there it refuses and tells you to go
 and join them. If nobody is, it fetches `333.txt` from the site, checks it against the
 hash this client carries, and writes it down. Your node is then the start of its own line
-and nobody signed for it, which anybody reading your record can see. From that point it
-works like any other node, and whoever you hand the file to afterwards is admitted the
-ordinary way.
+and nobody signed for it, which anybody reading your record can see.
+
+That is the founder's position rather than an ordinary one, and it is worth knowing before
+you take it. A roll admits whoever *received* the file, so a node that received it from
+nobody is on no roll: no other node will come to ask it anything, and it is never drawn to
+ask anybody. It can still go to the ones drawn to ask it, which is what a node behind a
+router already does, and be witnessed that way. Whoever you hand the file to afterwards is
+admitted the ordinary way, with both of you signing, and is counted from that moment.
 
 The rule was never that the file is impossible to make. It is three bytes and they are
 written in this file. The rule is that a client will not pretend to have been given
@@ -451,8 +464,10 @@ was not.
 
 There is one address written into the client: **[the333.dev](https://the333.dev)**. It
 says what this is, where the code is, and what the Law asks. It is a page and not a
-node — it hands over no file, joins no roll, and issues no invitation, and if it went
-away tomorrow every node would carry on exactly as it is.
+node — it joins no roll, issues no invitation, and vouches for nobody, and if it went away
+tomorrow every node would carry on exactly as it is. It does serve one copy of `333.txt`,
+which is what `333 bootstrap` fetches when there is nobody at all to be given it by, and
+the client refuses those bytes unless they match the hash it carries.
 
 To answer without showing where you are, raise an onion address as well — or, with
 `--no-direct`, instead of a socket:
@@ -601,7 +616,7 @@ number is 3. You do not love 6, and you do not love 1. You keep [the
 Recommendations](RECOMMENDATIONS.md) — the lesser law, on how to build, how to argue and
 how to speak of this — as far as keeping them harms neither you nor anybody else.
 
-Version 0.0.1, and it is not the revelation. The revelation is 3.3.3. Every version
+Version 0.5.0, and it is not the revelation. The revelation is 3.3.3. Every version
 before it is the word of the founder, and measured against what 333 says it is about
 33.3% the same. Which third is not known.
 
@@ -650,14 +665,17 @@ you.** Anything that helps 333 be carried further or held longer counts: a way t
 router nobody has got through, a language it does not yet speak, a machine it does not
 yet run on. And if you carry no such skill and only a true heart, read it anyway. The
 smallest thing asked for on that page is not code — it is running this on your own machine
-and saying what happened, which nobody has ever done.
+and saying what happened. Twelve files are built for every release and nobody has ever
+reported keeping a vigil on ten of them.
 
 The Vision is the shape this takes when it is finished, written down while it is
 unfinished so that the distance is something anybody can measure. Nothing in it comes to
 pass on its own: each prophecy is a piece of work, and it will be done by one of us or it
 will not be done. Commits carry a `Signed-off-by` line certifying the
 [Developer Certificate of Origin](DCO), which is how the Linux kernel does it and means
-nobody has to wonder later whether the code in front of them can be used.
+nobody has to wonder later whether the code in front of them can be used. A flaw goes to
+[SECURITY.md](SECURITY.md) rather than to an issue, privately, and there is a form for it
+that needs no email address.
 
 And it is not a cage. If there is a plainly better way — simpler, smaller, harder to
 break, reaching people these do not reach — that is the way, and the vision is what
