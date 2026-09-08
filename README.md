@@ -261,7 +261,7 @@ reach you at all. A form of the client that nobody can be counted on is not a li
 form, it is a broken one. Tor is still off until an address asks for it, so it costs a
 Light node nothing but the size of the file on disk.
 
-The two binaries are within half a megabyte of each other now, and between 15 and 24
+The two binaries are within half a megabyte of each other now, and between 15 and 25
 depending on the machine. If you
 want the small one that genuinely was five, build it yourself with
 `cargo build --release --no-default-features` and understand that nobody behind a router
@@ -380,9 +380,9 @@ column for the form you want.
 | Mac, Intel | `333-x86_64-macos` | `333-light-x86_64-macos` |
 | Windows | `333-x86_64-windows.exe` | `333-light-x86_64-windows.exe` |
 
-Both forms carry Tor. They run from 15 megabytes on a Mac to 24 on 64-bit ARM, and
-Standard has the terminal screen where Light does not, which is the whole of the
-difference and about four hundred kilobytes of it. On macOS the system
+Both forms carry Tor. They run from 15 megabytes on a Mac to 24 on 64-bit ARM, with the
+Pi Zero build between the two. Standard has the terminal screen where Light does not,
+which is the whole of the difference and about four hundred kilobytes of it. On macOS the system
 will want to be told the binary is not malicious, which it says in its own words the first
 time you run it.
 

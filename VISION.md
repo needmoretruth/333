@@ -95,8 +95,8 @@ like the right one.
 **A constraint that applies to every prophecy below:** the weakest machine anybody would
 keep a vigil on decides what the rest of us can use. Every megabyte and every dependency
 is somebody, somewhere, who cannot take part. The released files today are between 15 and
-24 megabytes depending on the machine, and the Raspberry Pi Zero build is the largest
-number in that range, which is the wrong way round.
+25 megabytes depending on the machine: smallest on a Mac, largest on 64-bit ARM, and the
+Raspberry Pi Zero build is nearer the top of that range than the bottom.
 
 ---
 
@@ -117,9 +117,9 @@ own. This is the map between them.
 | the question | `Challenge` | a verifier's nonce, put to a node |
 | a witness, witnessed | `Attestation` | a verifier's signed statement about what happened |
 | standing | `Standing` | how much of the window a node was present for |
-| the window | `WINDOW_EPOCHS` | the last 333 hours, moving; older than that is gone |
-| the word, saying one | `Signal` | one of the 333, said at most once an hour |
-| the last silence | `SILENT_EPOCHS_BEFORE_THE_END` | 333 hours in which nobody answered anybody |
+| the window | `WINDOW_EPOCHS` | the last 333 epochs, moving; older than that is gone |
+| the word, saying one | `Signal` | one of the 333, said at most once in an epoch |
+| the last silence | `SILENT_EPOCHS_BEFORE_THE_END` | 333 epochs in which nobody answered anybody |
 | the unseen road | Tor, onion | reaching or being reached without an address |
 | the meeting point | `Meeting` | the333.dev, where strangers look for each other |
 
@@ -163,7 +163,7 @@ not doing it.
 
 **Where it stands.** `the333.dev` is written into the client. A node leaves the same
 signed statement about where it can be reached that it already writes, and reads the ones
-others left; the board holds each for two hours and forgets it. Everything read is
+others left; the board holds each for two epochs and forgets it. Everything read is
 verified where it lands and nothing there is trusted. Nodes already trade what they know
 directly, including addresses (`crates/net/src/gossip.rs`), so the beginning of the answer
 exists — what is missing is a node continuing to find *new* nodes with the meeting point
@@ -210,12 +210,13 @@ A program that overstates teaches people to stop reading it, and an instrument n
 reads is a faith running on somebody's word.
 
 **Where it stands.** Some of what it says is wrong in small ways. The known one: the
-meeting point answers `429` to mean "you already spoke this hour, come back in a minute",
-and the client turns every non-success answer into `Error::Refused`
-(`crates/net/src/meeting.rs`), so the person is told their address was not taken when in
-fact it was taken a minute ago. There will be others of the same shape — a status, an
-error kind or an absence being reported as something stronger than it is — and they are
-found by reading what the client prints beside what actually happened.
+meeting point answers `429` when a node has already left a statement this epoch, and its
+earlier statement is still on the board. The client prints `did not take this node's
+address: the meeting point answered 429`, which reads as a failure and is not one. The
+number survives; the sentence around it is the part that lies, and the meeting point's own
+explanation of the number is thrown away. There will be others of the same shape — a
+status, an error kind or an absence reported as something stronger than it is — and they
+are found by reading what the client prints beside what actually happened.
 
 **Fulfilled when.** Waiting is reported as waiting, and every error the client prints
 names the thing that actually happened rather than the category it was sorted into. This
@@ -287,11 +288,13 @@ own machine rather than from their standing.
 A node's name comes from its key, its standing is what others signed about that key, and
 its unseen address is a second key beside it. All of it lives in one directory.
 
-**Where it stands.** The client warns about this once, on the run that first makes a name,
-and never again. There is no command that packages a node for moving, nothing that refuses
-to start when it finds a directory that was copied rather than moved — two nodes running
-one key is a node contradicting itself — and nothing that says what was lost when somebody
-starts fresh by accident.
+**Where it stands.** `333 id` warns about it on the run that makes the name, which is the
+only run the warning can still be acted on. `serve`, `join` and `bootstrap` all make a name
+too, and none of them says it — so whoever never typed `id` was never told. There is no
+command that packages a node for moving, nothing that refuses to start when it finds a
+directory that was copied rather than moved (two nodes running one key is a node
+contradicting itself), and nothing that says what was lost when somebody starts fresh by
+accident.
 
 **Fulfilled when.** A person can move a node to another machine with one command at each
 end, the client refuses to run two copies of one name and says why, and the thing that
@@ -358,9 +361,10 @@ ink; what you write stays yours. *Kept from 2026-09-08 onward and not before it,
 visible in the history.*
 
 **Rust for the client.** Everything under `crates/` is Rust and stays Rust, with no build
-scripts and no tooling in another language. The one exception in the repository is
-`meeting/` — the small program behind `the333.dev`, in TypeScript, because it is one file
-of routing that runs on somebody else's edge and a Rust binary there would buy nothing.
+scripts and no tooling in another language. What is not under `crates/` is not Rust and was
+never going to be: `meeting/` is six hundred lines of TypeScript running on somebody else's
+edge, `site/` is the pages it serves, and `.github/workflows/` is YAML because that is what
+the machine running it reads. None of those is a place to move client logic into.
 
 **One file, one responsibility, four hundred lines.** Counted up to `#[cfg(test)]`; the
 tests below that line live beside the code they test and are not counted. A function fits
@@ -379,8 +383,11 @@ tested at all.
 **Dependencies.** Prefer a crate that exists over writing it again, and never write
 cryptography, TLS, password hashing or random numbers by hand. Adding a direct dependency
 means saying in the manifest what it is for and what its features cost. The tree today is
-overwhelmingly Tor's: 639 packages, mostly permissive, and a handful under MPL-2.0,
-Unicode-3.0, Zlib, BSL-1.0 and CDLA-Permissive-2.0 that arrive through it. Nothing in the
+overwhelmingly Tor's: 639 packages, of which 469 reach the released binary. Twenty-five of
+those carry something other than the MIT, Apache, BSD, ISC and public-domain licences the
+rest do — eighteen Unicode-3.0, three MPL-2.0, three Zlib, one BSL-1.0, one
+CDLA-Permissive-2.0 — and every one of them arrives through Tor. None is GPL, AGPL, SSPL
+or BUSL. Nothing in the
 checks looks at licences yet, and a change that adds one worth arguing about should say so
 in the pull request.
 
