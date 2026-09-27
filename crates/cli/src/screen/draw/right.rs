@@ -5,6 +5,8 @@ use ratatui::layout::Rect;
 use ratatui::text::Line;
 use ratatui::widgets::Paragraph;
 
+use unicode_width::UnicodeWidthChar as _;
+
 use super::titled;
 
 /// The right column: what this node has done and been told, newest at the bottom.
@@ -34,7 +36,9 @@ const UNDER: &str = "          ";
 /// Break one line to fit the pane, on spaces where there are any.
 ///
 /// Cutting it off at the edge instead would lose the end of every sentence this client
-/// has to say, and the ends are where the meaning is.
+/// has to say, and the ends are where the meaning is. Measured in the columns a
+/// terminal gives each letter, not in letters: Korean and Chinese take two each, and a
+/// line counted by letters runs off the edge of the pane by half its length.
 fn fold(entry: &str, width: usize) -> Vec<String> {
     let mut folded = Vec::new();
     let mut rest = entry.trim_end();
@@ -48,22 +52,11 @@ fn fold(entry: &str, width: usize) -> Vec<String> {
         if room == 0 {
             break;
         }
-        let (mut counted, mut ends_at, mut space) = (0_usize, rest.len(), None);
-        for (at, letter) in rest.char_indices() {
-            if counted == room {
-                ends_at = at;
-                break;
-            }
-            if letter == ' ' && counted > 0 {
-                space = Some(at);
-            }
-            counted += 1;
-        }
-        if counted < room {
+        let Some(ends_at) = cut(rest, room) else {
             folded.push(format!("{indent}{rest}"));
             break;
-        }
-        let (head, tail) = rest.split_at(space.unwrap_or(ends_at));
+        };
+        let (head, tail) = rest.split_at(ends_at);
         folded.push(format!("{indent}{}", head.trim_end()));
         rest = tail.trim_start();
         indent = under;
@@ -71,9 +64,31 @@ fn fold(entry: &str, width: usize) -> Vec<String> {
     folded
 }
 
+/// Where to cut a line that does not fit in `room` columns: after the last space that
+/// fits, or at the edge when no space does. Nothing when all of it fits.
+///
+/// A letter wider than the whole room is let through on a line of its own rather than
+/// never placed, which would loop for ever.
+fn cut(line: &str, room: usize) -> Option<usize> {
+    let (mut covered, mut space) = (0_usize, None);
+    for (at, letter) in line.char_indices() {
+        let wide = letter.width().unwrap_or(0);
+        if covered + wide > room {
+            let edge = if at == 0 { at + letter.len_utf8() } else { at };
+            return Some(space.unwrap_or(edge));
+        }
+        if letter == ' ' && covered > 0 {
+            space = Some(at);
+        }
+        covered += wide;
+    }
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use unicode_width::UnicodeWidthStr as _;
 
     #[test]
     fn a_line_too_long_for_the_pane_breaks_on_a_space_and_lines_up_underneath() {
@@ -102,8 +117,28 @@ mod tests {
     }
 
     #[test]
+    fn letters_two_columns_wide_are_folded_by_the_columns_they_cover() {
+        // Each of these covers two columns. Counted as letters, the first line of it
+        // would be twice as wide as the pane and run off its edge.
+        let folded = fold(
+            "12:00:00  이 노드에 대해 서명된 것이 없습니다 在任何时代都没有",
+            24,
+        );
+        assert!(folded.iter().all(|line| line.width() <= 24), "{folded:?}");
+        assert_eq!(
+            folded.concat().replace(' ', ""),
+            "12:00:00이노드에대해서명된것이없습니다在任何时代都没有"
+        );
+    }
+
+    #[test]
     fn a_line_that_fits_is_left_exactly_as_it_was() {
         assert_eq!(fold("short enough", 40), vec!["short enough".to_owned()]);
+        assert_eq!(
+            fold("exactly fourteen", 16),
+            vec!["exactly fourteen".to_owned()],
+            "a line as wide as the pane fits it"
+        );
         assert!(fold("anything", 0).is_empty(), "no pane, nothing to draw");
     }
 }
