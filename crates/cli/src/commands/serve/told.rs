@@ -154,8 +154,11 @@ mod unix {
         if let Some(refusal) = refusal {
             return end(&mut writing, &refusal, false).await;
         }
-        let text = match control::order_in(&line) {
-            Ok(text) => text.trim(),
+        let (text, words) = match control::order_in(&line) {
+            Ok(read) => {
+                let words = crate::words::spoken::asked_for(read.language, read.count_in);
+                (read.order.trim(), words)
+            }
             Err(version) => {
                 let why = format!(
                     "refused  this vigil speaks {} and was asked in {version}. The 333 that asked\n\
@@ -165,7 +168,8 @@ mod unix {
                 return end(&mut writing, &why, false).await;
             }
         };
-        let order = match Order::read(text) {
+        // Read as whoever typed it counts, since what it names is theirs.
+        let order = match crate::words::spoken::spoken_now(words, || Order::read(text)) {
             Ok(order) => order,
             Err(why) => return end(&mut writing, &format!("unread   {why}"), false).await,
         };
@@ -173,7 +177,13 @@ mod unix {
         aloud!("asked    {text}, from another terminal");
         let (lines, mut heard) = unbounded_channel();
         let (done, mut finished) = oneshot::channel();
-        if asks.send(Ask { order, lines, done }).is_err() {
+        let ask = Ask {
+            order,
+            words,
+            lines,
+            done,
+        };
+        if asks.send(ask).is_err() {
             let why = "unheard  nothing is carrying orders out any more";
             return end(&mut writing, why, false).await;
         }

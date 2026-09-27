@@ -134,9 +134,11 @@ fn what_another_terminal_asks_for_is_done_by_the_vigil_and_refused_by_it() {
         "{out}"
     );
 
-    let (said, out) = client(&asked.home, &["say", "7"]);
+    // Read in the base whoever typed it counts in, not the vigil's: 10 in twelve is 12.
+    let (said, out) = client(&asked.home, &["--count-in", "twelve", "say", "10"]);
     assert!(said, "{out}");
     let epoch = said_in(&out).expect("the vigil said it");
+    assert!(out.contains("said     #12 in epoch"), "{out}");
 
     // The vigil's own refusal, in its own words, and a failure here.
     let (again, out) = client(&asked.home, &["say", "8"]);
@@ -144,7 +146,7 @@ fn what_another_terminal_asks_for_is_done_by_the_vigil_and_refused_by_it() {
         assert_ne!(said_in(&out), Some(epoch), "said twice in one epoch: {out}");
     } else {
         assert!(
-            out.contains(&format!("you already said #7 in epoch {epoch}")),
+            out.contains(&format!("you already said #12 in epoch {epoch}")),
             "{out}"
         );
         assert!(

@@ -38,9 +38,10 @@ pub(crate) mod catalog;
 pub(crate) mod choose;
 pub(crate) mod count;
 pub(crate) mod layout;
+pub(crate) mod spoken;
 
 use std::borrow::Cow;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
 use fluent_bundle::types::{FluentNumber, FluentNumberOptions};
@@ -84,6 +85,9 @@ pub(crate) struct Words {
     spoken: Bundle,
     /// What is said when the chosen language has nothing to say.
     english: Bundle,
+    /// The node's own folder of catalogs these were read with, to read another
+    /// language the same way for whoever asks in one.
+    beside: Option<PathBuf>,
 }
 
 impl Words {
@@ -104,6 +108,7 @@ impl Words {
             base,
             spoken,
             english,
+            beside: beside.map(Path::to_path_buf),
         };
         (words, problems)
     }
@@ -275,12 +280,18 @@ pub(crate) fn text(key: &str, args: &[(&str, Arg<'_>)]) -> String {
     current().say(key, &fluent)
 }
 
-/// The words this process speaks. English and ten until [`install`] chooses.
+/// The words this is said in: whoever asked for the order this task carries out, if
+/// they read differently (see [`spoken`]), or else the process's own.
 pub(crate) fn current() -> &'static Words {
     #[cfg(test)]
     if let Some(trial) = TRIAL.get() {
         return trial;
     }
+    spoken::here().unwrap_or_else(process)
+}
+
+/// The words this process speaks. English and ten until [`install`] chooses.
+fn process() -> &'static Words {
     WORDS.get_or_init(|| Words::open(catalog::ENGLISH, Base::Ten, None).0)
 }
 

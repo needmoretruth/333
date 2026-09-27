@@ -25,6 +25,18 @@
 //! What follows the version is an order in the screen's own words, read by the same
 //! code the screen reads it with, so there is one set of words and not two.
 //!
+//! Between the two, words of the form `name=value` say how whoever asks reads, so
+//! that what comes back is in their language and their base rather than the vigil's:
+//!
+//! ```text
+//! 333/1 language=ko count-in=twelve say 10
+//! ```
+//!
+//! No order begins with a word that has `=` in it, so they cannot be mistaken for one.
+//! A vigil reads `language` and `count-in` and passes over any other name, so a later
+//! client can say more; a request with none of them is answered in the vigil's words,
+//! as it always was.
+//!
 //! NOT ON WINDOWS. A named pipe there is readable by every account on the machine
 //! unless it is created with a security descriptor written by hand, and that cannot be
 //! written without code this workspace forbids. Until it can, a Windows node refuses a
@@ -40,6 +52,12 @@ use std::path::Path;
 ///
 /// FROZEN for 333/1. A change to the lines below is a new number, not an edit.
 pub(crate) const VERSION: &str = "333/1";
+
+/// The name before the language whoever asks reads.
+const LANGUAGE: &str = "language";
+
+/// The name before the base whoever asks counts in.
+const COUNT_IN: &str = "count-in";
 
 /// The socket's name inside the node's directory.
 pub(crate) const SOCKET_FILE: &str = "control.sock";
@@ -58,26 +76,64 @@ const DONE: &str = "= done";
 /// The last line, when it was not.
 const FAILED: &str = "= failed";
 
-/// The one line that hands `order` over.
+/// The one line that hands `order` over, saying how whoever asks reads.
 ///
-/// An order is one line, so a line break inside one is a space.
+/// An order is one line, so a line break inside one is a space. A value that is not
+/// one word, or is empty, is left out, and the vigil speaks its own there.
 #[must_use]
-pub(crate) fn request(order: &str) -> String {
-    format!("{VERSION} {}\n", order.trim().replace(['\r', '\n'], " "))
+pub(crate) fn request_read_as(order: &str, language: &str, count_in: &str) -> String {
+    let one_word = |word: &str| !word.is_empty() && !word.contains([' ', '\t', '\r', '\n', '=']);
+    let mut line = VERSION.to_owned();
+    for (name, value) in [(LANGUAGE, language), (COUNT_IN, count_in)] {
+        if one_word(value) {
+            line.push_str(&format!(" {name}={value}"));
+        }
+    }
+    format!("{line} {}\n", one_line(order))
 }
 
-/// Read a request: the order in it, or the version it was asked in when that is not
-/// this one.
+/// An order as one line.
+fn one_line(order: &str) -> String {
+    order.trim().replace(['\r', '\n'], " ")
+}
+
+/// One request, read.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Request<'a> {
+    /// The language whoever asked reads, if they said.
+    pub(crate) language: Option<&'a str>,
+    /// The base whoever asked counts in, if they said.
+    pub(crate) count_in: Option<&'a str>,
+    /// The order, in the screen's words.
+    pub(crate) order: &'a str,
+}
+
+/// Read a request, or say the version it was asked in when that is not this one.
 ///
 /// # Errors
 /// Fails with whatever stood where the version should be.
-pub(crate) fn order_in(line: &str) -> Result<&str, &str> {
+pub(crate) fn order_in(line: &str) -> Result<Request<'_>, &str> {
     let line = line.trim_end_matches(['\r', '\n']);
     let (version, order) = line.split_once(' ').unwrap_or((line, ""));
-    if version == VERSION {
-        Ok(order)
-    } else {
-        Err(version)
+    if version != VERSION {
+        return Err(version);
+    }
+    let mut request = Request {
+        language: None,
+        count_in: None,
+        order,
+    };
+    loop {
+        let (word, after) = request.order.split_once(' ').unwrap_or((request.order, ""));
+        let Some((name, value)) = word.split_once('=') else {
+            return Ok(request);
+        };
+        match name {
+            LANGUAGE => request.language = Some(value),
+            COUNT_IN => request.count_in = Some(value),
+            _ => {}
+        }
+        request.order = after;
     }
 }
 
@@ -166,7 +222,10 @@ async fn exchange(
         return Ok(None);
     };
     let (reading, mut writing) = stream.into_split();
-    writing.write_all(request(order).as_bytes()).await?;
+    // In this terminal's words, which may not be the vigil's.
+    let words = crate::words::current();
+    let asked = request_read_as(order, words.tag(), words.base().name());
+    writing.write_all(asked.as_bytes()).await?;
     let mut lines = BufReader::new(reading).lines();
     while let Some(line) = lines.next_line().await? {
         match heard(&line) {
@@ -206,6 +265,11 @@ pub(crate) async fn answering(_home: &Path) -> bool {
 mod tests {
     use super::*;
 
+    /// The request of a client that does not say how it reads.
+    fn request(order: &str) -> String {
+        request_read_as(order, "", "")
+    }
+
     #[test]
     fn a_request_is_the_version_and_the_order_on_one_line() {
         // Frozen: a vigil of this version reads exactly this and nothing else.
@@ -216,9 +280,42 @@ mod tests {
 
     #[test]
     fn a_request_reads_back_as_the_order_it_carried() {
-        assert_eq!(order_in(&request("join 333:x:3333")), Ok("join 333:x:3333"));
-        assert_eq!(order_in("333/2 say 7\n"), Err("333/2"));
-        assert_eq!(order_in("say 7"), Err("say"));
+        fn order(line: &str) -> Result<&str, &str> {
+            order_in(line).map(|read| read.order)
+        }
+        assert_eq!(order(&request("join 333:x:3333")), Ok("join 333:x:3333"));
+        assert_eq!(order("333/2 say 7\n"), Err("333/2"));
+        assert_eq!(order("say 7"), Err("say"));
+    }
+
+    #[test]
+    fn a_request_says_how_whoever_asks_reads_between_the_version_and_the_order() {
+        let line = request_read_as("say 10", "ko", "twelve");
+        assert_eq!(line, "333/1 language=ko count-in=twelve say 10\n");
+        assert_eq!(
+            order_in(&line),
+            Ok(Request {
+                language: Some("ko"),
+                count_in: Some("twelve"),
+                order: "say 10",
+            })
+        );
+        // What asks without saying is read as it always was.
+        let plain = order_in("333/1 say 7\n").unwrap();
+        assert_eq!((plain.language, plain.count_in), (None, None));
+    }
+
+    #[test]
+    fn a_name_this_vigil_does_not_know_is_passed_over_and_an_order_is_never_one() {
+        let read = order_in("333/1 colour=blue language=es bridge obfs4 cert=x\n").unwrap();
+        assert_eq!(read.language, Some("es"));
+        assert_eq!(read.order, "bridge obfs4 cert=x");
+        assert_eq!(order_in("333/1 language=ko\n").unwrap().order, "");
+        // A value that is not one word is not sent at all.
+        assert_eq!(
+            request_read_as("status", "a b", "ten"),
+            "333/1 count-in=ten status\n"
+        );
     }
 
     #[test]

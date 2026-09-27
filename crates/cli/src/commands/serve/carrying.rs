@@ -40,6 +40,8 @@ use super::door::Door;
 pub(super) struct Ask {
     /// What was asked, already read.
     pub(super) order: Order,
+    /// The words whoever asked reads, which every line about it is said in.
+    pub(super) words: &'static crate::words::Words,
     /// Where every line said while carrying it out goes.
     pub(super) lines: UnboundedSender<String>,
     /// Whether it was done, sent once at the end.
@@ -76,14 +78,15 @@ pub(super) async fn until_nobody_asks(
     loop {
         let (order, asker) = tokio::select! {
             Some(order) = typed.recv() => (order, None),
-            Some(ask) = told.recv() => (ask.order, Some((ask.lines, ask.done))),
+            Some(ask) = told.recv() => (ask.order, Some((ask.words, ask.lines, ask.done))),
             else => return,
         };
         let apart = takes_a_while(&order);
         let work = Arc::clone(&carrier).work(order);
         let carried = async move {
             match asker {
-                Some((lines, done)) => {
+                Some((words, lines, done)) => {
+                    let work = crate::words::spoken::spoken_in(words, work);
                     let _ = done.send(crate::aloud::heard_by(lines, work).await);
                 }
                 None => {
@@ -250,7 +253,11 @@ impl Carrier {
             };
             // Whoever asked hears it come up, however long that takes.
             *unseen = Some(match crate::aloud::the_asker() {
-                Some(asker) => tokio::spawn(crate::aloud::heard_by(asker, listening)),
+                Some(asker) => {
+                    let words = crate::words::current();
+                    let listening = crate::words::spoken::spoken_in(words, listening);
+                    tokio::spawn(crate::aloud::heard_by(asker, listening))
+                }
                 None => tokio::spawn(listening),
             });
         }
