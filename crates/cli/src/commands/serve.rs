@@ -280,14 +280,16 @@ fn the_screen(plain: bool) -> Option<tokio::sync::mpsc::UnboundedReceiver<String
 /// Printed rather than said, because by the time this runs the screen has given the
 /// terminal back and there is nobody left listening to what the node says.
 fn farewell() {
-    println!(
-        "vigil    ended in epoch {}. Whoever is drawn to ask for you while this\n\
-         \x20        is not running signs that they asked and heard nothing, and\n\
-         \x20        that is what your window reads. It is {} epochs long, and it\n\
-         \x20        moves.",
-        Epoch::now().0,
-        n333_core::presence::WINDOW_EPOCHS
-    );
+    println!("{}", said_at_the_end(Epoch::now()));
+}
+
+/// The farewell's words, for the epoch it is said in.
+fn said_at_the_end(now: Epoch) -> String {
+    words!(
+        "serve-farewell",
+        epoch = now.0,
+        window = n333_core::presence::WINDOW_EPOCHS
+    )
 }
 
 #[cfg(test)]
@@ -483,6 +485,20 @@ mod tests {
             hidden.witnessed().await,
             1,
             "and the verifier's statement says so, signed by the verifier"
+        );
+    }
+
+    #[test]
+    fn the_farewell_says_in_english_what_it_said_before_its_words_moved() {
+        let said = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+            said_at_the_end(Epoch(89_612))
+        });
+        assert_eq!(
+            said,
+            "vigil    ended in epoch 89612. Whoever is drawn to ask for you while this\n\
+             \x20        is not running signs that they asked and heard nothing, and\n\
+             \x20        that is what your window reads. It is 333 epochs long, and it\n\
+             \x20        moves."
         );
     }
 }

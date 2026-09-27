@@ -25,6 +25,8 @@ pub(crate) use unseen::{unseen, unseen_now};
 
 use n333_net::Exchange;
 
+use crate::words::Arg;
+
 /// Options every command shares.
 #[derive(Debug, Clone)]
 pub(crate) struct Common {
@@ -66,11 +68,7 @@ pub(crate) fn check_the_clock(now: n333_core::Epoch) {
     if now.0 != 0 {
         return;
     }
-    aloud!(
-        "epoch    0. This machine's clock says it is 1970, so this node believes it is\n\
-         \x20        at the beginning of time. Nobody will hand it anything and nobody will\n\
-         \x20        witness it until the clock is set."
-    );
+    aloud_in!("commands-clock-at-zero", epoch = now.0);
 }
 
 /// A name, short enough to sit in a column and long enough to be that name.
@@ -174,26 +172,16 @@ pub(crate) async fn bootstrap(common: &Common) -> anyhow::Result<n333_net::tor::
 pub(crate) fn report_opening(opened: &crate::node::Opened) {
     crate::named::report(opened.origin, &opened.home);
     if opened.chain_truncated != 0 {
-        aloud!(
-            "torn     {} bytes of an unfinished entry were dropped from the record",
-            opened.chain_truncated
-        );
+        // A byte count, which names a size rather than counting anything a person
+        // tallies, and is the number a file manager would show for the same bytes.
+        let bytes = Arg::exact(opened.chain_truncated);
+        aloud_in!("commands-torn", bytes = bytes);
     }
     if opened.chain_length != 0 {
-        let epochs = if opened.chain_length == 1 {
-            "1 epoch".to_owned()
-        } else {
-            format!("{} epochs", opened.chain_length)
-        };
-        aloud!("record   {epochs} already answered for, none of them open to revision");
+        aloud_in!("commands-record", epochs = opened.chain_length);
     }
     if opened.witnessed != 0 {
-        aloud!(
-            "witness  {} statements other keys signed about this node. They are kept\n\
-             \x20        after the epochs they belong to are gone, because nothing else of\n\
-             \x20        them survives the window.",
-            opened.witnessed
-        );
+        aloud_in!("commands-witnessed", statements = opened.witnessed);
     }
     // Being on the roll and having nothing signed about you is the one failure this
     // client can see from the inside and a person cannot see at all. Everything looks
@@ -202,42 +190,27 @@ pub(crate) fn report_opening(opened: &crate::node::Opened) {
     // ever witnessed, so the window fills with epochs that do not count. Said only
     // after a few of them, and only when there is somebody who could have asked.
     if unseen(opened) {
-        aloud!(
-            "unseen   nothing has been signed about this node, in any epoch. Reaching out\n\
-             \x20        works and being reached does not, and only the second one is counted:\n\
-             \x20        whoever is drawn to ask has to arrive. Two things do this. A router\n\
-             \x20        that does not send port 3333 to this machine, and an address nobody\n\
-             \x20        was given. `serve --tor` needs neither — an onion address is reachable\n\
-             \x20        from behind any router, and this client already carries Tor."
-        );
+        aloud_in!("commands-unseen");
     }
     if opened.members != 0 {
-        let us = if opened.members == 1 {
-            "1 of us, which is this node".to_owned()
+        if opened.members == 1 {
+            aloud_in!("commands-roll-alone");
         } else {
-            format!("{} of us", opened.members)
-        };
-        aloud!("roll     {us}");
+            aloud_in!("commands-roll", members = opened.members);
+        }
     }
     if opened.addresses != 0 {
-        aloud!("known    where {} of us said to look", opened.addresses);
+        aloud_in!("commands-known", addresses = opened.addresses);
     }
     crate::node::say_what_the_sources_held(opened);
     if opened.has_the_file {
-        aloud!("holding  the file, and able to pass it on");
+        aloud_in!("commands-holding");
     }
     if opened.keeping == crate::node::Keeping::Everything {
-        aloud!(
-            "keeping  everything, for ever. It buys this node nothing: every statement\n\
-             \x20        carries its own signature and verifies the same wherever it was\n\
-             \x20        kept. There is no archive of record and there is no archivist."
-        );
+        aloud_in!("commands-keeping");
     }
     if opened.read.unreadable != 0 {
-        aloud!(
-            "ignored  {} admissions that could not be read",
-            opened.read.unreadable
-        );
+        aloud_in!("commands-ignored", admissions = opened.read.unreadable);
     }
 }
 
@@ -248,30 +221,26 @@ pub(crate) fn report_opening(opened: &crate::node::Opened) {
 /// happened.
 pub(crate) fn report_heard(heard: &crate::node::Heard) {
     if heard.addresses != 0 {
-        aloud!("learned  where {} more of us are", heard.addresses);
+        aloud_in!("commands-learned-where", addresses = heard.addresses);
     }
     if heard.members != 0 {
         if heard.were != 0 && heard.members >= heard.were {
             // One meeting brought more of us than this node had ever held. Two halves
             // of a network that had not spoken look exactly like this from one side.
-            aloud!(
-                "rejoined {} more of us by name, from a node that knew {}. There were\n\
-                 \x20        two of us and now the counting is one count.",
-                heard.members,
-                heard.were
+            aloud_in!(
+                "commands-rejoined",
+                members = heard.members,
+                were = heard.were
             );
         } else {
-            aloud!("learned  {} more of us by name", heard.members);
+            aloud_in!("commands-learned-names", members = heard.members);
         }
     }
     if heard.said != 0 {
-        aloud!("heard    {} of us speak", heard.said);
+        aloud_in!("commands-heard", speakers = heard.said);
     }
     if heard.witnessed != 0 {
-        aloud!(
-            "carried  {} statements about epochs still open",
-            heard.witnessed
-        );
+        aloud_in!("commands-carried", statements = heard.witnessed);
     }
 }
 
@@ -306,9 +275,8 @@ pub(crate) fn what_was_signed(transfer: &n333_core::Transfer, ours_was_the_givin
 #[must_use]
 pub(crate) fn naming(not_called: u64) -> String {
     match not_called {
-        0 => "called   the first key made was called.".to_owned(),
-        1 => "called   1 key was made and not called. this one was.".to_owned(),
-        many => format!("called   {many} keys were made and not called. this one was."),
+        0 => words!("commands-called-first"),
+        not_called => words!("commands-called", not_called = not_called),
     }
 }
 
@@ -332,15 +300,16 @@ pub(crate) fn report_left_behind(tidings: &crate::node::Tidings) {
 #[must_use]
 pub(crate) fn describe(exchange: &Exchange) -> String {
     let liveness = if exchange.proves_peer_was_live {
-        "answered the challenge we chose"
+        words!("commands-answered-the-challenge")
     } else {
-        "spoke first, which proves only that it spoke"
+        words!("commands-spoke-first")
     };
-    format!(
-        "witness  {}  epoch {}  {}  ({liveness})",
-        exchange.peer.node_id,
-        exchange.peer.heartbeat.epoch,
-        clocks(exchange.clocks_apart_ms)
+    words!(
+        "commands-exchange",
+        node = exchange.peer.node_id.to_string(),
+        epoch = exchange.peer.heartbeat.epoch,
+        clocks = clocks(exchange.clocks_apart_ms),
+        liveness = liveness
     )
 }
 
@@ -353,23 +322,30 @@ pub(crate) fn describe(exchange: &Exchange) -> String {
 fn clocks(apart_ms: i64) -> String {
     const NOT_WORTH_SAYING: i64 = 5_000;
     if apart_ms.abs() < NOT_WORTH_SAYING {
-        return "clocks together".to_owned();
+        return words!("commands-clocks-together");
     }
-    let (which, apart) = if apart_ms > 0 {
-        ("ahead of", apart_ms)
-    } else {
-        ("behind", -apart_ms)
-    };
-    let seconds = apart / 1_000;
+    let seconds = apart_ms.unsigned_abs() / 1_000;
     let (hours, minutes) = (seconds / 3_600, (seconds % 3_600) / 60);
-    let said = if hours != 0 {
-        format!("{hours}h {minutes:02}m")
+    let apart = if hours != 0 {
+        words!(
+            "commands-hours-and-minutes",
+            hours = hours,
+            minutes = Arg::padded(minutes, 2)
+        )
     } else if minutes != 0 {
-        format!("{minutes}m {:02}s", seconds % 60)
+        words!(
+            "commands-minutes-and-seconds",
+            minutes = minutes,
+            seconds = Arg::padded(seconds % 60, 2)
+        )
     } else {
-        format!("{seconds}s")
+        words!("commands-seconds", seconds = seconds)
     };
-    format!("their clock {said} {which} ours")
+    if apart_ms > 0 {
+        words!("commands-clocks-ahead", apart = apart)
+    } else {
+        words!("commands-clocks-behind", apart = apart)
+    }
 }
 
 #[cfg(test)]
@@ -385,6 +361,154 @@ mod tests {
         assert_eq!(in_threes(333), "333");
         assert_eq!(in_threes(1_000), "1,000");
         assert_eq!(in_threes(1_234_567), "1,234,567");
+    }
+
+    /// What the lines said before their words moved into a catalog, byte for byte,
+    /// beside what the catalog says now.
+    #[test]
+    fn in_english_every_moved_line_says_exactly_what_it_said_before() {
+        use crate::words::count::Base;
+        let pairs = crate::words::speaking("en", Base::Ten, || {
+            [
+                (naming(0), "called   the first key made was called."),
+                (
+                    naming(1),
+                    "called   1 key was made and not called. this one was.",
+                ),
+                (
+                    naming(4_021),
+                    "called   4021 keys were made and not called. this one was.",
+                ),
+                (
+                    words!("commands-clock-at-zero", epoch = 0_u64),
+                    "epoch    0. This machine's clock says it is 1970, so this node believes it is\n\
+                     \x20        at the beginning of time. Nobody will hand it anything and nobody will\n\
+                     \x20        witness it until the clock is set.",
+                ),
+                (
+                    words!("commands-torn", bytes = Arg::exact(17)),
+                    "torn     17 bytes of an unfinished entry were dropped from the record",
+                ),
+                (
+                    words!("commands-record", epochs = 1_u64),
+                    "record   1 epoch already answered for, none of them open to revision",
+                ),
+                (
+                    words!("commands-record", epochs = 40_u64),
+                    "record   40 epochs already answered for, none of them open to revision",
+                ),
+                (
+                    words!("commands-witnessed", statements = 12_usize),
+                    "witness  12 statements other keys signed about this node. They are kept\n\
+                     \x20        after the epochs they belong to are gone, because nothing else of\n\
+                     \x20        them survives the window.",
+                ),
+                (
+                    words!("commands-unseen"),
+                    "unseen   nothing has been signed about this node, in any epoch. Reaching out\n\
+                     \x20        works and being reached does not, and only the second one is counted:\n\
+                     \x20        whoever is drawn to ask has to arrive. Two things do this. A router\n\
+                     \x20        that does not send port 3333 to this machine, and an address nobody\n\
+                     \x20        was given. `serve --tor` needs neither — an onion address is reachable\n\
+                     \x20        from behind any router, and this client already carries Tor.",
+                ),
+                (
+                    words!("commands-roll-alone"),
+                    "roll     1 of us, which is this node",
+                ),
+                (
+                    words!("commands-roll", members = 7_usize),
+                    "roll     7 of us",
+                ),
+                (
+                    words!("commands-known", addresses = 3_usize),
+                    "known    where 3 of us said to look",
+                ),
+                (
+                    words!("commands-holding"),
+                    "holding  the file, and able to pass it on",
+                ),
+                (
+                    words!("commands-keeping"),
+                    "keeping  everything, for ever. It buys this node nothing: every statement\n\
+                     \x20        carries its own signature and verifies the same wherever it was\n\
+                     \x20        kept. There is no archive of record and there is no archivist.",
+                ),
+                (
+                    words!("commands-ignored", admissions = 2_usize),
+                    "ignored  2 admissions that could not be read",
+                ),
+                (
+                    words!("commands-learned-where", addresses = 5_usize),
+                    "learned  where 5 more of us are",
+                ),
+                (
+                    words!("commands-rejoined", members = 30_usize, were = 9_usize),
+                    "rejoined 30 more of us by name, from a node that knew 9. There were\n\
+                     \x20        two of us and now the counting is one count.",
+                ),
+                (
+                    words!("commands-learned-names", members = 4_usize),
+                    "learned  4 more of us by name",
+                ),
+                (
+                    words!("commands-heard", speakers = 6_usize),
+                    "heard    6 of us speak",
+                ),
+                (
+                    words!("commands-carried", statements = 8_usize),
+                    "carried  8 statements about epochs still open",
+                ),
+                (
+                    words!(
+                        "commands-exchange",
+                        node = "333abc",
+                        epoch = 89_612_u64,
+                        clocks = clocks(0),
+                        liveness = words!("commands-answered-the-challenge")
+                    ),
+                    "witness  333abc  epoch 89612  clocks together  (answered the challenge we chose)",
+                ),
+                (
+                    words!("commands-spoke-first"),
+                    "spoke first, which proves only that it spoke",
+                ),
+                (clocks(4_999), "clocks together"),
+                (clocks(-42_000), "their clock 42s behind ours"),
+                (clocks(185_000), "their clock 3m 05s ahead of ours"),
+                (clocks(-7_380_000), "their clock 2h 03m behind ours"),
+            ]
+        });
+        for (now, before) in pairs {
+            assert_eq!(now, before);
+        }
+    }
+
+    #[test]
+    fn in_twelve_the_counts_change_and_the_names_do_not() {
+        use crate::words::count::Base;
+        let (called, apart, exchange) = crate::words::speaking("en", Base::Twelve, || {
+            let exchange = words!(
+                "commands-exchange",
+                node = "333abc",
+                epoch = 144_u64,
+                clocks = clocks(0),
+                liveness = words!("commands-spoke-first")
+            );
+            (naming(333), clocks(7_140_000), exchange)
+        });
+        assert_eq!(
+            called,
+            "called   239 keys were made and not called. this one was."
+        );
+        assert_eq!(
+            apart, "their clock 1h 4\u{218B}m ahead of ours",
+            "59 minutes"
+        );
+        assert!(
+            exchange.starts_with("witness  333abc  epoch 100  "),
+            "{exchange}"
+        );
     }
 
     #[test]

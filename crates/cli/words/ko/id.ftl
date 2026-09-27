@@ -1,0 +1,9 @@
+# Machine translation.
+
+### `333 id`.
+
+id-name = { $name }
+    .keyword = 이름
+
+id-home = { $home }
+    .keyword = 집

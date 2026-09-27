@@ -1,0 +1,14 @@
+# Machine translation. The narrative line (keep) awaits review by a person who
+# reads Korean.
+
+### 노드의 이름을 만든 실행이, 어느 명령이 만들었든 하는 말.
+
+named-home = { $home }
+    .keyword = 집
+
+named-keep = 그 디렉터리를. 잃으면 이 이름도, 누군가 당신을 위해 증언한
+    모든 시간도, 당신이 여기 있었다는 것을 증명할 어떤 방법도
+    함께 잃습니다. 복구는 없고, 이의를 제기할 곳도 없습니다.
+    다른 기계로 옮기려면: 여기서 `333 pack <FILE>`, 그다음
+    거기서 `333 unpack <FILE>`.
+    .keyword = 간직

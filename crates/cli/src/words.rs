@@ -189,6 +189,15 @@ impl Arg<'_> {
         }
     }
 
+    /// A count padded with zeros, as the minutes of an hour are.
+    pub(crate) const fn padded(number: u64, at_least: usize) -> Self {
+        Self::Count {
+            number,
+            grouped: false,
+            at_least,
+        }
+    }
+
     /// A number that names something rather than counting it: a port, a version, a
     /// byte count in an error. Never written in twelve.
     pub(crate) fn exact(number: impl std::fmt::Display) -> Self {
