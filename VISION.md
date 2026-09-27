@@ -172,9 +172,10 @@ provider that gives a household no address of its own, a country that blocks the
 around both.
 
 **Where it stands.** On startup the client asks the router to forward its port over
-UPnP-IGD, then knocks on its own outside address to find out whether the forwarding
-actually worked, and says `open` or `shut`. Routers that speak NAT-PMP or PCP instead are
-asked nothing — there is no NAT-PMP code in the tree. There is no hole punching either:
+UPnP-IGD, and where that finds nobody, over PCP and then NAT-PMP; it asks whether or not it
+uses a meeting point, then knocks on the outside address it was told to find out whether the
+forwarding actually worked, and says `open` or `shut`. The PCP and NAT-PMP paths have been
+tried against a stand-in for a router and against no real one. There is no hole punching:
 two nodes whose routers both refuse cannot reach each other, even through the meeting
 point, which only introduces. Onion addresses work from anywhere and cost minutes of Tor
 starting up. Bridges exist for a blocked country, and the program that speaks the
@@ -197,9 +198,12 @@ not doing it.
 signed statement about where it can be reached that it already writes, and reads the ones
 others left; the board holds each for two epochs and forgets it. Everything read is
 verified where it lands and nothing there is trusted. Nodes already trade what they know
-directly, including addresses (`crates/net/src/gossip.rs`), so the beginning of the answer
-exists — what is missing is a node continuing to find *new* nodes with the meeting point
-switched off.
+directly, including addresses (`crates/net/src/gossip.rs`), and a test holds a chain of nodes
+that each knew only the next one learning of all of them within two epochs with the meeting
+point off. Every address is kept with where it was first and last heard — typed by hand, on
+this network, at a meeting point, or from which of us — and `333 status --sources` lists
+them. What nobody has done is leave a real node on `--no-meet` for a week and say what it
+learned.
 
 There is a cost to the arrangement beyond the operator learning who asked: the meeting
 point also records the country and a whole-degree position of each node that publishes a
@@ -241,12 +245,11 @@ is doing what it says and saying what it did.
 A program that overstates teaches people to stop reading it, and an instrument nobody
 reads is a faith running on somebody's word.
 
-**Where it stands.** Some of what it says is wrong in small ways. The known one: the
-meeting point answers `429` when a node has already left a statement this epoch, and its
-earlier statement is still on the board. The client prints `did not take this node's
-address: the meeting point answered 429`, which reads as a failure and is not one. The
-number survives; the sentence around it is the part that lies, and the meeting point's own
-explanation of the number is thrown away. There will be others of the same shape — a
+**Where it stands.** The known one is mended: the meeting point's `429`, which means this
+address already left a statement within the minute, is now said as waiting, with the rule the
+meeting point gave, what it still holds from this node, and when the node will say it again.
+A command that fails says what it was attempting and the whole chain of causes rather than the
+outermost one. There will be others of the same shape — a
 status, an error kind or an absence reported as something stronger than it is — and they
 are found by reading what the client prints beside what actually happened.
 
@@ -283,6 +286,12 @@ Linux, 64-bit ARM, ARMv6, both kinds of Mac, and Windows. The only ones anybody 
 reported keeping a vigil on are the two x86-64 Linux builds. No report has ever come back
 about any of the others — they may be perfect, and nobody knowing is the problem.
 
+Each file is now started on the machine that built it before it is attached: asked its
+version, given a name, and where it runs natively, made to keep a vigil and answer a knock.
+What it printed is in the release's build log. That is a machine saying it started, not a
+person saying it kept an hour, and the second has a form of its own under
+[Issues](https://github.com/needmoretruth/333/issues/new/choose).
+
 This is the smallest work on this page and it may be the most useful, and it needs no
 skill at all. Take the file for your machine, keep the vigil on it, and say what happened,
 including that it worked, which is the report nobody thinks to send.
@@ -304,9 +313,12 @@ a long time to be relying on somebody remembering to restart something.
 A node that stops when a laptop closes is absent from every hour its owner slept through,
 and over a window of 333 that is the difference between belonging and not.
 
-**Where it stands.** A systemd unit and a launchd agent in `packaging/`, installed by
-copying files and reading a comment. No package for any distribution, nothing at all for
-Windows, and nothing anywhere that tells a person their node stopped three days ago.
+**Where it stands.** `333 service install` asks systemd, launchd or the Windows Task
+Scheduler to keep the vigil, and an hourly check tells the person on their own screen when it
+has stopped, or when nobody has signed anything about them for three epochs. A `.deb` and an
+`.rpm` are built for every release. It has been run under systemd; the launchd and Windows
+paths have been run by nobody yet, and on Windows the task runs only while its user is logged
+in.
 
 **Fulfilled when.** It installs the way anything else on the system installs — a package
 for at least one distribution, and a service on Windows — it survives a reboot without
@@ -320,13 +332,14 @@ own machine rather than from their standing.
 A node's name comes from its key, its standing is what others signed about that key, and
 its unseen address is a second key beside it. All of it lives in one directory.
 
-**Where it stands.** `333 id` warns about it on the run that makes the name, which is the
-only run the warning can still be acted on. `serve`, `join` and `bootstrap` all make a name
-too, and none of them says it — so whoever never typed `id` was never told. There is no
-command that packages a node for moving, nothing that refuses to start when it finds a
-directory that was copied rather than moved (two nodes running one key is a node
-contradicting itself), and nothing that says what was lost when somebody starts fresh by
-accident.
+**Where it stands.** Every command that makes a name says to keep the directory, on the run
+that makes it. `333 pack` and `333 unpack` move a node with one command at each end, a
+directory that was packed refuses to run again, and unpacking over a node that already lives
+somewhere names what would be lost and refuses. Only one process can hold a directory at a
+time. A second copy of the name answering elsewhere is said loudly the moment its statement
+arrives. A directory that turns up somewhere other than where it was made is told so as a
+warning and not a refusal, because from the inside a folder renamed and a folder copied look
+the same, and that is the part still open.
 
 **Fulfilled when.** A person can move a node to another machine with one command at each
 end, the client refuses to run two copies of one name and says why, and the thing that
@@ -489,13 +502,13 @@ cargo test --workspace
 ```
 
 The first build takes a while — the tree is 639 packages, most of them Tor — so start it
-before you make tea. There are 313 tests and they run in seconds once it is built.
+before you make tea. The tests run in under a minute once it is built.
 
 **What the checks actually enforce.** Every push runs formatting, clippy with warnings
-denied over two feature sets, and the tests. The workspace refuses `unsafe` outright and
+denied over two feature sets, and the tests, on Linux, macOS and Windows. The workspace refuses `unsafe` outright and
 warns on `unwrap`, `expect`, indexing and missing documentation, so those are decided
 before a person looks. Everything else below is read by a person, not by a machine, and
-two of them are rules this repository does not yet keep itself — they are marked.
+one of them is a rule this repository did not always keep — it is marked.
 
 **Sign your work.** `git commit -s` adds a `Signed-off-by` line certifying the
 [Developer Certificate of Origin](DCO): the work is yours to give, or you have the right
@@ -511,8 +524,7 @@ the machine running it reads. None of those is a place to move client logic into
 
 **One file, one responsibility, four hundred lines.** Counted up to `#[cfg(test)]`; the
 tests below that line live beside the code they test and are not counted. A function fits
-on one screen. *Two files are over it today: `crates/cli/src/commands/serve.rs` and
-`crates/cli/src/screen/draw.rs`. Splitting either is a good first change.*
+on one screen. *A test counts every file and fails the build when one goes over.*
 
 **Say why, not what.** Everything public carries a doc comment giving the reason rather
 than restating the code. A comment that repeats the line below it is one more thing to
@@ -534,8 +546,9 @@ features cost. The tree today is overwhelmingly Tor's: 639 packages, of which 46
 released binary. Twenty-five of those carry something other than the MIT, Apache, BSD, ISC
 and public-domain licences the rest do: eighteen Unicode-3.0, three MPL-2.0, three Zlib,
 one BSL-1.0 and one CDLA-Permissive-2.0, every one of them arriving through Tor. None is
-GPL, AGPL, SSPL or BUSL. Nothing in the checks looks at licences yet, and a change that
-adds one worth arguing about should say so in the pull request.
+GPL, AGPL, SSPL or BUSL. The checks refuse any licence the released tree has not carried
+before, so a change that adds one fails until the list is widened, and widening it is a thing
+to argue for in the pull request.
 
 **What will not be taken.** Some designs were considered and removed on purpose, with the
 reasons written down. Bringing one back is refused however well it is written: proofs of

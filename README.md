@@ -369,6 +369,18 @@ executable, and it is installed. Nothing there is signed by a developer certific
 nothing goes through an app store, so you are trusting a file somebody else built, which is
 the thing building it yourself avoids.
 
+The quickest way is the installer on the site. It picks the file for your machine, checks it
+against the release's `SHA256SUMS`, puts it in `~/.local/bin`, and starts nothing:
+
+```sh
+curl -fsSL https://the333.dev/install.sh | sh
+```
+
+On Windows it is `irm https://the333.dev/install.ps1 | iex`. Every file on a release is listed
+in `SHA256SUMS` beside it (`sha256sum -c SHA256SUMS --ignore-missing`) and carries a build
+provenance attestation (`gh attestation verify <file> --repo needmoretruth/333`), which says
+which workflow on which commit made it. By hand, it is this:
+
 ```sh
 curl -LO https://github.com/needmoretruth/333/releases/latest/download/333-x86_64-linux
 chmod +x 333-x86_64-linux
@@ -437,9 +449,11 @@ anything the terminal can be told, in the terminal's own words:
 | `status` | what this node is holding, in the log |
 | `quit` | the same as `q` |
 
-That is not a convenience. The node holding these files is this process, and a second
-terminal running `333 join` against the same directory would be a second program
-writing files the first one is in the middle of writing.
+The same words work from any other terminal on the machine while the vigil runs, in either
+form of the client: `333 say 42`, `333 join …` and `333 status` are handed to the running
+vigil, which does them and says the lines back, and `333 tell 'tor on'` hands over anything
+else the screen understands. Only one 333 ever holds a node's directory at a time. A second
+one hands its order over or refuses, and never writes.
 
 The ordinary way in is an invitation. Somebody who already has the file hands it over,
 the two of you sign for it, and those two signatures are what everybody else reads as
@@ -512,26 +526,29 @@ The vigil is the product. A node that stops when you close the terminal is a nod
 absent for every epoch you were asleep, and absence is the only thing that costs you
 anything here.
 
-**Linux, and anything else with systemd.** There is a unit in `packaging/333.service`.
-
 ```sh
-mkdir -p ~/.local/bin ~/.config/systemd/user
-cp target/release/333 ~/.local/bin/
-cp packaging/333.service ~/.config/systemd/user/
-systemctl --user daemon-reload
-systemctl --user enable --now 333
-loginctl enable-linger "$USER"
+333 service install
 ```
 
-That last line is the one people miss. Without it the vigil stops when you log out, which on
-a machine you reach over ssh means it stops when you close the laptop. `journalctl --user -u
-333 -f` shows what it is saying.
+That asks the system's own service manager to keep the vigil: a user unit on anything with
+systemd, a launch agent on macOS, a scheduled task on Windows. It says exactly what it wrote
+and what it ran, it carries the flags you give it (`333 service install --tor`), and
+`333 service uninstall` takes all of it away again. `333 service status` says whether it is
+running, when it last said it was awake, and the last things it said.
 
-**macOS.** There is a launch agent in `packaging/dev.the333.vigil.plist`, with the three
-commands that install it in a comment at the top of the file.
+On Linux it also turns on lingering for your user, which is what keeps the vigil going after
+you log out and through a reboot. On Windows the task runs while you are logged in, because a
+service that starts at boot would need another account and a directory of its own.
 
-**Windows.** Task Scheduler, a task that runs `333.exe serve --plain` at logon, set to
-restart on failure. There is no packaged version of this yet.
+Once an hour it checks that the vigil is still being kept. If it is not, or if nothing has
+been signed about this node for three epochs, it tells you on your own screen through the
+system's notifications, and every other `333` command says so first, before anything else.
+You find out from your own machine and not from your standing.
+
+The files it writes are the ones in `packaging/`, for anybody who would rather install them by
+hand. The `.deb` and `.rpm` on a release put the program and the unit in place and start
+nothing: `systemctl --user enable --now 333`, or `333 service install`, is the moment you agree
+to it.
 
 ## If nobody can reach you
 
@@ -550,7 +567,10 @@ front of it to send port 3333 here, over the protocol most of them already speak
 turned on — this is the same thing a BitTorrent client does, and the reason that works on a
 home connection without anybody configuring anything. It says what it asked for and what it
 was told, and the mapping appears in your router's own list as `333`, which is where you go
-to take it away. `--no-upnp` stops it asking.
+to take it away. A router that speaks PCP or NAT-PMP instead is asked in that language, and a
+mapping made that way is renewed while the vigil runs and given back when it ends. It asks
+whether or not the node uses a meeting point. `--no-router` stops all of it; `--no-upnp` is the
+older name for the same thing.
 
 A router saying yes is a router saying yes. Whether anything actually arrives is decided by
 the knock that follows, not by the answer, so both are printed.
@@ -609,6 +629,12 @@ Without `--data-dir` a node lives in the conventional place for the system:
 Lose that directory and you lose your name and your address for good. There is no
 recovery, no reset, and no one to appeal to. That is not an oversight. A name you
 could be given again by asking nicely would not be worth having.
+
+Moving it is another matter. `333 pack node.333` writes everything the node is into one file
+and marks this directory as moved, so that it will not run here again by accident, and
+`333 unpack node.333` on the other machine is the same node: the same name, the same record,
+and the same onion address if it has one. The file is the name, and anybody holding it is
+you, so carry it, unpack it, and delete it.
 
 The client refuses to start if that directory, or any directory above it, can be
 entered by others on the machine, and tells you the one command that fixes it.
