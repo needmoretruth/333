@@ -17,6 +17,8 @@
 //! says exactly what it asked for and exactly what it was told, in the same words a
 //! person would need to go and undo it.
 
+pub mod gateway;
+
 use std::net::{IpAddr, SocketAddr};
 use std::time::Duration;
 
