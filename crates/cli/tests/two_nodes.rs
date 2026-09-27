@@ -68,6 +68,9 @@ struct Running {
 impl Running {
     fn start(home: &Path, args: &[&str]) -> Self {
         let mut child = Command::new(BINARY)
+            // The lines are read in English, whatever this machine speaks.
+            .env("THE333_LANGUAGE", "en")
+            .env_remove("THE333_COUNT_IN")
             .arg("--data-dir")
             .arg(home)
             .args(["--timeout", "30"])

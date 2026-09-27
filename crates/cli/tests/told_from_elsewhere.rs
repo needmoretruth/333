@@ -50,6 +50,9 @@ impl Drop for Vigil {
 /// Keep the vigil at `home`, and wait until it answers and takes orders.
 fn keep(home: &Path) -> Vigil {
     let mut child = Command::new(CLIENT)
+        // The lines are read in English, whatever this machine speaks.
+        .env("THE333_LANGUAGE", "en")
+        .env_remove("THE333_COUNT_IN")
         .arg("--data-dir")
         .arg(home)
         .args(["serve", "--plain", "--no-meet", "--no-mdns", "--no-upnp"])
@@ -93,6 +96,9 @@ fn lines(out: impl std::io::Read + Send + 'static) -> Receiver<String> {
 /// Run the client once against `home`, and say whether it succeeded and what it said.
 fn client(home: &Path, words: &[&str]) -> (bool, String) {
     let out = Command::new(CLIENT)
+        // The lines are read in English, whatever this machine speaks.
+        .env("THE333_LANGUAGE", "en")
+        .env_remove("THE333_COUNT_IN")
         .arg("--data-dir")
         .arg(home)
         .args(words)
@@ -227,6 +233,9 @@ fn status_takes_its_flags_beside_a_vigil_and_pack_is_refused_there() {
 fn a_vigil_whose_output_nobody_reads_goes_on_answering() {
     let home = scratch("unread");
     let mut child = Command::new(CLIENT)
+        // The lines are read in English, whatever this machine speaks.
+        .env("THE333_LANGUAGE", "en")
+        .env_remove("THE333_COUNT_IN")
         .arg("--data-dir")
         .arg(&home)
         .args(["serve", "--plain", "--no-meet", "--no-mdns", "--no-router"])
