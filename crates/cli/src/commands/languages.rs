@@ -11,12 +11,17 @@ use crate::words::catalog;
 
 /// Print one line per language, then which one is being spoken.
 ///
+/// Through one locked handle rather than `println!`, so that a reader who walked away
+/// (`333 languages | head -1`) ends this quietly instead of panicking inside the macro.
+///
 /// # Errors
-/// Never; it returns a result to be called like every other command.
+/// Fails if standard output is closed.
 pub(crate) fn run(common: &Common) -> anyhow::Result<()> {
+    use std::io::Write as _;
     let beside = catalog::beside(common.paths.root());
+    let mut out = std::io::stdout().lock();
     for line in said(Some(&beside)) {
-        println!("{line}");
+        writeln!(out, "{line}")?;
     }
     Ok(())
 }

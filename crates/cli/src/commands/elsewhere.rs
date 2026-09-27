@@ -74,8 +74,7 @@ pub(crate) async fn run(
                 );
                 return Ok(ExitCode::FAILURE);
             };
-            println!("name     {}", identity.node_id());
-            println!("home     {}", home.display());
+            crate::commands::id::beside_the_vigil(&identity.node_id().to_string(), home);
             Ok(ExitCode::SUCCESS)
         }
         Wanted::Vigil if crate::control::answering(home).await => {

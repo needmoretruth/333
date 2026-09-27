@@ -26,6 +26,14 @@ pub(crate) fn run(common: &Common) -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Say the name and where it lives, which is all there is to say while a vigil holds
+/// the directory: the run that made the name is long past.
+pub(crate) fn beside_the_vigil(name: &str, home: &Path) {
+    for line in said(name, Origin::Loaded, home) {
+        aloud!("{line}");
+    }
+}
+
 /// The lines `333 id` says before the naming, in the order it says them.
 fn said(name: &str, origin: Origin, home: &Path) -> Vec<String> {
     let mut lines = vec![words!("id-name", name = name)];
