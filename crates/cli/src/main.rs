@@ -38,241 +38,18 @@ mod orders;
 mod paths;
 #[cfg(feature = "screen")]
 mod screen;
+mod typed;
 mod version;
 
-use std::net::SocketAddr;
-use std::path::PathBuf;
 use std::process::ExitCode;
 use std::time::Duration;
 
-use clap::{Parser, Subcommand};
+use clap::Parser as _;
 
 use claim::Taken;
 use commands::Common;
-use commands::elsewhere::Wanted;
-use n333_net::PeerAddress;
 use paths::NodePaths;
-
-/// One node of the 333 network.
-#[derive(Debug, Parser)]
-#[command(
-    name = "333",
-    version,
-    long_version = version::long(),
-    about = "One node of 333. It keeps the hours, answers when asked, and passes the file on."
-)]
-struct Cli {
-    /// Directory holding everything this node owns: its name, and Tor's state if it
-    /// uses Tor.
-    #[arg(long, global = true, value_name = "DIR")]
-    data_dir: Option<PathBuf>,
-
-    /// Seconds to wait for any single step that talks to the network.
-    ///
-    /// A ceiling rather than a delay. A direct connection is done in milliseconds
-    /// and fails on its own; this is sized for a Tor bootstrap, which is the one
-    /// step here that can legitimately take minutes.
-    #[arg(long, global = true, default_value_t = 300, value_name = "SECONDS")]
-    timeout: u64,
-
-    /// Accept a directory that others on this machine can enter.
-    ///
-    /// Both this client and arti refuse to start on a loosely permissioned
-    /// directory, which is the right default: that directory holds the only copy of
-    /// this node's name. The flag exists for scratch directories and containers with
-    /// odd ownership, and it does what its name says.
-    #[arg(long, global = true)]
-    dangerously_trust_directory_permissions: bool,
-
-    /// Keep every statement for ever, instead of the window standing is read over.
-    ///
-    /// It confers nothing. Every statement carries its own signature and verifies the
-    /// same wherever it was kept, so there is no archive of record and nobody becomes
-    /// an archivist by doing this. It is for people who would rather the bytes still
-    /// existed somewhere, which nothing here requires of anyone.
-    #[arg(long, global = true)]
-    keep_everything: bool,
-
-    /// A bridge line, for a network that blocks the ordinary way into Tor.
-    ///
-    /// Give it once for each bridge you were handed, exactly as it was handed to you.
-    /// Nothing here fetches bridges for you: they are scarce and they are given out by
-    /// people, slowly and on purpose, because a list that could simply be collected
-    /// would simply be blocked. Without any of these Tor is reached the ordinary way,
-    /// which is what almost everybody wants.
-    #[arg(long = "bridge", global = true, value_name = "LINE")]
-    bridges: Vec<String>,
-
-    /// The program that speaks an obfuscated bridge, by name or by path.
-    ///
-    /// Only needed when a bridge line asks for one, and only when it is not called
-    /// `lyrebird` or is not on the path. It is not bundled: it is a separate program
-    /// chasing a moving target, and a copy frozen inside this would be the wrong copy
-    /// within a year while looking like the right one.
-    #[arg(long, global = true, value_name = "PROGRAM")]
-    bridge_helper: Option<String>,
-
-    #[command(subcommand)]
-    command: Command,
-}
-
-#[derive(Debug, Subcommand)]
-enum Command {
-    /// Show this node's name, asking for one on first run.
-    Id,
-    /// Begin a line of your own, when there is nobody to be given the file by.
-    ///
-    /// The ordinary way in is an invitation from somebody who already has the file, and
-    /// this is not that. It looks at the meeting point first, and if anybody is there it
-    /// tells you to go and join them instead. If nobody is, it fetches the file, checks
-    /// it against the hash this client carries, and writes it down. Your node is then
-    /// the start of its own line and nobody signed for it, which anybody reading your
-    /// record can see.
-    Bootstrap {
-        /// Where to look for people before beginning on your own.
-        #[arg(long, default_value = n333_net::meeting::THE_PLACE, value_name = "HOST")]
-        meet: String,
-
-        /// Begin even though somebody is already there.
-        #[arg(long)]
-        anyway: bool,
-    },
-
-    /// Keep the vigil: answer whoever asks, until interrupted.
-    ///
-    /// This is what a node does almost all of the time. It answers heartbeats and
-    /// challenges, trades what it knows with whoever it can reach, and at every epoch
-    /// boundary asks the ones it was drawn to ask. On a terminal it opens the screen.
-    Serve {
-        /// Address and port to listen on.
-        #[arg(long, default_value_t = default_bind(), value_name = "ADDR:PORT")]
-        bind: SocketAddr,
-
-        /// Also raise an onion address, so others can reach this node without
-        /// learning where it is. Waking Tor takes seconds to minutes.
-        #[arg(long)]
-        tor: bool,
-
-        /// Do not open a socket at all. Only useful with --tor, and the only way to
-        /// keep the vigil with your address nowhere on the wire.
-        #[arg(long)]
-        no_direct: bool,
-
-        /// The address to tell other nodes to reach this one at.
-        ///
-        /// Needed when the socket cannot say: listening on every interface, or behind
-        /// something that forwards a port. Without it a node on a wildcard bind can
-        /// answer whoever finds it and can never be found.
-        #[arg(long, value_name = "HOST:PORT")]
-        announce: Option<PeerAddress>,
-
-        /// Do not say on the local network that this node is here.
-        ///
-        /// What goes out otherwise is that something on this machine speaks 333 and
-        /// on which port — not this node's name — which is what a port scan of the
-        /// same network would find anyway. It is how two nodes in one house find each
-        /// other with nobody typing an invitation. A node listening only through Tor
-        /// never does this at all.
-        #[arg(long)]
-        no_mdns: bool,
-
-        /// Do not ask the router to send the port to this machine.
-        ///
-        /// Asking is what makes a socket on a home connection answer anybody: the
-        /// router in front of it drops what nobody inside asked for until a program on
-        /// the inside asks it not to, over a protocol most of them already speak. It is
-        /// a real change to somebody's network, so it is said out loud when it is made
-        /// and this refuses it outright.
-        #[arg(long)]
-        no_upnp: bool,
-
-        /// Where to look for nodes nobody introduced this one to.
-        ///
-        /// One fixed address holding signed statements about where nodes say they
-        /// are. Everything read there is verified here, and nothing there is
-        /// believed. It is the only way two machines on two networks meet without
-        /// somebody handing over an invitation.
-        #[arg(long, default_value = n333_net::meeting::THE_PLACE, value_name = "HOST")]
-        meet: String,
-
-        /// Do not use a meeting point at all.
-        ///
-        /// This node is then reachable by whoever was handed an invitation and by
-        /// nodes on this network, and by nobody else.
-        #[arg(long)]
-        no_meet: bool,
-
-        /// Say the lines instead of drawing the screen.
-        ///
-        /// The screen is what this client does on a terminal. Anywhere else — a pipe,
-        /// a service manager's log, a file — it says the lines instead, and this flag
-        /// asks for that on a terminal too.
-        #[arg(long)]
-        plain: bool,
-    },
-    /// Speak one of the 333, once in this epoch. What travels is the number.
-    Say {
-        /// Which of them, from 0 to 332. The words are not written yet.
-        #[arg(value_name = "INDEX")]
-        index: u16,
-    },
-    /// Show what this node has seen: how many of us are answering, where this node
-    /// stands over the window, and how much of the silence is left if it has begun.
-    Status,
-    /// Ask a node that has the file to hand it over. Write the file yourself and you
-    /// hold a file: you are one of us from the moment somebody gives it to
-    /// you and you both sign for it.
-    Join {
-        /// An invitation (`333:host:port`) from somebody who already has it.
-        #[arg(value_parser = n333_net::invite::address_or_invite)]
-        address: PeerAddress,
-    },
-    /// Knock on another node, and exchange one heartbeat with it.
-    Ping {
-        /// An invitation (`333:host:port`), or an address typed by hand as `host`,
-        /// `host:port`, `[::1]:port` or `something.onion`. An onion address is
-        /// reached through Tor; everything else directly.
-        #[arg(value_parser = n333_net::invite::address_or_invite)]
-        address: PeerAddress,
-    },
-    /// Tell the vigil running in this directory something, in its screen's words.
-    ///
-    /// `tor on`, `tor off`, `bridge <line>`, `helper <program>`, and every other word
-    /// the screen takes after `:`. The vigil carries it out and what it says about it
-    /// is printed here. `say`, `join`, `ping`, `bootstrap` and `status` are handed to a
-    /// running vigil the same way without this.
-    Tell {
-        /// The order, as it would be typed into the screen.
-        #[arg(required = true, trailing_var_arg = true, allow_hyphen_values = true)]
-        order: Vec<String>,
-    },
-}
-
-impl Command {
-    /// What this command wants, put the way a running vigil could be asked for it.
-    fn wanted(&self) -> Wanted {
-        match self {
-            Self::Id => Wanted::Name,
-            Self::Serve { .. } => Wanted::Vigil,
-            Self::Bootstrap { meet, .. } if meet != n333_net::meeting::THE_PLACE => Wanted::Kept(
-                "it looks for people only where it always does.\n\
-                 \x20        Leave --meet out, or run this when it has stopped.",
-            ),
-            Self::Bootstrap { anyway: true, .. } => Wanted::Order("bootstrap anyway".to_owned()),
-            Self::Bootstrap { anyway: false, .. } => Wanted::Order("bootstrap".to_owned()),
-            Self::Say { index } => Wanted::Order(format!("say {index}")),
-            Self::Status => Wanted::Order("status".to_owned()),
-            Self::Join { address } => Wanted::Order(format!("join {address}")),
-            Self::Ping { address } => Wanted::Order(format!("ping {address}")),
-            Self::Tell { order } => Wanted::Order(order.join(" ")),
-        }
-    }
-}
-
-/// Listen on every interface, on the port peers expect.
-fn default_bind() -> SocketAddr {
-    SocketAddr::from(([0, 0, 0, 0], n333_net::DEFAULT_PORT))
-}
+use typed::{Cli, Command};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<ExitCode> {
@@ -305,10 +82,34 @@ async fn main() -> anyhow::Result<ExitCode> {
         trust_directory_permissions: cli.dangerously_trust_directory_permissions,
     };
 
+    // First of all, because it is the one thing a person who has stopped being counted
+    // most needs to hear, and they hear it from whichever command they typed. Not from
+    // the ones that keep the vigil or set it up: those are the answer to it. And not
+    // while a vigil answers in this directory: it is being kept, whatever the stamp says.
+    let keeps_or_installs = matches!(
+        cli.command,
+        Command::Serve { .. }
+            | Command::Service {
+                order: commands::service::Order::Install { .. }
+                    | commands::service::Order::Uninstall
+                    | commands::service::Order::Check
+            }
+    );
+    if !keeps_or_installs && !control::answering(common.paths.root()).await {
+        commands::service::say_if_not_kept(common.paths.root());
+    }
+
     // Before anything is attempted, because everything that follows is stamped with an
     // epoch and a node whose clock is wrong is refused everywhere without being told
     // why.
     commands::check_the_clock(n333_core::Epoch::now());
+
+    // The service manager is asked, and the awake stamp read, and nothing in the node's
+    // directory is opened, so none of it waits for the directory or makes it.
+    if let Command::Service { order } = cli.command {
+        let done = commands::service::run(&common, order).await;
+        return quietly_if_walked_away(done.map(|()| ExitCode::SUCCESS));
+    }
 
     // Before anything in the directory is read, and held until this process exits.
     let _claim = match claim::take(&common.mistrust(), common.paths.root())? {
@@ -354,6 +155,8 @@ async fn main() -> anyhow::Result<ExitCode> {
         Command::Join { address } => commands::join::run(&common, &address).await,
         Command::Ping { address } => commands::ping::run(&common, &address).await,
         Command::Tell { .. } => return Ok(commands::elsewhere::nobody_to_tell()),
+        // Dispatched above, before the directory is taken.
+        Command::Service { .. } => Ok(()),
     };
     quietly_if_walked_away(done.map(|()| ExitCode::SUCCESS))
 }

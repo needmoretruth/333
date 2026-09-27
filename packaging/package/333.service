@@ -1,0 +1,42 @@
+# Keeping the vigil across logouts and reboots, as the package installs it.
+#
+# Installing the package put this file here and started nothing. To begin, as the
+# user whose node it is:
+#
+#   systemctl --user enable --now 333
+#   loginctl enable-linger "$USER"
+#
+# That last line is what keeps the vigil running after you log out, and starts it at
+# boot with nobody logged in. `333 service install` does both, carries the flags you
+# give it into the unit, and adds an hourly check that says so on this machine when
+# the vigil has stopped.
+#
+#   systemctl --user status 333.service   what it is doing
+#   journalctl --user -u 333 -f           what it is saying
+#   systemctl --user disable --now 333    end the vigil
+#
+# `status` wants the .service: given a bare number, systemctl reads it as a process id.
+
+[Unit]
+Description=333
+Documentation=https://the333.dev
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+# --plain because there is nobody at a terminal. The screen is for when there is.
+ExecStart=/usr/bin/333 serve --plain
+# Restarting after 333 seconds rather than at once. A node that cannot start comes
+# back five and a half minutes later instead of a thousand times a minute, and an
+# epoch is long enough that nothing is lost by waiting.
+Restart=always
+RestartSec=333
+NoNewPrivileges=yes
+# No PrivateTmp and no ProtectSystem. In a user unit either one runs the vigil inside a
+# namespace of its own, where / belongs to nobody, and a node that checks that its
+# directory is private all the way up finds that it is not and refuses to start.
+RestrictSUIDSGID=yes
+LockPersonality=yes
+
+[Install]
+WantedBy=default.target

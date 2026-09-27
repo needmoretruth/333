@@ -67,6 +67,12 @@ pub(crate) async fn keep(
     announce_as: tokio::sync::watch::Receiver<Option<PeerAddress>>,
     board: Option<Board>,
 ) -> anyhow::Result<()> {
+    // Beside the hours rather than inside them: the hours sleep for 333 minutes at a
+    // time, and a vigil that says it is awake once an epoch cannot be told from one
+    // that stopped.
+    tokio::spawn(crate::commands::service::awake::keep_saying(
+        node.home().to_path_buf(),
+    ));
     let mut announce_as = announce_as;
     loop {
         let now = Epoch::now();

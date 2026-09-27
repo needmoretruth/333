@@ -229,6 +229,11 @@ impl Node {
         &self.identity
     }
 
+    /// The directory everything of this node's lives in.
+    pub(crate) fn home(&self) -> &Path {
+        &self.home
+    }
+
     /// The file, if this node has it.
     pub(crate) async fn subject(&self) -> Option<Subject> {
         *self.subject.lock().await

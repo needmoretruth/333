@@ -11,6 +11,7 @@ pub(crate) mod join;
 pub(crate) mod ping;
 pub(crate) mod say;
 pub(crate) mod serve;
+pub(crate) mod service;
 pub(crate) mod status;
 
 use std::time::Duration;
@@ -171,6 +172,18 @@ pub(crate) async fn bootstrap(common: &Common) -> anyhow::Result<n333_net::tor::
 /// not raise it.
 const EPOCHS_BEFORE_SILENCE_MEANS_SOMETHING: u64 = 3;
 
+/// Whether this node is on the roll and has never had anything signed about it.
+///
+/// Only after a few epochs, and only when there is somebody who could have asked.
+/// One function, because `serve` says it when it starts and the hourly check says it
+/// when nobody is reading what `serve` said, and the two must not disagree.
+pub(crate) const fn unseen(opened: &crate::node::Opened) -> bool {
+    opened.has_the_file
+        && opened.witnessed == 0
+        && opened.chain_length >= EPOCHS_BEFORE_SILENCE_MEANS_SOMETHING
+        && opened.members >= 2
+}
+
 /// What opening a node found, said once at the start.
 ///
 /// Only the lines that are true of this node right now. A fresh node has no record
@@ -208,11 +221,7 @@ pub(crate) fn report_opening(opened: &crate::node::Opened) {
     // wrong. What is wrong is that nobody can dial back, so nobody asks, so nothing is
     // ever witnessed, so the window fills with epochs that do not count. Said only
     // after a few of them, and only when there is somebody who could have asked.
-    if opened.has_the_file
-        && opened.witnessed == 0
-        && opened.chain_length >= EPOCHS_BEFORE_SILENCE_MEANS_SOMETHING
-        && opened.members >= 2
-    {
+    if unseen(opened) {
         aloud!(
             "unseen   nothing has been signed about this node, in any epoch. Reaching out\n\
              \x20        works and being reached does not, and only the second one is counted:\n\
