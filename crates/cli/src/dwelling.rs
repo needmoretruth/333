@@ -67,12 +67,12 @@ impl How {
     }
 
     /// How it is said in a sentence ending in the path.
-    const fn said(self) -> &'static str {
+    fn said(self) -> String {
         match self {
-            Self::Made => "made at",
-            Self::Unpacked => "unpacked at",
-            Self::Moved => "said to have moved to",
-            Self::Found => "first opened by this client at",
+            Self::Made => words!("dwelling-made-at"),
+            Self::Unpacked => words!("dwelling-unpacked-at"),
+            Self::Moved => words!("dwelling-moved-to"),
+            Self::Found => words!("dwelling-found-at"),
         }
     }
 }
@@ -95,12 +95,12 @@ pub(crate) fn replace(home: &CheckedDir, name: &str, bytes: &[u8]) -> anyhow::Re
                 .create(true)
                 .truncate(true),
         )
-        .with_context(|| format!("writing {name}"))?;
+        .with_context(|| words!("dwelling-writing", file = name))?;
     file.write_all(bytes)?;
     file.sync_all()?;
     drop(file);
     std::fs::rename(home.as_path().join(&partial), home.as_path().join(name))
-        .with_context(|| format!("putting {name} in place"))
+        .with_context(|| words!("dwelling-putting-in-place", file = name))
 }
 
 /// This directory's canonical path, as it is written down and compared.
@@ -108,7 +108,8 @@ pub(crate) fn replace(home: &CheckedDir, name: &str, bytes: &[u8]) -> anyhow::Re
 /// # Errors
 /// Fails if the path cannot be resolved.
 pub(crate) fn canonical(dir: &Path) -> anyhow::Result<PathBuf> {
-    std::fs::canonicalize(dir).with_context(|| format!("resolving {}", dir.display()))
+    std::fs::canonicalize(dir)
+        .with_context(|| words!("dwelling-resolving", dir = dir.display().to_string()))
 }
 
 /// Write down that the node inside `home` lives at `at`, and how it came to.
@@ -150,16 +151,12 @@ pub(crate) fn check_here(home: &CheckedDir) -> anyhow::Result<Option<String>> {
 
 /// What is said when a node opens somewhere other than where it was.
 fn elsewhere(how: How, was: &Path, now: &Path, settle: &str) -> String {
-    format!(
-        "home     this node was {} {},\n\
-         \x20        and it is now at {}.\n\
-         \x20        If the directory was moved or renamed, that is all this is. If it was\n\
-         \x20        copied and the one it came from still runs, this is one name in two\n\
-         \x20        places, and each will contradict the other's record. Once only one of\n\
-         \x20        them is left, say so here: {settle}",
-        how.said(),
-        was.display(),
-        now.display(),
+    words!(
+        "dwelling-elsewhere",
+        how = how.said(),
+        was = was.display().to_string(),
+        now = now.display().to_string(),
+        settle = settle
     )
 }
 
@@ -190,13 +187,13 @@ pub(crate) fn packed(home: &Path) -> Option<Packed> {
     }
     let text = std::fs::read_to_string(&path).unwrap_or_default();
     let mut lines = text.lines();
-    let unread = "a moment that could not be read";
     Some(Packed {
-        at: lines.next().unwrap_or(unread).to_owned(),
+        at: lines
+            .next()
+            .map_or_else(|| words!("dwelling-unread-moment"), str::to_owned),
         into: lines
             .next()
-            .unwrap_or("a file whose name could not be read")
-            .to_owned(),
+            .map_or_else(|| words!("dwelling-unread-file"), str::to_owned),
     })
 }
 
@@ -208,18 +205,13 @@ pub(crate) fn refuse_if_packed(home: &Path) -> anyhow::Result<()> {
     let Some(packed) = packed(home) else {
         return Ok(());
     };
-    bail!(
-        "this node was packed for moving at {}, into {}.\n\
-         It lives wherever that file was unpacked. Running it here too would be one\n\
-         name in two places, so nothing in {} will act as it.\n\
-         \n\
-         If the move was abandoned and that file was never unpacked anywhere, this\n\
-         puts it back: {}",
-        packed.at,
-        packed.into,
-        home.display(),
-        command(home, "pack --undo")
-    )
+    bail!(words!(
+        "dwelling-packed",
+        at = packed.at,
+        into = packed.into,
+        home = home.display().to_string(),
+        undo = command(home, "pack --undo")
+    ))
 }
 
 /// Take the marker away, so the node lives here again.
@@ -228,7 +220,7 @@ pub(crate) fn refuse_if_packed(home: &Path) -> anyhow::Result<()> {
 /// Fails if the marker cannot be removed.
 pub(crate) fn unmark_packed(home: &CheckedDir) -> anyhow::Result<()> {
     home.remove_file(PACKED_FILE)
-        .context("removing the mark that this node was packed")
+        .with_context(|| words!("dwelling-unmarking"))
 }
 
 /// The command a person types to do `rest` to the node in `home`.
@@ -257,5 +249,98 @@ fn quoted(path: &Path) -> String {
         text.into_owned()
     } else {
         format!("'{}'", text.replace('\'', r"'\''"))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use crate::words::count::Base;
+    use crate::words::layout::{COLUMN, where_the_words_begin};
+
+    fn moved_away(how: How) -> String {
+        elsewhere(
+            how,
+            Path::new("/was"),
+            Path::new("/now"),
+            "333 --data-dir /now moved",
+        )
+    }
+
+    #[test]
+    fn in_english_every_moved_line_says_exactly_what_it_said_before() {
+        let line = |said: &str| {
+            format!(
+                "home     this node was {said} /was,\n\
+                 \x20        and it is now at /now.\n\
+                 \x20        If the directory was moved or renamed, that is all this is. If it was\n\
+                 \x20        copied and the one it came from still runs, this is one name in two\n\
+                 \x20        places, and each will contradict the other's record. Once only one of\n\
+                 \x20        them is left, say so here: 333 --data-dir /now moved"
+            )
+        };
+        let pairs = crate::words::speaking("en", Base::Ten, || {
+            [
+                (moved_away(How::Made), line("made at")),
+                (moved_away(How::Unpacked), line("unpacked at")),
+                (moved_away(How::Moved), line("said to have moved to")),
+                (moved_away(How::Found), line("first opened by this client at")),
+                (
+                    words!("dwelling-writing", file = "here"),
+                    "writing here".to_owned(),
+                ),
+                (
+                    words!("dwelling-putting-in-place", file = "here"),
+                    "putting here in place".to_owned(),
+                ),
+                (
+                    words!("dwelling-resolving", dir = "/now"),
+                    "resolving /now".to_owned(),
+                ),
+                (
+                    words!("dwelling-unread-moment"),
+                    "a moment that could not be read".to_owned(),
+                ),
+                (
+                    words!("dwelling-unread-file"),
+                    "a file whose name could not be read".to_owned(),
+                ),
+                (
+                    words!(
+                        "dwelling-packed",
+                        at = "2026-09-27T10:12:00Z",
+                        into = "/tmp/node.333",
+                        home = "/now",
+                        undo = "333 --data-dir /now pack --undo"
+                    ),
+                    "this node was packed for moving at 2026-09-27T10:12:00Z, into /tmp/node.333.\n\
+                     It lives wherever that file was unpacked. Running it here too would be one\n\
+                     name in two places, so nothing in /now will act as it.\n\
+                     \n\
+                     If the move was abandoned and that file was never unpacked anywhere, this\n\
+                     puts it back: 333 --data-dir /now pack --undo"
+                        .to_owned(),
+                ),
+                (
+                    words!("dwelling-unmarking"),
+                    "removing the mark that this node was packed".to_owned(),
+                ),
+            ]
+        });
+        for (now, before) in pairs {
+            assert_eq!(now, before);
+        }
+    }
+
+    #[test]
+    fn in_korean_a_node_that_moved_is_told_so_in_the_same_column() {
+        let lines = crate::words::speaking("ko", Base::Ten, || {
+            [How::Made, How::Unpacked, How::Moved, How::Found].map(moved_away)
+        });
+        for line in lines {
+            assert!(!line.is_ascii(), "{line:?}");
+            assert_eq!(where_the_words_begin(&line), COLUMN, "{line:?}");
+        }
     }
 }

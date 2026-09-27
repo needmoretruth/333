@@ -20,31 +20,61 @@ use crate::identity_file;
 pub(crate) fn run(common: &Common) -> anyhow::Result<()> {
     let root = common.paths.root();
     if !identity_file::holds_a_name(root) {
-        bail!("there is no node in {} to have moved.", root.display());
+        bail!(words!("moved-no-node", root = root.display().to_string()));
     }
     dwelling::refuse_if_packed(root)?;
     let home = identity_file::secure(&common.mistrust(), root)?;
     let now = dwelling::canonical(root)?;
+    let shown = now.display().to_string();
     if dwelling::check_here(&home)?.is_none() {
-        aloud!(
-            "home     this node already lives at {}, so nothing was changed",
-            now.display()
-        );
+        aloud_in!("moved-already-here", now = shown);
         return Ok(());
     }
     dwelling::record_here(&home, How::Moved, &now)?;
-    aloud!(
-        "home     this node lives at {}, as you say.\n\
-         \x20        If a copy of this directory is still anywhere else, it is this name\n\
-         \x20        too: delete it rather than run it.",
-        now.display()
-    );
+    aloud_in!("moved-here", now = shown);
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use crate::words::count::Base;
+    use crate::words::layout::{COLUMN, where_the_words_begin};
+
+    const NOW: &str = "/tmp/333-node";
+
+    fn lines() -> Vec<String> {
+        vec![
+            words!("moved-already-here", now = NOW),
+            words!("moved-here", now = NOW),
+        ]
+    }
+
+    #[test]
+    fn in_english_every_moved_line_says_exactly_what_it_said_before() {
+        let (said, refused) = crate::words::speaking("en", Base::Ten, || {
+            (lines(), words!("moved-no-node", root = NOW))
+        });
+        assert_eq!(
+            said,
+            [
+                "home     this node already lives at /tmp/333-node, so nothing was changed",
+                "home     this node lives at /tmp/333-node, as you say.\n\
+                 \x20        If a copy of this directory is still anywhere else, it is this name\n\
+                 \x20        too: delete it rather than run it.",
+            ]
+        );
+        assert_eq!(refused, "there is no node in /tmp/333-node to have moved.");
+    }
+
+    #[test]
+    fn in_korean_every_line_of_moved_begins_its_words_in_the_same_column() {
+        for line in crate::words::speaking("ko", Base::Ten, lines) {
+            assert!(!line.is_ascii(), "{line:?}");
+            assert_eq!(where_the_words_begin(&line), COLUMN, "{line:?}");
+        }
+    }
 
     #[test]
     fn saying_it_moved_stops_the_warning_and_nothing_else_changes() {

@@ -15,10 +15,11 @@ use std::path::Path;
 use anyhow::{Context as _, bail};
 
 use crate::archive::{self, Manifest};
-use crate::commands::{Common, in_threes};
+use crate::commands::Common;
 use crate::dwelling;
 use crate::identity_file;
 use crate::node::{Node, Opened};
+use crate::words::Arg;
 
 /// Pack this node into `file`, or with `undo`, take back a packing here.
 ///
@@ -29,7 +30,7 @@ pub(crate) fn run(common: &Common, file: Option<&Path>, undo: bool) -> anyhow::R
     match (file, undo) {
         (_, true) => unpack_here(common),
         (Some(file), false) => pack(common, file),
-        (None, false) => bail!("name the file to pack this node into: 333 pack <FILE>"),
+        (None, false) => bail!(words!("pack-name-the-file")),
     }
 }
 
@@ -37,17 +38,13 @@ pub(crate) fn run(common: &Common, file: Option<&Path>, undo: bool) -> anyhow::R
 fn pack(common: &Common, file: &Path) -> anyhow::Result<()> {
     let root = common.paths.root();
     if !identity_file::holds_a_name(root) {
-        bail!(
-            "there is no node in {} to pack. Nothing was written.",
-            root.display()
-        );
+        bail!(words!("pack-no-node", root = root.display().to_string()));
     }
     if std::fs::symlink_metadata(file).is_ok() {
-        bail!(
-            "{} already exists. Packing writes a new file and never over an old one; \
-             name another.",
-            file.display()
-        );
+        bail!(words!(
+            "pack-already-exists",
+            file = file.display().to_string()
+        ));
     }
     // Opened the way every command opens it: refused if already packed, told if it
     // has moved, and its own record verified before any of it is carried.
@@ -64,13 +61,8 @@ fn pack(common: &Common, file: &Path) -> anyhow::Result<()> {
     let size = write_new(root, &manifest, file)?;
     let into = dwelling::canonical(file)?;
     let home = identity_file::secure(&common.mistrust(), root)?;
-    dwelling::mark_packed(&home, std::time::SystemTime::now(), &into).with_context(|| {
-        format!(
-            "{} was written, and this directory could not be marked as packed. Until it \
-             is, this node lives in both: delete that file before anything runs here.",
-            into.display()
-        )
-    })?;
+    dwelling::mark_packed(&home, std::time::SystemTime::now(), &into)
+        .with_context(|| words!("pack-not-marked", file = into.display().to_string()))?;
     say_it_is_packed(root, &into, size);
     Ok(())
 }
@@ -86,7 +78,7 @@ fn write_new(root: &Path, manifest: &Manifest, file: &Path) -> anyhow::Result<u6
     std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
     let out = options
         .open(file)
-        .with_context(|| format!("creating {}", file.display()))?;
+        .with_context(|| words!("pack-creating", file = file.display().to_string()))?;
     match archive::write(root, manifest, out) {
         Ok(out) => Ok(out.metadata().map(|meta| meta.len()).unwrap_or_default()),
         Err(e) => {
@@ -98,51 +90,38 @@ fn write_new(root: &Path, manifest: &Manifest, file: &Path) -> anyhow::Result<u6
 
 /// Name what is about to leave, before it leaves.
 fn say_what_goes(name: &str, opened: &Opened, onion: bool, file: &Path) {
-    aloud!("name     {name}");
+    aloud_in!("pack-name", name = name);
     match opened.chain_length {
-        0 => aloud!("record   none yet"),
-        1 => aloud!("record   1 epoch, going with it"),
-        n => aloud!("record   {} epochs, going with them", in_threes(n)),
+        0 => aloud_in!("pack-record-none"),
+        n => aloud_in!("pack-record", epochs = Arg::grouped(n)),
     }
     if opened.witnessed != 0 {
-        aloud!(
-            "witness  {} statements other keys signed about it, going with it",
-            opened.witnessed
-        );
+        aloud_in!("pack-witnessed", statements = opened.witnessed);
     }
     if opened.has_the_file {
-        aloud!("holding  the file, going with it");
+        aloud_in!("pack-holding");
     }
     if onion {
-        aloud!("unseen   the key to its onion address, so the address goes with it");
+        aloud_in!("pack-onion-key");
     }
-    aloud!(
-        "carrying this node, into {}.\n\
-         \x20        That file IS this node: whoever holds it can answer as this name.\n\
-         \x20        Carry it, unpack it, then delete it; it is not a backup to keep.\n\
-         \x20        It is not encrypted, because a password would be one more thing to\n\
-         \x20        lose, and losing it would lose the name as surely as losing the file.\n\
-         \x20        It is readable by you alone, as this directory is.",
-        file.display()
-    );
+    aloud_in!("pack-carrying", file = file.display().to_string());
 }
 
 /// Say what was written and what to type next, at each end.
 fn say_it_is_packed(root: &Path, into: &Path, size: u64) {
-    aloud!(
-        "packed   {} bytes: the files as they are, and half a kilobyte for each.\n\
-         \x20        nothing in {} will act as this node again.",
-        in_threes(size),
-        root.display()
+    aloud_in!(
+        "pack-packed",
+        bytes = Arg::grouped(size),
+        root = root.display().to_string()
     );
     let carried = into.file_name().map_or_else(
         || into.display().to_string(),
         |name| name.to_string_lossy().into_owned(),
     );
-    aloud!(
-        "next     on the other machine: 333 unpack {carried}\n\
-         \x20        if the move is abandoned: {}",
-        dwelling::command(root, "pack --undo")
+    aloud_in!(
+        "pack-next",
+        carried = carried,
+        undo = dwelling::command(root, "pack --undo")
     );
 }
 
@@ -150,21 +129,15 @@ fn say_it_is_packed(root: &Path, into: &Path, size: u64) {
 fn unpack_here(common: &Common) -> anyhow::Result<()> {
     let root = common.paths.root();
     let Some(packed) = dwelling::packed(root) else {
-        aloud!(
-            "here     this node was not packed, so there is nothing to undo in {}",
-            root.display()
-        );
+        aloud_in!("pack-not-packed", root = root.display().to_string());
         return Ok(());
     };
     let home = identity_file::secure(&common.mistrust(), root)?;
     dwelling::unmark_packed(&home)?;
-    aloud!(
-        "restored this node lives in {} again.\n\
-         \x20        The file it was packed into is still this name. If it was unpacked\n\
-         \x20        anywhere, one of the two has to go before either runs; if it was not,\n\
-         \x20        delete {}",
-        root.display(),
-        packed.into
+    aloud_in!(
+        "pack-restored",
+        root = root.display().to_string(),
+        file = packed.into
     );
     Ok(())
 }
@@ -172,6 +145,103 @@ fn unpack_here(common: &Common) -> anyhow::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use crate::words::count::Base;
+    use crate::words::layout::{COLUMN, where_the_words_begin};
+
+    const ROOT: &str = "/tmp/333-node";
+    const FILE: &str = "/tmp/node.333";
+
+    fn lines() -> Vec<String> {
+        vec![
+            words!("pack-name", name = "333abc"),
+            words!("pack-record-none"),
+            words!("pack-record", epochs = Arg::grouped(1)),
+            words!("pack-record", epochs = Arg::grouped(1_234)),
+            words!("pack-witnessed", statements = 12_usize),
+            words!("pack-holding"),
+            words!("pack-onion-key"),
+            words!("pack-carrying", file = FILE),
+            words!("pack-packed", bytes = Arg::grouped(1_048_576), root = ROOT),
+            words!(
+                "pack-next",
+                carried = "node.333",
+                undo = "333 --data-dir /tmp/333-node pack --undo"
+            ),
+            words!("pack-not-packed", root = ROOT),
+            words!("pack-restored", root = ROOT, file = FILE),
+        ]
+    }
+
+    #[test]
+    fn in_english_every_moved_line_says_exactly_what_it_said_before() {
+        let (said, phrases) = crate::words::speaking("en", Base::Ten, || {
+            let phrases = [
+                (
+                    words!("pack-name-the-file"),
+                    "name the file to pack this node into: 333 pack <FILE>",
+                ),
+                (
+                    words!("pack-no-node", root = ROOT),
+                    "there is no node in /tmp/333-node to pack. Nothing was written.",
+                ),
+                (
+                    words!("pack-already-exists", file = FILE),
+                    "/tmp/node.333 already exists. Packing writes a new file and never over \
+                     an old one; name another.",
+                ),
+                (
+                    words!("pack-not-marked", file = FILE),
+                    "/tmp/node.333 was written, and this directory could not be marked as \
+                     packed. Until it is, this node lives in both: delete that file before \
+                     anything runs here.",
+                ),
+                (
+                    words!("pack-creating", file = FILE),
+                    "creating /tmp/node.333",
+                ),
+            ];
+            (lines(), phrases)
+        });
+        assert_eq!(
+            said,
+            [
+                "name     333abc",
+                "record   none yet",
+                "record   1 epoch, going with it",
+                "record   1,234 epochs, going with them",
+                "witness  12 statements other keys signed about it, going with it",
+                "holding  the file, going with it",
+                "unseen   the key to its onion address, so the address goes with it",
+                "carrying this node, into /tmp/node.333.\n\
+                 \x20        That file IS this node: whoever holds it can answer as this name.\n\
+                 \x20        Carry it, unpack it, then delete it; it is not a backup to keep.\n\
+                 \x20        It is not encrypted, because a password would be one more thing to\n\
+                 \x20        lose, and losing it would lose the name as surely as losing the file.\n\
+                 \x20        It is readable by you alone, as this directory is.",
+                "packed   1,048,576 bytes: the files as they are, and half a kilobyte for each.\n\
+                 \x20        nothing in /tmp/333-node will act as this node again.",
+                "next     on the other machine: 333 unpack node.333\n\
+                 \x20        if the move is abandoned: 333 --data-dir /tmp/333-node pack --undo",
+                "here     this node was not packed, so there is nothing to undo in /tmp/333-node",
+                "restored this node lives in /tmp/333-node again.\n\
+                 \x20        The file it was packed into is still this name. If it was unpacked\n\
+                 \x20        anywhere, one of the two has to go before either runs; if it was not,\n\
+                 \x20        delete /tmp/node.333",
+            ]
+        );
+        for (now, before) in phrases {
+            assert_eq!(now, before);
+        }
+    }
+
+    #[test]
+    fn in_korean_every_line_of_pack_begins_its_words_in_the_same_column() {
+        for line in crate::words::speaking("ko", Base::Ten, lines) {
+            assert!(!line.is_ascii(), "{line:?}");
+            assert_eq!(where_the_words_begin(&line), COLUMN, "{line:?}");
+        }
+    }
 
     fn scratch(name: &str) -> std::path::PathBuf {
         let dir = std::env::temp_dir().join(format!("n333-pack-test-{name}"));

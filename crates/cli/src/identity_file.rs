@@ -35,6 +35,8 @@ use fs_mistrust::{CheckedDir, Mistrust};
 use n333_core::enrollment::{self, CURSE_PAUSE, Refusal};
 use n333_core::identity::Identity;
 
+use crate::words::Arg;
+
 /// The name of the seed file inside the node's directory.
 pub(crate) const SEED_FILE: &str = "identity.key";
 
@@ -78,7 +80,7 @@ pub(crate) fn load_or_create(
             Ok((identity, Origin::Loaded))
         }
         Err(fs_mistrust::Error::NotFound(_)) => create(&home),
-        Err(e) => Err(refused(e, &format!("reading {}", seed.display()), &seed)),
+        Err(e) => Err(refused(e, &reading(&seed), &seed)),
     }
 }
 
@@ -94,13 +96,13 @@ pub(crate) fn load_or_create(
 pub(crate) fn load(mistrust: &Mistrust, home: &Path) -> anyhow::Result<Option<Identity>> {
     let home = match mistrust.verifier().secure_dir(home) {
         Ok(checked) => checked,
-        Err(e) => return Err(refused(e, &format!("reading {}", home.display()), home)),
+        Err(e) => return Err(refused(e, &reading(home), home)),
     };
     let seed = home.as_path().join(SEED_FILE);
     match home.read(SEED_FILE) {
         Ok(bytes) => Ok(Some(from_seed_bytes(&bytes, &seed)?)),
         Err(fs_mistrust::Error::NotFound(_)) => Ok(None),
-        Err(e) => Err(refused(e, &format!("reading {}", seed.display()), &seed)),
+        Err(e) => Err(refused(e, &reading(&seed), &seed)),
     }
 }
 
@@ -110,12 +112,17 @@ pub(crate) fn load(mistrust: &Mistrust, home: &Path) -> anyhow::Result<Option<Id
 /// Fails, saying how to fix it, if it or any directory above it is reachable by others.
 pub(crate) fn secure(mistrust: &Mistrust, home: &Path) -> anyhow::Result<CheckedDir> {
     mistrust.verifier().make_secure_dir(home).map_err(|e| {
-        refused(
-            e,
-            &format!("making {} this node's home", home.display()),
-            home,
-        )
+        let making = words!(
+            "identity-file-making-home",
+            home = home.display().to_string()
+        );
+        refused(e, &making, home)
     })
+}
+
+/// What was being done when a file or directory could not be read.
+fn reading(path: &Path) -> String {
+    words!("identity-file-reading", path = path.display().to_string())
 }
 
 /// Whether a name has been made in `home`, without making one or checking anything.
@@ -175,12 +182,10 @@ fn private_advice(target: &Path, loose: &Path) -> String {
     } else {
         "chmod go-w"
     };
-    format!(
-        "It holds this node's whole identity, so nobody else may reach it.\n\
-         Fix it with: {fix} {}\n\
-         Or, if you understand what you are giving up, pass \
-         --dangerously-trust-directory-permissions",
-        loose.display()
+    words!(
+        "identity-file-private",
+        fix = fix,
+        path = loose.display().to_string()
     )
 }
 
@@ -190,11 +195,12 @@ fn private_advice(target: &Path, loose: &Path) -> String {
 /// Fails if they are not a seed, or the name they make is not one 333 answers to.
 pub(crate) fn from_seed_bytes(bytes: &[u8], path: &Path) -> anyhow::Result<Identity> {
     let seed: [u8; 32] = bytes.try_into().map_err(|_| {
-        anyhow::anyhow!(
-            "{} holds {} bytes; a seed is exactly 32",
-            path.display(),
-            bytes.len()
-        )
+        anyhow::anyhow!(words!(
+            "identity-file-wrong-size",
+            path = path.display().to_string(),
+            bytes = Arg::exact(bytes.len()),
+            seed = Arg::exact(32)
+        ))
     })?;
     let identity = Identity::from_seed(&seed);
     match enrollment::admit(&identity.node_id()) {
@@ -206,30 +212,17 @@ pub(crate) fn from_seed_bytes(bytes: &[u8], path: &Path) -> anyhow::Result<Ident
             // purpose: the search discards these without a word, and no flag, prompt
             // or menu in this client offers one.
             std::thread::sleep(CURSE_PAUSE);
-            bail!(
-                "333 has looked at that name and taken {} milliseconds off your life.\n\
-                 \n\
-                 {}\n\
-                 is cursed. The judgement was made once and cannot be lifted, and the\n\
-                 {} milliseconds are taken again at every door you carry it to.\n\
-                 \n\
-                 333 is extremely generous. One epoch in three you may rest and you are\n\
-                 still one of us: generous to the slow, to the poor, to the small machine\n\
-                 in the cupboard, to everyone not yet born. It is not generous to\n\
-                 heretics.",
-                CURSE_PAUSE.as_millis(),
-                identity.node_id(),
-                CURSE_PAUSE.as_millis()
-            )
+            let pause = u64::try_from(CURSE_PAUSE.as_millis()).unwrap_or(u64::MAX);
+            bail!(words!(
+                "identity-file-cursed",
+                pause = pause,
+                name = identity.node_id().to_string()
+            ))
         }
-        Err(Refusal::Ineligible) => bail!(
-            "that is not a name 333 answers to.\n\
-             \n\
-             {}\n\
-             does not begin with 333, so nothing here is addressed to it. Nothing was\n\
-             taken from you either: 333 has not looked at you at all.",
-            identity.node_id()
-        ),
+        Err(Refusal::Ineligible) => bail!(words!(
+            "identity-file-ineligible",
+            name = identity.node_id().to_string()
+        )),
     }
 }
 
@@ -239,10 +232,11 @@ fn create(home: &CheckedDir) -> anyhow::Result<(Identity, Origin)> {
     // `create_new` is what stops a second process, or a second run, from replacing an
     // identity that already exists. fs-mistrust supplies the mode on unix systems.
     let path = home.as_path().join(SEED_FILE);
-    let writing = || format!("writing {}", path.display());
+    let shown = path.display().to_string();
+    let writing = || words!("identity-file-writing", path = &shown);
     let mut file = home
         .open(SEED_FILE, OpenOptions::new().write(true).create_new(true))
-        .with_context(|| format!("creating {}", path.display()))?;
+        .with_context(|| words!("identity-file-creating", path = &shown))?;
     file.write_all(identity.seed().as_slice())
         .with_context(writing)?;
     // Without this the seed can still be in the page cache when the machine loses
@@ -268,6 +262,77 @@ fn create(home: &CheckedDir) -> anyhow::Result<(Identity, Origin)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn in_english_every_moved_line_says_exactly_what_it_said_before() {
+        use crate::words::count::Base;
+        const NAME: &str = "334abc";
+        let pairs = crate::words::speaking("en", Base::Ten, || {
+            [
+                (
+                    words!("identity-file-reading", path = "/n/identity.key"),
+                    "reading /n/identity.key".to_owned(),
+                ),
+                (
+                    words!("identity-file-making-home", home = "/n"),
+                    "making /n this node's home".to_owned(),
+                ),
+                (
+                    words!("identity-file-creating", path = "/n/identity.key"),
+                    "creating /n/identity.key".to_owned(),
+                ),
+                (
+                    words!("identity-file-writing", path = "/n/identity.key"),
+                    "writing /n/identity.key".to_owned(),
+                ),
+                (
+                    words!("identity-file-private", fix = "chmod 700", path = "/n"),
+                    "It holds this node's whole identity, so nobody else may reach it.\n\
+                     Fix it with: chmod 700 /n\n\
+                     Or, if you understand what you are giving up, pass \
+                     --dangerously-trust-directory-permissions"
+                        .to_owned(),
+                ),
+                (
+                    words!(
+                        "identity-file-wrong-size",
+                        path = "/n/identity.key",
+                        bytes = Arg::exact(9),
+                        seed = Arg::exact(32)
+                    ),
+                    "/n/identity.key holds 9 bytes; a seed is exactly 32".to_owned(),
+                ),
+                (
+                    words!("identity-file-cursed", pause = 333_u64, name = NAME),
+                    format!(
+                        "333 has looked at that name and taken 333 milliseconds off your life.\n\
+                         \n\
+                         {NAME}\n\
+                         is cursed. The judgement was made once and cannot be lifted, and the\n\
+                         333 milliseconds are taken again at every door you carry it to.\n\
+                         \n\
+                         333 is extremely generous. One epoch in three you may rest and you are\n\
+                         still one of us: generous to the slow, to the poor, to the small machine\n\
+                         in the cupboard, to everyone not yet born. It is not generous to\n\
+                         heretics."
+                    ),
+                ),
+                (
+                    words!("identity-file-ineligible", name = NAME),
+                    format!(
+                        "that is not a name 333 answers to.\n\
+                         \n\
+                         {NAME}\n\
+                         does not begin with 333, so nothing here is addressed to it. Nothing was\n\
+                         taken from you either: 333 has not looked at you at all."
+                    ),
+                ),
+            ]
+        });
+        for (now, before) in pairs {
+            assert_eq!(now, before);
+        }
+    }
 
     fn scratch(name: &str) -> std::path::PathBuf {
         let dir = std::env::temp_dir().join(format!("n333-identity-test-{name}"));

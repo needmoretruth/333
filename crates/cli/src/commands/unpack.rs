@@ -23,13 +23,15 @@ use n333_store::Log;
 
 use crate::archive;
 use crate::claim::{self, Taken};
+use crate::commands::Common;
 use crate::commands::elsewhere::{self, Wanted};
-use crate::commands::{Common, in_threes};
 use crate::dwelling::{self, How};
 use crate::identity_file;
 use crate::node::Node;
+use crate::words::Arg;
 
-/// Why nothing is unpacked into a directory another 333 has.
+/// Why nothing is unpacked into a directory another 333 has, for a command that
+/// names the reason before any words are chosen. What this says is `unpack-kept`.
 pub(crate) const KEPT: &str = "a node already lives in this directory. To unpack beside it\n\
                                \x20        instead, give it a directory of its own with --data-dir.";
 
@@ -48,7 +50,8 @@ pub(crate) async fn run(common: &Common, file: &Path) -> anyhow::Result<ExitCode
         match claim::take(&common.mistrust(), target)? {
             Taken::Ours(claim) => Some(claim),
             Taken::Theirs(holder) => {
-                return elsewhere::run(common, holder, Wanted::Kept(KEPT)).await;
+                let why = words!("unpack-kept");
+                return elsewhere::run(common, holder, Wanted::KeptSaid(why)).await;
             }
         }
     } else {
@@ -57,21 +60,24 @@ pub(crate) async fn run(common: &Common, file: &Path) -> anyhow::Result<ExitCode
     refuse_if_occupied(common, target, file)?;
 
     let looked = archive::look(file)?;
-    let seed = format!("the {} in {}", identity_file::SEED_FILE, file.display());
+    let seed = words!(
+        "unpack-seed-in",
+        seed = identity_file::SEED_FILE,
+        file = file.display().to_string()
+    );
     let identity = identity_file::from_seed_bytes(&looked.seed, Path::new(&seed))?;
     let name = identity.node_id().to_string();
     if name != looked.manifest.name {
-        bail!(
-            "that file says it holds {}, and the key inside it is {}. It is not one node, \
-             and nothing was unpacked.",
-            looked.manifest.name,
-            name
-        );
+        bail!(words!(
+            "unpack-not-one-node",
+            claimed = &looked.manifest.name,
+            name = &name
+        ));
     }
 
     let staged = Staging::beside(common, target)?;
     let Taken::Ours(_staged_claim) = claim::take(&common.mistrust(), &staged.path)? else {
-        bail!("another 333 took the directory this was unpacking into. Nothing was unpacked.");
+        bail!(words!("unpack-taken"));
     };
     archive::extract(file, &staged.dir)?;
     let epochs = verify_record(staged.dir.as_path(), &identity)?;
@@ -88,38 +94,34 @@ pub(crate) async fn run(common: &Common, file: &Path) -> anyhow::Result<ExitCode
 
 /// Refuse, naming what would be lost, if a node already lives in `target`.
 fn refuse_if_occupied(common: &Common, target: &Path, file: &Path) -> anyhow::Result<()> {
-    let elsewhere = format!(
-        "333 --data-dir <another directory> unpack {}",
-        file.display()
-    );
+    let elsewhere = words!("unpack-elsewhere", file = file.display().to_string());
+    let shown = target.display().to_string();
     if identity_file::holds_a_name(target) {
         let (node, opened) =
             Node::open(&common.mistrust(), target, common.keeping).with_context(|| {
-                format!(
-                    "a node already lives in {}, and it could not be opened to say what \
-                     it holds. Nothing was unpacked. To unpack beside it instead: {elsewhere}",
-                    target.display()
+                words!(
+                    "unpack-could-not-open",
+                    target = &shown,
+                    elsewhere = &elsewhere
                 )
             })?;
         let epochs = match opened.chain_length {
-            0 => "no record yet".to_owned(),
-            1 => "1 epoch of record".to_owned(),
-            n => format!("{} epochs of record", in_threes(n)),
+            0 => words!("unpack-no-record"),
+            n => words!("unpack-epochs-of-record", epochs = Arg::grouped(n)),
         };
         let holding = if opened.has_the_file {
-            "holding the file"
+            words!("unpack-holding")
         } else {
-            "not holding the file"
+            words!("unpack-not-holding")
         };
-        bail!(
-            "a node already lives in {}:\n\
-             {}, {epochs}, {holding}.\n\
-             Unpacking over it would lose all of that for good, so nothing was unpacked.\n\
-             To unpack beside it instead, give it a directory of its own:\n\
-             {elsewhere}",
-            target.display(),
-            node.identity().node_id()
-        );
+        bail!(words!(
+            "unpack-occupied",
+            target = &shown,
+            name = node.identity().node_id().to_string(),
+            epochs = epochs,
+            holding = holding,
+            elsewhere = &elsewhere
+        ));
     }
     // The lock this process took on it is not something somebody else left there.
     let holds_anything = std::fs::read_dir(target).is_ok_and(|dir| {
@@ -127,11 +129,11 @@ fn refuse_if_occupied(common: &Common, target: &Path, file: &Path) -> anyhow::Re
             .any(|entry| entry.file_name() != claim::LOCK_FILE)
     });
     if holds_anything {
-        bail!(
-            "{} holds files and no node. A node is unpacked into a directory of its own, \
-             so nothing was unpacked. To unpack elsewhere: {elsewhere}",
-            target.display()
-        );
+        bail!(words!(
+            "unpack-holds-files",
+            target = &shown,
+            elsewhere = &elsewhere
+        ));
     }
     Ok(())
 }
@@ -141,18 +143,21 @@ fn refuse_if_occupied(common: &Common, target: &Path, file: &Path) -> anyhow::Re
 /// # Errors
 /// Fails if the record is torn, does not verify, or was written by another key.
 fn verify_record(home: &Path, identity: &Identity) -> anyhow::Result<u64> {
-    let (mut log, opened) =
-        Log::open(&home.join(crate::node::CHAIN_FILE)).context("opening the record")?;
+    let (mut log, opened) = Log::open(&home.join(crate::node::CHAIN_FILE))
+        .with_context(|| words!("unpack-opening-the-record"))?;
     if opened.truncated != 0 {
-        bail!("the record in that file is torn, so it is not a whole node. Nothing was unpacked.");
+        bail!(words!("unpack-torn"));
     }
-    let frames = log.read_all().context("reading the record")?;
-    let head = chain::verify(&frames)
-        .context("the record in that file does not verify. Nothing was unpacked.")?;
+    let frames = log
+        .read_all()
+        .with_context(|| words!("unpack-reading-the-record"))?;
+    let head = chain::verify(&frames).with_context(|| words!("unpack-does-not-verify"))?;
     if let Some(first) = frames.first() {
-        let author = chain::open(first).context("reading the record")?.author;
+        let author = chain::open(first)
+            .with_context(|| words!("unpack-reading-the-record"))?
+            .author;
         if author != identity.node_id() {
-            bail!("the record in that file was written by another key. Nothing was unpacked.");
+            bail!(words!("unpack-another-key"));
         }
     }
     Ok(head.length)
@@ -175,12 +180,7 @@ impl Staging {
     fn beside(common: &Common, target: &Path) -> anyhow::Result<Self> {
         let leaf = target
             .file_name()
-            .with_context(|| {
-                format!(
-                    "{} is not a directory a node can be put in",
-                    target.display()
-                )
-            })?
+            .with_context(|| words!("unpack-not-a-place", target = target.display().to_string()))?
             .to_string_lossy()
             .into_owned();
         let path = parent_of(target).join(format!(".{leaf}.unpacking-{}", std::process::id()));
@@ -209,16 +209,15 @@ impl Staging {
         if self.target.exists() {
             match std::fs::remove_file(self.target.join(claim::LOCK_FILE)) {
                 Err(e) if e.kind() != std::io::ErrorKind::NotFound => {
-                    return Err(e)
-                        .with_context(|| format!("making room at {}", self.target.display()));
+                    return Err(e).with_context(|| self.making_room());
                 }
                 _ => {}
             }
-            std::fs::remove_dir(&self.target)
-                .with_context(|| format!("making room at {}", self.target.display()))?;
+            std::fs::remove_dir(&self.target).with_context(|| self.making_room())?;
         }
-        std::fs::rename(&self.path, &self.target)
-            .with_context(|| format!("putting the node in {}", self.target.display()))?;
+        std::fs::rename(&self.path, &self.target).with_context(|| {
+            words!("unpack-putting", target = self.target.display().to_string())
+        })?;
         self.placed = true;
         #[cfg(unix)]
         if let Ok(parent) = std::fs::File::open(parent_of(&self.target)) {
@@ -226,6 +225,16 @@ impl Staging {
             let _ = parent.sync_all();
         }
         Ok(())
+    }
+}
+
+impl Staging {
+    /// What was being done when the way into place could not be cleared.
+    fn making_room(&self) -> String {
+        words!(
+            "unpack-making-room",
+            target = self.target.display().to_string()
+        )
     }
 }
 
@@ -247,34 +256,32 @@ fn parent_of(path: &Path) -> PathBuf {
 
 /// Say what arrived, and what to type next.
 fn say_it_is_here(target: &Path, file: &Path, name: &str, epochs: u64, packed: &str) {
-    aloud!("name     {name}");
+    aloud_in!("unpack-name", name = name);
     match epochs {
-        0 => aloud!("record   none yet"),
-        1 => aloud!("record   1 epoch, verified"),
-        n => aloud!("record   {} epochs, verified", in_threes(n)),
+        0 => aloud_in!("unpack-record-none"),
+        n => aloud_in!("unpack-record", epochs = Arg::grouped(n)),
     }
     if n333_core::Subject::recognise(
         &std::fs::read(target.join(n333_core::subject::FILENAME)).unwrap_or_default(),
     )
     .is_ok()
     {
-        aloud!("holding  the file");
+        aloud_in!("unpack-holding-the-file");
     }
     if archive::has_onion_key(target) {
-        aloud!("unseen   the key to its onion address, so the address came with it");
+        aloud_in!("unpack-onion-key");
     }
     aloud!(
         "{}",
         crate::began::describe(crate::began::read(target).as_ref())
     );
-    aloud!(
-        "unpacked into {},\n\
-         \x20        from a file packed at {packed}.\n\
-         \x20        This is the node now, and so is that file: delete {}",
-        target.display(),
-        file.display()
+    aloud_in!(
+        "unpack-unpacked",
+        target = target.display().to_string(),
+        packed = packed,
+        file = file.display().to_string()
     );
-    aloud!("next     {}", dwelling::command(target, "serve"));
+    aloud_in!("unpack-next", serve = dwelling::command(target, "serve"));
 }
 
 #[cfg(test)]
@@ -282,6 +289,183 @@ mod tests {
     use super::*;
     use n333_core::Epoch;
     use n333_core::presence::Attendance;
+
+    use crate::words::count::Base;
+    use crate::words::layout::{COLUMN, where_the_words_begin};
+
+    const TARGET: &str = "/tmp/333-node";
+    const FILE: &str = "/tmp/node.333";
+    const ELSEWHERE: &str = "333 --data-dir <another directory> unpack /tmp/node.333";
+
+    fn lines() -> Vec<String> {
+        vec![
+            words!("unpack-name", name = "333abc"),
+            words!("unpack-record-none"),
+            words!("unpack-record", epochs = Arg::grouped(1)),
+            words!("unpack-record", epochs = Arg::grouped(1_234)),
+            words!("unpack-holding-the-file"),
+            words!("unpack-onion-key"),
+            words!(
+                "unpack-unpacked",
+                target = TARGET,
+                packed = "2026-09-27T10:12:00Z",
+                file = FILE
+            ),
+            words!("unpack-next", serve = "333 --data-dir /tmp/333-node serve"),
+        ]
+    }
+
+    fn occupied(epochs: String) -> String {
+        words!(
+            "unpack-occupied",
+            target = TARGET,
+            name = "333abc",
+            epochs = epochs,
+            holding = words!("unpack-holding"),
+            elsewhere = ELSEWHERE
+        )
+    }
+
+    #[test]
+    fn in_english_every_moved_line_says_exactly_what_it_said_before() {
+        let (said, phrases) = crate::words::speaking("en", Base::Ten, || {
+            let phrases = [
+                (
+                    words!("unpack-kept"),
+                    KEPT.lines()
+                        .map(str::trim_start)
+                        .collect::<Vec<_>>()
+                        .join("\n"),
+                ),
+                (
+                    words!("unpack-seed-in", seed = "identity.key", file = FILE),
+                    "the identity.key in /tmp/node.333".to_owned(),
+                ),
+                (
+                    words!("unpack-not-one-node", claimed = "333abc", name = "333def"),
+                    "that file says it holds 333abc, and the key inside it is 333def. It is \
+                     not one node, and nothing was unpacked."
+                        .to_owned(),
+                ),
+                (
+                    words!("unpack-taken"),
+                    "another 333 took the directory this was unpacking into. Nothing was \
+                     unpacked."
+                        .to_owned(),
+                ),
+                (
+                    words!("unpack-elsewhere", file = FILE),
+                    ELSEWHERE.to_owned(),
+                ),
+                (
+                    words!(
+                        "unpack-could-not-open",
+                        target = TARGET,
+                        elsewhere = ELSEWHERE
+                    ),
+                    format!(
+                        "a node already lives in /tmp/333-node, and it could not be opened \
+                         to say what it holds. Nothing was unpacked. To unpack beside it \
+                         instead: {ELSEWHERE}"
+                    ),
+                ),
+                (
+                    occupied(words!("unpack-no-record")),
+                    format!(
+                        "a node already lives in /tmp/333-node:\n\
+                         333abc, no record yet, holding the file.\n\
+                         Unpacking over it would lose all of that for good, so nothing was \
+                         unpacked.\n\
+                         To unpack beside it instead, give it a directory of its own:\n\
+                         {ELSEWHERE}"
+                    ),
+                ),
+                (
+                    words!("unpack-epochs-of-record", epochs = Arg::grouped(1)),
+                    "1 epoch of record".to_owned(),
+                ),
+                (
+                    words!("unpack-epochs-of-record", epochs = Arg::grouped(1_234)),
+                    "1,234 epochs of record".to_owned(),
+                ),
+                (
+                    words!("unpack-not-holding"),
+                    "not holding the file".to_owned(),
+                ),
+                (
+                    words!("unpack-holds-files", target = TARGET, elsewhere = ELSEWHERE),
+                    format!(
+                        "/tmp/333-node holds files and no node. A node is unpacked into a \
+                         directory of its own, so nothing was unpacked. To unpack elsewhere: \
+                         {ELSEWHERE}"
+                    ),
+                ),
+                (
+                    words!("unpack-opening-the-record"),
+                    "opening the record".to_owned(),
+                ),
+                (
+                    words!("unpack-torn"),
+                    "the record in that file is torn, so it is not a whole node. Nothing was \
+                     unpacked."
+                        .to_owned(),
+                ),
+                (
+                    words!("unpack-reading-the-record"),
+                    "reading the record".to_owned(),
+                ),
+                (
+                    words!("unpack-does-not-verify"),
+                    "the record in that file does not verify. Nothing was unpacked.".to_owned(),
+                ),
+                (
+                    words!("unpack-another-key"),
+                    "the record in that file was written by another key. Nothing was \
+                     unpacked."
+                        .to_owned(),
+                ),
+                (
+                    words!("unpack-not-a-place", target = TARGET),
+                    "/tmp/333-node is not a directory a node can be put in".to_owned(),
+                ),
+                (
+                    words!("unpack-making-room", target = TARGET),
+                    "making room at /tmp/333-node".to_owned(),
+                ),
+                (
+                    words!("unpack-putting", target = TARGET),
+                    "putting the node in /tmp/333-node".to_owned(),
+                ),
+            ];
+            (lines(), phrases)
+        });
+        assert_eq!(
+            said,
+            [
+                "name     333abc",
+                "record   none yet",
+                "record   1 epoch, verified",
+                "record   1,234 epochs, verified",
+                "holding  the file",
+                "unseen   the key to its onion address, so the address came with it",
+                "unpacked into /tmp/333-node,\n\
+                 \x20        from a file packed at 2026-09-27T10:12:00Z.\n\
+                 \x20        This is the node now, and so is that file: delete /tmp/node.333",
+                "next     333 --data-dir /tmp/333-node serve",
+            ]
+        );
+        for (now, before) in phrases {
+            assert_eq!(now, before);
+        }
+    }
+
+    #[test]
+    fn in_korean_every_line_of_unpack_begins_its_words_in_the_same_column() {
+        for line in crate::words::speaking("ko", Base::Ten, lines) {
+            assert!(!line.is_ascii(), "{line:?}");
+            assert_eq!(where_the_words_begin(&line), COLUMN, "{line:?}");
+        }
+    }
 
     fn scratch(name: &str) -> PathBuf {
         let dir = std::env::temp_dir().join(format!("n333-unpack-test-{name}"));

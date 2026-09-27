@@ -33,6 +33,7 @@ use anyhow::{Context as _, bail};
 use fs_mistrust::CheckedDir;
 
 use crate::node::{ADMISSIONS_FILE, CHAIN_FILE, WHEREABOUTS_FILE, WINDOW_DIR, WITNESSED_FILE};
+use crate::words::Arg;
 
 /// The version of this layout. A client reads every format up to its own.
 ///
@@ -93,7 +94,7 @@ impl Manifest {
     fn from_text(text: &str) -> anyhow::Result<Self> {
         let mut lines = text.lines();
         if lines.next() != Some(HEADING) {
-            bail!("that file is not a packed node: its manifest does not begin `{HEADING}`");
+            bail!(words!("archive-not-a-packed-node", heading = HEADING));
         }
         let (mut format, mut name, mut created) = (None, None, None);
         for line in lines {
@@ -104,16 +105,17 @@ impl Manifest {
                 _ => {}
             }
         }
-        let format = format.context("the manifest does not say which format it is")?;
+        let format = format.with_context(|| words!("archive-no-format"))?;
         if format > FORMAT {
-            bail!(
-                "that file was packed by a newer client, in format {format}. This one \
-                 reads up to format {FORMAT}; unpack it with the newer one."
-            );
+            bail!(words!(
+                "archive-newer",
+                format = Arg::exact(format),
+                ours = Arg::exact(FORMAT)
+            ));
         }
         Ok(Self {
             format,
-            name: name.context("the manifest does not say which name it holds")?,
+            name: name.with_context(|| words!("archive-no-name"))?,
             created: created.unwrap_or_default(),
         })
     }
@@ -148,7 +150,8 @@ fn walk(home: &Path, rel: &str, found: &mut Vec<String>) -> anyhow::Result<()> {
     };
     let mut names: Vec<String> = Vec::new();
     for entry in listing {
-        let entry = entry.with_context(|| format!("listing {}", dir.display()))?;
+        let entry =
+            entry.with_context(|| words!("archive-listing", dir = dir.display().to_string()))?;
         if let Ok(name) = entry.file_name().into_string() {
             names.push(name);
         }
@@ -193,14 +196,17 @@ pub(crate) fn write(
     builder.append_data(&mut header(text.len() as u64), MANIFEST, text.as_bytes())?;
     for rel in carried(home)? {
         let path = on_disk(home, &rel);
-        let file = std::fs::File::open(&path).with_context(|| format!("reading {rel}"))?;
+        let file = std::fs::File::open(&path)
+            .with_context(|| words!("archive-reading", file = rel.as_str()))?;
         let size = file.metadata()?.len();
         builder
             .append_data(&mut header(size), format!("{NODE}{rel}"), file)
-            .with_context(|| format!("packing {rel}"))?;
+            .with_context(|| words!("archive-packing", file = rel.as_str()))?;
     }
-    let out = builder.into_inner().context("finishing the archive")?;
-    out.sync_all().context("writing the archive to disk")?;
+    let out = builder
+        .into_inner()
+        .with_context(|| words!("archive-finishing"))?;
+    out.sync_all().with_context(|| words!("archive-syncing"))?;
     Ok(out)
 }
 
@@ -232,29 +238,34 @@ pub(crate) struct Looked {
 /// Fails if it cannot be read, is not an archive of a node, or holds anything a node
 /// does not.
 pub(crate) fn look(path: &Path) -> anyhow::Result<Looked> {
-    let file = std::fs::File::open(path).with_context(|| format!("opening {}", path.display()))?;
+    let file = open(path)?;
     let mut archive = tar::Archive::new(file);
     let (mut manifest, mut seed) = (None, None);
-    for entry in archive.entries().context("reading the archive")? {
-        let mut entry = entry.context("reading the archive")?;
+    for entry in archive
+        .entries()
+        .with_context(|| words!("archive-reading-the-archive"))?
+    {
+        let mut entry = entry.with_context(|| words!("archive-reading-the-archive"))?;
         let name = entry_name(&entry)?;
         if name == MANIFEST {
             let mut text = String::new();
             entry
                 .read_to_string(&mut text)
-                .context("reading the manifest")?;
+                .with_context(|| words!("archive-reading-the-manifest"))?;
             manifest = Some(Manifest::from_text(&text)?);
         } else if let Some(rel) = inside(&name, &entry)?
             && rel == crate::identity_file::SEED_FILE
         {
             let mut bytes = Vec::new();
-            entry.read_to_end(&mut bytes).context("reading the seed")?;
+            entry
+                .read_to_end(&mut bytes)
+                .with_context(|| words!("archive-reading-the-seed"))?;
             seed = Some(bytes);
         }
     }
     Ok(Looked {
-        manifest: manifest.context("that file has no manifest, so it is not a packed node")?,
-        seed: seed.context("that file holds no seed, so there is no name in it")?,
+        manifest: manifest.with_context(|| words!("archive-no-manifest"))?,
+        seed: seed.with_context(|| words!("archive-no-seed"))?,
     })
 }
 
@@ -264,10 +275,13 @@ pub(crate) fn look(path: &Path) -> anyhow::Result<Looked> {
 /// Fails if the archive cannot be read, holds anything a node does not, or a file
 /// cannot be written.
 pub(crate) fn extract(path: &Path, into: &CheckedDir) -> anyhow::Result<()> {
-    let file = std::fs::File::open(path).with_context(|| format!("opening {}", path.display()))?;
+    let file = open(path)?;
     let mut archive = tar::Archive::new(file);
-    for entry in archive.entries().context("reading the archive")? {
-        let mut entry = entry.context("reading the archive")?;
+    for entry in archive
+        .entries()
+        .with_context(|| words!("archive-reading-the-archive"))?
+    {
+        let mut entry = entry.with_context(|| words!("archive-reading-the-archive"))?;
         let name = entry_name(&entry)?;
         if name == MANIFEST {
             continue;
@@ -277,26 +291,35 @@ pub(crate) fn extract(path: &Path, into: &CheckedDir) -> anyhow::Result<()> {
         };
         if let Some((parent, _)) = rel.rsplit_once('/') {
             into.make_directory(parent)
-                .with_context(|| format!("making {parent}"))?;
+                .with_context(|| words!("archive-making", dir = parent))?;
         }
         let mut out = into
             .open(
                 &rel,
                 std::fs::OpenOptions::new().write(true).create_new(true),
             )
-            .with_context(|| format!("writing {rel}"))?;
-        std::io::copy(&mut entry, &mut out).with_context(|| format!("writing {rel}"))?;
+            .with_context(|| words!("archive-writing", file = rel.as_str()))?;
+        std::io::copy(&mut entry, &mut out)
+            .with_context(|| words!("archive-writing", file = rel.as_str()))?;
         out.sync_all()?;
     }
     Ok(())
 }
 
+/// Open an archive to read it.
+fn open(path: &Path) -> anyhow::Result<std::fs::File> {
+    std::fs::File::open(path)
+        .with_context(|| words!("archive-opening", file = path.display().to_string()))
+}
+
 /// The name of an entry, which has to be text.
 fn entry_name<R: std::io::Read>(entry: &tar::Entry<'_, R>) -> anyhow::Result<String> {
-    let path = entry.path().context("reading a name in the archive")?;
+    let path = entry
+        .path()
+        .with_context(|| words!("archive-reading-a-name"))?;
     path.to_str()
         .map(str::to_owned)
-        .context("the archive holds a name that is not text, which no node file has")
+        .with_context(|| words!("archive-name-not-text"))
 }
 
 /// The path inside the node an entry belongs at, or `None` for a directory entry.
@@ -315,7 +338,7 @@ fn inside<R: std::io::Read>(
     }
     match node_path(name) {
         Some(rel) if kind.is_file() => Ok(Some(rel.to_owned())),
-        _ => bail!("that file holds {name}, which is not part of a node. Nothing was unpacked."),
+        _ => bail!(words!("archive-not-a-node-file", name = name)),
     }
 }
 
@@ -336,6 +359,92 @@ fn node_path(name: &str) -> Option<&str> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn in_english_every_moved_line_says_exactly_what_it_said_before() {
+        use crate::words::count::Base;
+        let pairs = crate::words::speaking("en", Base::Ten, || {
+            [
+                (
+                    words!("archive-not-a-packed-node", heading = HEADING),
+                    "that file is not a packed node: its manifest does not begin `333 node`",
+                ),
+                (
+                    words!("archive-no-format"),
+                    "the manifest does not say which format it is",
+                ),
+                (
+                    words!(
+                        "archive-newer",
+                        format = Arg::exact(2),
+                        ours = Arg::exact(1)
+                    ),
+                    "that file was packed by a newer client, in format 2. This one reads up \
+                     to format 1; unpack it with the newer one.",
+                ),
+                (
+                    words!("archive-no-name"),
+                    "the manifest does not say which name it holds",
+                ),
+                (
+                    words!("archive-listing", dir = "/n/statements"),
+                    "listing /n/statements",
+                ),
+                (
+                    words!("archive-reading", file = "chain.log"),
+                    "reading chain.log",
+                ),
+                (
+                    words!("archive-packing", file = "chain.log"),
+                    "packing chain.log",
+                ),
+                (words!("archive-finishing"), "finishing the archive"),
+                (words!("archive-syncing"), "writing the archive to disk"),
+                (
+                    words!("archive-opening", file = "/tmp/node.333"),
+                    "opening /tmp/node.333",
+                ),
+                (words!("archive-reading-the-archive"), "reading the archive"),
+                (
+                    words!("archive-reading-the-manifest"),
+                    "reading the manifest",
+                ),
+                (words!("archive-reading-the-seed"), "reading the seed"),
+                (
+                    words!("archive-no-manifest"),
+                    "that file has no manifest, so it is not a packed node",
+                ),
+                (
+                    words!("archive-no-seed"),
+                    "that file holds no seed, so there is no name in it",
+                ),
+                (
+                    words!("archive-making", dir = "statements"),
+                    "making statements",
+                ),
+                (
+                    words!("archive-writing", file = "chain.log"),
+                    "writing chain.log",
+                ),
+                (
+                    words!("archive-reading-a-name"),
+                    "reading a name in the archive",
+                ),
+                (
+                    words!("archive-name-not-text"),
+                    "the archive holds a name that is not text, which no node file has",
+                ),
+                (
+                    words!("archive-not-a-node-file", name = "node/../x"),
+                    "that file holds node/../x, which is not part of a node. Nothing was \
+                     unpacked.",
+                ),
+            ]
+        });
+        for (now, before) in pairs {
+            assert_eq!(now, before);
+        }
+    }
 
     fn scratch(name: &str) -> PathBuf {
         let dir = std::env::temp_dir().join(format!("n333-archive-test-{name}"));

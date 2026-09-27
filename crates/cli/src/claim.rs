@@ -74,18 +74,16 @@ pub(crate) fn take(mistrust: &Mistrust, home: &Path) -> anyhow::Result<Taken> {
                 .create(true)
                 .truncate(false),
         )
-        .context("opening the lock on this node's directory")?;
+        .with_context(|| words!("claim-opening"))?;
     match file.try_lock() {
         Ok(()) => {
-            write_our_number(&file).context("writing this process's number into the lock")?;
+            write_our_number(&file).with_context(|| words!("claim-writing-our-number"))?;
             Ok(Taken::Ours(Claim { _file: file }))
         }
         Err(TryLockError::WouldBlock) => Ok(Taken::Theirs(Holder {
             pid: their_number(&file),
         })),
-        Err(TryLockError::Error(e)) => {
-            Err(e).context("locking this node's directory for this process")
-        }
+        Err(TryLockError::Error(e)) => Err(e).with_context(|| words!("claim-locking")),
     }
 }
 
@@ -105,6 +103,30 @@ fn their_number(mut file: &File) -> Option<u32> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn in_english_every_moved_line_says_exactly_what_it_said_before() {
+        use crate::words::count::Base;
+        let pairs = crate::words::speaking("en", Base::Ten, || {
+            [
+                (
+                    words!("claim-opening"),
+                    "opening the lock on this node's directory",
+                ),
+                (
+                    words!("claim-writing-our-number"),
+                    "writing this process's number into the lock",
+                ),
+                (
+                    words!("claim-locking"),
+                    "locking this node's directory for this process",
+                ),
+            ]
+        });
+        for (now, before) in pairs {
+            assert_eq!(now, before);
+        }
+    }
 
     fn scratch(name: &str) -> std::path::PathBuf {
         let dir = std::env::temp_dir().join(format!("n333-claim-test-{name}"));
