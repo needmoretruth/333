@@ -17,11 +17,14 @@ pub(crate) mod answering;
 #[cfg(feature = "screen")]
 mod carrying;
 mod door;
+mod invitation;
+mod neighbours;
+mod onion;
 mod reach;
+mod socket;
 
 use std::net::SocketAddr;
 use std::sync::Arc;
-use std::time::Duration;
 
 use anyhow::{Context as _, bail};
 use n333_core::Epoch;
@@ -32,7 +35,10 @@ use crate::commands::{Common, hours};
 use crate::dial::{Dialer, Roads};
 use crate::node::Node;
 
-use door::{Caller, Door, spawn_exchange};
+use door::Door;
+use invitation::say_the_invitation;
+use neighbours::greet_the_neighbours;
+use socket::answer_direct;
 
 /// Everything about how one vigil is kept.
 ///
@@ -277,183 +283,12 @@ fn farewell() {
     );
 }
 
-/// How long a node on the same network gets to answer before this one moves on.
-///
-/// Not the patience this node has for a peer: that one is a ceiling for reaching
-/// across the world through Tor, and spending it on a virtual interface with nothing
-/// behind it would leave a neighbour that is actually there waiting behind it.
-const NEARBY_PATIENCE: Duration = Duration::from_secs(10);
-
-/// Knock on every node that turns up on this network, as it turns up.
-///
-/// Waiting for the next epoch would be correct and useless: a person who starts a
-/// second node in the same house and watches nothing happen for five hours has been
-/// told, correctly, that nothing is happening.
-async fn greet_the_neighbours(
-    node: Arc<Node>,
-    dialer: Dialer,
-    nearby: n333_net::Nearby,
-) -> anyhow::Result<()> {
-    let mut greeted = std::collections::BTreeSet::new();
-    while let Some(neighbour) = nearby.found().await {
-        // A machine with eight interfaces is announced eight times over. It is one
-        // neighbour, and it is worth one knock.
-        if !greeted.insert(neighbour.label) {
-            continue;
-        }
-        for address in neighbour.addresses {
-            let address = address.to_string();
-            aloud!("nearby   one of us at {address}");
-            // On a deadline of its own, and a short one. A machine on the same network
-            // answers in milliseconds; the several minutes this node is willing to
-            // wait on a peer across the world would be spent here on an address that
-            // belongs to a virtual interface with nothing behind it.
-            let answered = tokio::time::timeout(
-                NEARBY_PATIENCE,
-                hours::trade_at_once(&node, &dialer, &address),
-            )
-            .await;
-            if answered != Ok(true) {
-                continue;
-            }
-            // Kept only now that it is known to answer, so that the addresses this
-            // node carries into its hours are the ones somebody is behind.
-            node.found(address.clone()).await;
-            // Nothing here takes the file for anybody. A node is given it because a
-            // person asked for it and two keys signed, and finding a neighbour is not
-            // asking.
-            if node.subject().await.is_none() {
-                aloud!(
-                    "         `333 join 333:{address}` asks them for the file. Nothing\n\
-                     \x20        here does it for you."
-                );
-            }
-            break;
-        }
-    }
-    Ok(())
-}
-
-/// Say what to hand somebody so they can find this node.
-///
-/// A wildcard bind is the ordinary case and it is the one where this node genuinely
-/// does not know the answer: it is listening on every interface and has no idea which
-/// address of the machine, if any, a stranger can reach. Printing `333:0.0.0.0:3333`
-/// would look like an invitation and work for nobody, so it says what is missing and
-/// leaves [`reach`] to fill it in once the knock has come back.
-fn say_the_invitation(bound: SocketAddr, found_address: &watch::Sender<Option<PeerAddress>>) {
-    if bound.ip().is_unspecified() {
-        aloud!(
-            "invite   333:<an address others can reach>:{}",
-            bound.port()
-        );
-        return;
-    }
-    let address = PeerAddress::from(bound);
-    aloud!("invite   {}", Invite::to(address.clone()));
-    // Only an address this node can actually stand behind is signed and handed on.
-    let _ = found_address.send(Some(address));
-}
-
-/// Answer every peer that opens a socket to this node.
-async fn answer_direct(
-    listener: direct::Listener,
-    node: Arc<Node>,
-    door: Door,
-) -> anyhow::Result<()> {
-    loop {
-        let (stream, from) = listener.accept().await.context("accepting a peer")?;
-        // A peer's address is not a name and is not recorded; it is shown so that the
-        // operator of this node can see who is reaching it right now, and counted so
-        // that one caller cannot be everybody at the door.
-        spawn_exchange(stream, &node, &door, Caller::At(from));
-    }
-}
-
-/// The other way to be reachable: an onion address, for a node that is hiding.
-#[cfg(feature = "tor")]
-mod onion {
-    use std::sync::Arc;
-
-    use anyhow::Context as _;
-    use n333_net::peer::ONION_PORT;
-    use n333_net::tor::SERVICE_NICKNAME;
-    use n333_net::tor::host::OnionHost;
-    use n333_net::{Invite, PeerAddress};
-    use tokio::sync::watch;
-
-    use crate::dial::Dialer;
-    use crate::node::Node;
-
-    use super::door::{Caller, Door, spawn_exchange};
-
-    /// Publish an onion address and answer every peer that arrives on it.
-    pub(super) async fn answer(
-        dialer: Dialer,
-        node: Arc<Node>,
-        door: Door,
-        found_address: watch::Sender<Option<PeerAddress>>,
-    ) -> anyhow::Result<()> {
-        let client = dialer.tor().await?;
-        let mut host = OnionHost::launch(&client, SERVICE_NICKNAME, ONION_PORT)
-            .context("launching the onion service")?;
-        aloud!("raising  the unseen address. this can take minutes.");
-
-        // The address is deliberately not shown until here. Handed to a peer before
-        // the network holds the descriptor, it produces a connection failure that
-        // looks like a bug in one of the two clients and is not one.
-        let waiting = dialer.timeout();
-        tokio::time::timeout(waiting, host.wait_until_reachable())
-            .await
-            .with_context(|| format!("not reachable after {} s", waiting.as_secs()))?
-            .context("waiting for the service to be reachable")?;
-        let address = PeerAddress::Onion {
-            host: host.address()?,
-            port: ONION_PORT,
-        };
-        aloud!("unseen   {address}");
-        aloud!("invite   {}", Invite::to(address.clone()));
-        // Written after the network holds the descriptor, so nobody is ever sent to an
-        // address that does not answer yet.
-        let _ = found_address.send(Some(address));
-
-        loop {
-            let stream = host.accept().await.context("accepting a peer")?;
-            // Through Tor there is no address to show, which is the point of it.
-            spawn_exchange(stream, &node, &door, Caller::Unseen);
-        }
-    }
-}
-
-/// Stands in for the onion listener when arti is not built in.
-#[cfg(not(feature = "tor"))]
-mod onion {
-    use std::sync::Arc;
-
-    use n333_net::PeerAddress;
-    use tokio::sync::watch;
-
-    use crate::dial::Dialer;
-    use crate::node::Node;
-
-    use super::door::Door;
-
-    /// Refuse, rather than quietly listen on a socket the caller asked not to use.
-    pub(super) async fn answer(
-        _dialer: Dialer,
-        _node: Arc<Node>,
-        _door: Door,
-        _found_address: watch::Sender<Option<PeerAddress>>,
-    ) -> anyhow::Result<()> {
-        anyhow::bail!("this client was built without Tor, so it cannot publish an onion address")
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     use std::path::PathBuf;
+    use std::time::Duration;
 
     use n333_core::Identity;
     use n333_core::attestation::JUDGEMENT_DELAY_EPOCHS;
