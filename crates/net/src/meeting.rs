@@ -27,6 +27,8 @@
 //! code and more ways to publish an address its owner did not mean to publish than there is
 //! reason to ship today. That is a limit of what is built, not a claim about what is right.
 
+mod answered;
+
 use std::io::Read as _;
 use std::net::IpAddr;
 use std::time::Duration;
@@ -34,6 +36,8 @@ use std::time::Duration;
 use n333_core::identity::NodeId;
 
 use crate::frame::{LENGTH_PREFIX_LEN, MAX_BATCH_FRAMES};
+
+pub use answered::Error;
 
 /// Where nodes that have nobody to introduce them agree to look. FROZEN.
 ///
@@ -64,29 +68,6 @@ const LONGEST_BOARD: usize = MAX_BATCH_FRAMES * (LENGTH_PREFIX_LEN + LONGEST_STA
 /// cost this node something, which is all a limit here has to be.
 const LONGEST_FILE: u64 = 64;
 
-/// Reasons a visit to the meeting point came to nothing.
-#[derive(Debug, thiserror::Error)]
-pub enum Error {
-    /// It could not be reached at all: no route, no name, no answer, no certificate.
-    #[error("could not reach the meeting point: {0}")]
-    Unreachable(String),
-    /// It answered, and said no.
-    #[error("the meeting point answered {status}")]
-    Refused {
-        /// What it answered with.
-        status: u16,
-    },
-    /// A statement this node was asked to leave is larger than the board takes.
-    #[error("a statement of {got} bytes is over the {LONGEST_STATEMENT} the board holds")]
-    TooLong {
-        /// How large it was.
-        got: usize,
-    },
-    /// It was asked where this node arrives from and answered with something else.
-    #[error("the meeting point did not answer with an address")]
-    NotAnAddress,
-}
-
 /// One node's dealings with one meeting point.
 ///
 /// Blocking, because it is a handful of requests an epoch and an async HTTP stack is thirty
@@ -104,8 +85,11 @@ impl Meeting {
     /// Deal with the meeting point at `place`.
     #[must_use]
     pub fn at(place: &str) -> Self {
+        // Every status comes back as an answer, so that what the meeting point said with
+        // it can be read. Treated as an error, the body is gone before anybody sees it.
         let config = ureq::Agent::config_builder()
             .timeout_global(Some(PATIENCE))
+            .http_status_as_error(false)
             .build();
         Self {
             place: place.to_owned(),
@@ -137,14 +121,10 @@ impl Meeting {
     /// Fails if the meeting point cannot be reached, refuses, or answers with something that
     /// is not an address.
     pub fn what_address_do_i_arrive_from(&self) -> Result<IpAddr, Error> {
-        let said = self
-            .agent
-            .get(self.url("/where"))
-            .call()
-            .map_err(went_wrong)?
+        let said = yes(self.agent.get(self.url("/where")).call())?
             .body_mut()
             .read_to_string()
-            .map_err(went_wrong)?;
+            .map_err(broke_off)?;
         said.trim().parse().map_err(|_| Error::NotAnAddress)
     }
 
@@ -162,10 +142,7 @@ impl Meeting {
                 got: statement.len(),
             });
         }
-        self.agent
-            .put(self.url(&format!("/{who}")))
-            .send(statement)
-            .map_err(went_wrong)?;
+        yes(self.agent.put(self.url(&format!("/{who}"))).send(statement))?;
         Ok(())
     }
 
@@ -177,7 +154,7 @@ impl Meeting {
     /// # Errors
     /// Fails if the meeting point cannot be reached or refuses.
     pub fn read(&self) -> Result<Vec<Vec<u8>>, Error> {
-        let mut answer = self.agent.get(self.url("")).call().map_err(went_wrong)?;
+        let mut answer = yes(self.agent.get(self.url("")).call())?;
         let mut board = Vec::new();
         let cap = u64::try_from(LONGEST_BOARD).unwrap_or(u64::MAX);
         answer
@@ -185,7 +162,7 @@ impl Meeting {
             .as_reader()
             .take(cap)
             .read_to_end(&mut board)
-            .map_err(|cause| Error::Unreachable(cause.to_string()))?;
+            .map_err(|cause| Error::BrokeOff(cause.to_string()))?;
         Ok(unframe(&board))
     }
 
@@ -201,18 +178,14 @@ impl Meeting {
     /// Fails if the meeting point cannot be reached, refuses, or answers with more bytes
     /// than the file could possibly be.
     pub fn the_file(&self) -> Result<Vec<u8>, Error> {
-        let mut answer = self
-            .agent
-            .get(self.whole("/333.txt"))
-            .call()
-            .map_err(went_wrong)?;
+        let mut answer = yes(self.agent.get(self.whole("/333.txt")).call())?;
         let mut bytes = Vec::new();
         answer
             .body_mut()
             .as_reader()
             .take(LONGEST_FILE)
             .read_to_end(&mut bytes)
-            .map_err(|cause| Error::Unreachable(cause.to_string()))?;
+            .map_err(|cause| Error::BrokeOff(cause.to_string()))?;
         Ok(bytes)
     }
 
@@ -242,12 +215,59 @@ impl Meeting {
     }
 }
 
-/// Turn a failed request into the two things a caller can do something about.
-fn went_wrong(cause: ureq::Error) -> Error {
-    match cause {
-        ureq::Error::StatusCode(status) => Error::Refused { status },
-        other => Error::Unreachable(other.to_string()),
+/// The answer, if it was yes; what it meant, if it was not.
+fn yes(sent: Result<Answer, ureq::Error>) -> Result<Answer, Error> {
+    let mut answer = sent.map_err(unreachable)?;
+    let status = answer.status();
+    if status.is_success() {
+        return Ok(answer);
     }
+    let header = |name: &str| {
+        answer
+            .headers()
+            .get(name)
+            .and_then(|value| value.to_str().ok())
+            .map(ToOwned::to_owned)
+    };
+    let (kind, retry_after) = (header("content-type"), header("retry-after"));
+    let mut body = Vec::new();
+    // A reason that cannot be read is a reason not given; the number still stands.
+    let _ = answer
+        .body_mut()
+        .as_reader()
+        .take(answered::LONGEST_REASON)
+        .read_to_end(&mut body);
+    Err(answered::refusal(&answered::Answer {
+        status: status.as_u16(),
+        kind: kind.as_deref(),
+        retry_after: retry_after.as_deref(),
+        body: &body,
+    }))
+}
+
+/// What one request comes back as.
+type Answer = ureq::http::Response<ureq::Body>;
+
+/// Why the meeting point could not be reached, in the words for what happened.
+///
+/// The library's own words lead with the category it sorted the failure into — `io:`,
+/// `timeout:` — which is not what a person needs to read.
+fn unreachable(cause: ureq::Error) -> Error {
+    Error::Unreachable(match cause {
+        ureq::Error::Io(cause) => cause.to_string(),
+        ureq::Error::Timeout(_) => format!("no answer within {} s", PATIENCE.as_secs()),
+        ureq::Error::HostNotFound => "its name does not resolve".to_owned(),
+        other => other.to_string(),
+    })
+}
+
+/// An answer that started and did not finish.
+fn broke_off(cause: ureq::Error) -> Error {
+    Error::BrokeOff(match cause {
+        ureq::Error::Io(cause) => cause.to_string(),
+        ureq::Error::Timeout(_) => format!("not finished within {} s", PATIENCE.as_secs()),
+        other => other.to_string(),
+    })
 }
 
 /// Split a board into the statements it is made of.
@@ -337,6 +357,39 @@ mod tests {
         let meeting = Meeting::at("example.test");
         assert_eq!(meeting.url(""), "https://example.test/333");
         assert_eq!(meeting.url("/where"), "https://example.test/333/where");
+    }
+
+    /// A meeting point on this machine that gives one answer, written out by hand.
+    fn answering(answer: &'static str) -> Meeting {
+        use std::io::Write as _;
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("binds");
+        let port = listener.local_addr().expect("has an address").port();
+        std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().expect("accepts");
+            let mut request = [0_u8; 1024];
+            let _ = stream.read(&mut request);
+            stream.write_all(answer.as_bytes()).expect("answers");
+        });
+        Meeting::at(&format!("http://127.0.0.1:{port}"))
+    }
+
+    #[test]
+    fn what_the_meeting_point_says_with_a_429_reaches_the_node() {
+        let meeting = answering(
+            "HTTP/1.1 429 Too Many Requests\r\ncontent-type: text/plain; charset=utf-8\r\n\
+             retry-after: 42\r\ncontent-length: 55\r\nconnection: close\r\n\r\n\
+             Once an epoch is enough. Nothing here changes faster.\n\n",
+        );
+        match meeting.read() {
+            Err(Error::NotYet { again_in, said }) => {
+                assert_eq!(again_in, Some(Duration::from_secs(42)));
+                assert_eq!(
+                    said,
+                    "Once an epoch is enough. Nothing here changes faster."
+                );
+            }
+            other => panic!("expected not yet, got {other:?}"),
+        }
     }
 
     #[test]

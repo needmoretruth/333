@@ -23,7 +23,8 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Padding, Paragraph};
 
 use super::Saying;
-use super::watch::{Watch, to_the_boundary, until};
+use super::watch::Watch;
+use crate::commands::hours::{to_the_boundary, until};
 
 use bottom::{the_keys, the_silence};
 use left::this_node;

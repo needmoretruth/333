@@ -49,6 +49,9 @@ const BETWEEN_WORDS = 60;
  *  taking statements still hands out every one it already holds. */
 const MOST_WRITES_A_DAY = 900;
 
+/** One day, in milliseconds. The day of writing is counted in these, from midnight UTC. */
+const DAY_MS = 86_400_000;
+
 /** One node's statement about where it is. */
 interface Line {
   /** The name of the node the statement is about, in hex — a slot name, not a claim. A liar
@@ -322,14 +325,19 @@ async function speak(request: Arriving, env: Env, key: string): Promise<Response
   // after a lost answer is never told to come back later for a write that already happened.
   if (standing?.b === said) return plain(200, "Already said.\n");
 
-  if (await tooSoon(request)) {
-    return plain(429, "Once an epoch is enough. Nothing here changes faster.\n");
+  const waiting = await tooSoon(request);
+  if (waiting !== null) {
+    return plain(429, "Once an epoch is enough. Nothing here changes faster.\n", waiting);
   }
 
-  const today = Math.floor(Date.now() / 86_400_000);
+  const today = Math.floor(Date.now() / DAY_MS);
   const written = board.d === today ? board.w : 0;
   if (written >= MOST_WRITES_A_DAY) {
-    return plain(503, "The board is full for today. It is still readable, and it empties at midnight.\n");
+    return plain(
+      503,
+      "The board is full for today. It is still readable, and it empties at midnight.\n",
+      untilMidnight(Date.now()),
+    );
   }
 
   const kept = lines.filter((line) => line.k !== key);
@@ -409,7 +417,8 @@ function json(status: number, body: unknown): Response {
   });
 }
 
-/** Whether this address has left a statement too recently to leave another.
+/** How long this address has to wait before it may leave another statement, in seconds, or
+ *  null if it may leave one now.
  *
  *  WHY THIS AND NOT THE RATE LIMITER THE PLATFORM OFFERS. The binding was tried first and did
  *  not refuse anything, at eighteen writes in a minute against a limit of three, and a guard
@@ -419,20 +428,41 @@ function json(status: number, body: unknown): Response {
  *  It is a doorstop rather than a lock. The memory is per location and can be swept away
  *  early, so a caller determined to get past it will. What it stops is the ordinary case of
  *  one machine writing in a loop, and behind it stands the day of writing, which is the thing
- *  actually worth defending. */
-async function tooSoon(request: Request): Promise<boolean> {
+ *  actually worth defending.
+ *
+ *  The memory holds when it was written, so that the answer can say how long is left. One
+ *  written before it held that says nothing, and is counted as the whole minute. */
+async function tooSoon(request: Request): Promise<number | null> {
   const from = request.headers.get("cf-connecting-ip");
-  if (from === null) return false;
+  if (from === null) return null;
   // Keyed on this site so the memory stays where this Worker can reach it. Nothing answers at
   // that path: a request for it arrives here and is told there is nothing at this address.
   const gate = new Request(new URL(`/gate/${encodeURIComponent(from)}`, request.url).toString());
   const seen = await caches.default.match(gate);
-  if (seen !== undefined) return true;
+  if (seen !== undefined) return secondsLeft(Number(await seen.text()), Date.now());
   await caches.default.put(
     gate,
-    new Response("", { headers: { "cache-control": `max-age=${BETWEEN_WORDS}` } }),
+    new Response(String(Date.now()), {
+      headers: { "cache-control": `max-age=${BETWEEN_WORDS}` },
+    }),
   );
-  return false;
+  return null;
+}
+
+/** The whole seconds left of the minute between words, for a gate written at `since`.
+ *
+ *  Never under one: the gate was still there when it was asked, so "now" would be a promise
+ *  the memory might not keep. Never over the minute, whatever a gate claims. A gate that does
+ *  not say when (empty, which reads as 0, or not a number) is counted as just written. */
+function secondsLeft(since: number, now: number): number {
+  if (!Number.isFinite(since) || since <= 0) return BETWEEN_WORDS;
+  const left = Math.ceil((since + BETWEEN_WORDS * 1000 - now) / 1000);
+  return Math.min(BETWEEN_WORDS, Math.max(1, left));
+}
+
+/** The whole seconds until the day of writing ends, which is midnight UTC. At least one. */
+function untilMidnight(now: number): number {
+  return Math.max(1, Math.ceil((DAY_MS - (now % DAY_MS)) / 1000));
 }
 
 /** The board as it stands, or an empty one if what is stored cannot be read as a board. */
@@ -471,9 +501,14 @@ function unbase64(text: string): Uint8Array {
   return bytes;
 }
 
-function plain(status: number, body: string): Response {
-  return new Response(body, {
-    status,
-    headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" },
-  });
+/** An answer in words. `retryAfter` is for the answers that mean "not yet": the seconds until
+ *  the rule that said no would say yes. Only the header is added; the words and the number are
+ *  what they always were, so a client that does not read the header is answered as before. */
+function plain(status: number, body: string, retryAfter?: number): Response {
+  const headers: Record<string, string> = {
+    "content-type": "text/plain; charset=utf-8",
+    "cache-control": "no-store",
+  };
+  if (retryAfter !== undefined) headers["retry-after"] = String(retryAfter);
+  return new Response(body, { status, headers });
 }

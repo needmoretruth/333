@@ -208,10 +208,25 @@ pub(super) fn minutes(span: Duration) -> String {
     }
 }
 
+/// How long until the next epoch begins, in seconds.
+pub(crate) fn to_the_boundary(now: Epoch) -> u64 {
+    Epoch(now.0.saturating_add(1))
+        .starts_at_unix_seconds()
+        .saturating_sub(epoch::unix_now_seconds())
+}
+
+/// A span of seconds, said the way a person waiting would say it.
+pub(crate) fn until(seconds: u64) -> String {
+    let (hours, minutes) = (seconds / 3600, (seconds % 3600) / 60);
+    if hours == 0 {
+        return format!("{minutes}m {}s", seconds % 60);
+    }
+    format!("{hours}h {minutes:02}m")
+}
+
 /// Wait for the next epoch to begin.
 async fn sleep_until_the_next_boundary(now: Epoch) {
-    let next = Epoch(now.0.saturating_add(1)).starts_at_unix_seconds();
-    let seconds = next.saturating_sub(epoch::unix_now_seconds());
+    let seconds = to_the_boundary(now);
     // A clock that jumped forward past the boundary gives zero here. Waiting a second
     // rather than spinning is the difference between a hot loop and a late start.
     tokio::time::sleep(Duration::from_secs(seconds.max(1))).await;

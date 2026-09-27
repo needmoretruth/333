@@ -13,7 +13,7 @@ use std::collections::BTreeSet;
 use n333_core::extinction::Vigil;
 use n333_core::presence::{self, Standing};
 use n333_core::signal::Tally;
-use n333_core::{Epoch, enrollment, epoch};
+use n333_core::{Epoch, enrollment};
 
 use crate::node::Node;
 
@@ -145,20 +145,4 @@ async fn stands(node: &Node, now: Epoch) -> anyhow::Result<Where> {
         standing,
         silent_on: presence::WINDOW_EPOCHS.saturating_sub(written as u64),
     })
-}
-
-/// How long until the next epoch begins, in seconds.
-pub(super) fn to_the_boundary(now: Epoch) -> u64 {
-    Epoch(now.0.saturating_add(1))
-        .starts_at_unix_seconds()
-        .saturating_sub(epoch::unix_now_seconds())
-}
-
-/// A span of seconds, said the way a person waiting would say it.
-pub(super) fn until(seconds: u64) -> String {
-    let (hours, minutes) = (seconds / 3600, (seconds % 3600) / 60);
-    if hours == 0 {
-        return format!("{minutes}m {}s", seconds % 60);
-    }
-    format!("{hours}h {minutes:02}m")
 }
