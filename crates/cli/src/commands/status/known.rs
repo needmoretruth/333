@@ -7,6 +7,8 @@
 use crate::node::Node;
 use crate::node::sources::Heard;
 
+use super::padded;
+
 /// Every statement under this node's key that it did not make, first and loudest.
 ///
 /// Nothing at all when there are none, which is the ordinary case.
@@ -15,28 +17,19 @@ pub(super) async fn copies(out: &mut impl std::io::Write, node: &Node) -> anyhow
     if copies.is_empty() {
         return Ok(());
     }
-    writeln!(out, "ANOTHER COPY OF THIS NAME\n")?;
+    writeln!(out, "{}\n", words!("status-known-another-copy"))?;
     let me = node.identity().node_id().to_string();
     for sighting in &copies {
-        writeln!(
-            out,
-            "  A statement signed with this node's key, which this node never made, says\n  \
-             it is at {}, in epoch {}.\n  It arrived {}, in epoch {}.",
-            sighting.address,
-            sighting.said_in,
-            sighting.arrived(&me),
-            sighting.heard.epoch
-        )?;
+        let seen = words!(
+            "status-known-sighting",
+            address = sighting.address.clone(),
+            said_in = sighting.said_in,
+            arrived = sighting.arrived(&me),
+            epoch = sighting.heard.epoch
+        );
+        writeln!(out, "{}", indented(&seen, "  "))?;
     }
-    writeln!(
-        out,
-        "\nEither this directory was copied and the copy was started, or somebody else\n\
-         has the key. Two nodes on one name contradict each other in every epoch either\n\
-         is asked about. Stop one of them; `333 pack` is how a node moves. Nothing here\n\
-         stops either copy for you: an old statement can be replayed by anybody, and a\n\
-         node that stopped on seeing one could be switched off by whoever holds a copy\n\
-         of its key.\n"
-    )?;
+    writeln!(out, "\n{}\n", words!("status-known-either"))?;
     Ok(())
 }
 
@@ -49,40 +42,27 @@ pub(super) async fn counts(out: &mut impl std::io::Write, node: &Node) -> anyhow
         + known.from_peers
         + known.unrecorded;
     if held == 0 {
-        writeln!(
-            out,
-            "KNOWN    nowhere to knock yet. An invitation given to `333 ping` or\n\
-             \x20        `333 join` is kept, and the vigil knocks there from then on."
-        )?;
+        writeln!(out, "{}", words!("status-known-nowhere"))?;
         return Ok(());
     }
-    let addresses = if held == 1 { "address" } else { "addresses" };
-    writeln!(
-        out,
-        "KNOWN    {held} {addresses}, by where each was first heard of"
-    )?;
-    let from_us = if known.peers == 1 {
-        "from 1 of us".to_owned()
-    } else {
-        format!("from {} of us", known.peers)
-    };
+    writeln!(out, "{}", words!("status-known-held", held = held))?;
     let rows = [
-        ("by hand", known.by_hand),
-        ("this network", known.this_network),
-        ("a meeting point", known.meeting_point),
-        (from_us.as_str(), known.from_peers),
+        (words!("status-known-by-hand"), known.by_hand),
+        (words!("status-known-this-network"), known.this_network),
+        (words!("status-known-meeting-point"), known.meeting_point),
+        (
+            words!("status-known-from-us", peers = known.peers),
+            known.from_peers,
+        ),
     ];
-    for (name, count) in rows {
-        writeln!(out, "  {name:<18} {count:>5}")?;
+    let unrecorded =
+        (known.unrecorded != 0).then(|| (words!("status-known-not-noted"), known.unrecorded));
+    for (name, count) in rows.into_iter().chain(unrecorded) {
+        let count = u64::try_from(count).unwrap_or(u64::MAX);
+        let count = crate::words::count::write(count, false, 0);
+        writeln!(out, "  {} {count:>5}", padded(&name, 18))?;
     }
-    if known.unrecorded != 0 {
-        writeln!(out, "  {:<18} {:>5}", "not noted", known.unrecorded)?;
-    }
-    writeln!(
-        out,
-        "Where each was heard of says nothing about whether anybody answers there.\n\
-         `333 status --sources` lists them."
-    )?;
+    writeln!(out, "{}", words!("status-known-where-heard"))?;
     Ok(())
 }
 
@@ -92,23 +72,20 @@ pub(super) async fn sources(out: &mut impl std::io::Write, node: &Node) -> anyho
     if sources.is_empty() {
         return Ok(());
     }
-    writeln!(out, "SOURCES")?;
+    writeln!(out, "{}", words!("status-known-sources"))?;
+    let label = |label: String| format!("    {}", padded(&label, 7));
     for (name, address, learned) in &sources {
-        writeln!(
-            out,
-            "\n  {}",
-            name.as_deref().unwrap_or("nobody has answered here yet")
-        )?;
-        writeln!(out, "    at     {address}")?;
+        let nobody = || words!("status-known-nobody-answered");
+        writeln!(out, "\n  {}", name.clone().unwrap_or_else(nobody))?;
+        writeln!(out, "{}{address}", label(words!("status-known-at")))?;
         match learned {
             Some(learned) => {
-                writeln!(out, "    first  {}", when(&learned.first))?;
-                writeln!(out, "    last   {}", when(&learned.last))?;
+                let first = label(words!("status-known-first"));
+                writeln!(out, "{first}{}", when(&learned.first))?;
+                let last = label(words!("status-known-last"));
+                writeln!(out, "{last}{}", when(&learned.last))?;
             }
-            None => writeln!(
-                out,
-                "    held from before this node wrote down where addresses came from"
-            )?,
+            None => writeln!(out, "    {}", words!("status-known-from-before"))?,
         }
     }
     Ok(())
@@ -116,5 +93,17 @@ pub(super) async fn sources(out: &mut impl std::io::Write, node: &Node) -> anyho
 
 /// "from 333ab…cd12, in epoch 89601", and the same for every other way.
 fn when(heard: &Heard) -> String {
-    format!("{}, in epoch {}", heard.from, heard.epoch)
+    words!(
+        "status-known-when",
+        from = heard.from.to_string(),
+        epoch = heard.epoch
+    )
+}
+
+/// Every line of `text` begun with `by`, for a paragraph set in from the margin.
+fn indented(text: &str, by: &str) -> String {
+    text.split('\n')
+        .map(|line| format!("{by}{line}"))
+        .collect::<Vec<_>>()
+        .join("\n")
 }

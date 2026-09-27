@@ -55,7 +55,7 @@ pub(crate) fn record(home: &CheckedDir, at: SystemTime, by: Option<&str>) -> any
         text.push('\n');
     }
     crate::dwelling::replace(home, BEGAN_FILE, text.as_bytes())
-        .context("writing down when this name began")
+        .with_context(|| words!("began-writing"))
 }
 
 /// Read what was written down, if anything was.
@@ -72,9 +72,9 @@ pub(crate) fn read(home: &Path) -> Option<Began> {
 #[must_use]
 pub(crate) fn describe(began: Option<&Began>) -> String {
     match began {
-        Some(Began { at, by: Some(by) }) => format!("began    {at}, by `{by}`"),
-        Some(Began { at, by: None }) => format!("began    {at}"),
-        None => "began    before this client kept the date".to_owned(),
+        Some(Began { at, by: Some(by) }) => words!("began-at-by", at = at, by = by),
+        Some(Began { at, by: None }) => words!("began-at", at = at),
+        None => words!("began-before"),
     }
 }
 
@@ -126,6 +126,22 @@ mod tests {
             "began    2026-09-27T10:12:00Z, by `333 id`"
         );
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn in_korean_the_date_begins_in_the_ninth_column() {
+        use crate::words::count::Base;
+        use crate::words::layout::{COLUMN, where_the_words_begin};
+        let began = Began {
+            at: "2026-09-27T10:12:00Z".to_owned(),
+            by: Some("333 id".to_owned()),
+        };
+        let lines =
+            crate::words::speaking("ko", Base::Ten, || [describe(Some(&began)), describe(None)]);
+        assert_eq!(lines[0], "시작     2026-09-27T10:12:00Z, `333 id` 실행");
+        for line in &lines {
+            assert_eq!(where_the_words_begin(line), COLUMN, "{line:?}");
+        }
     }
 
     #[test]

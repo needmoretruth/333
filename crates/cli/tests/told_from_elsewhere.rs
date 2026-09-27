@@ -110,11 +110,19 @@ fn client(home: &Path, words: &[&str]) -> (bool, String) {
     )
 }
 
-/// The epoch in a `said     #N in epoch E` line.
-fn said_in(out: &str) -> Option<u64> {
-    out.lines()
-        .find_map(|line| line.strip_prefix("said     #")?.split(" in epoch ").nth(1))
-        .and_then(|epoch| epoch.trim().parse().ok())
+/// The epoch in a `said     #N in epoch E` line, written in `base`.
+fn said_in(out: &str, base: u32) -> Option<u64> {
+    let written = out
+        .lines()
+        .find_map(|line| line.strip_prefix("said     #")?.split(" in epoch ").nth(1))?;
+    written.trim().chars().try_fold(0_u64, |number, digit| {
+        let digit = match digit {
+            '\u{218A}' => 10,
+            '\u{218B}' => 11,
+            digit => digit.to_digit(10)?,
+        };
+        Some(number * u64::from(base) + u64::from(digit))
+    })
 }
 
 #[test]
@@ -134,16 +142,21 @@ fn what_another_terminal_asks_for_is_done_by_the_vigil_and_refused_by_it() {
         "{out}"
     );
 
-    // Read in the base whoever typed it counts in, not the vigil's: 10 in twelve is 12.
+    // Read in the base whoever typed it counts in, not the vigil's, and said back in
+    // it too: 10 in twelve is twelve, and is written 10 again.
     let (said, out) = client(&asked.home, &["--count-in", "twelve", "say", "10"]);
     assert!(said, "{out}");
-    let epoch = said_in(&out).expect("the vigil said it");
-    assert!(out.contains("said     #12 in epoch"), "{out}");
+    let epoch = said_in(&out, 12).expect("the vigil said it");
+    assert!(out.contains("said     #10 in epoch"), "{out}");
 
     // The vigil's own refusal, in its own words, and a failure here.
     let (again, out) = client(&asked.home, &["say", "8"]);
     if again {
-        assert_ne!(said_in(&out), Some(epoch), "said twice in one epoch: {out}");
+        assert_ne!(
+            said_in(&out, 10),
+            Some(epoch),
+            "said twice in one epoch: {out}"
+        );
     } else {
         assert!(
             out.contains(&format!("you already said #12 in epoch {epoch}")),

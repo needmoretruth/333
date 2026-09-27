@@ -182,10 +182,6 @@ pub(crate) enum Arg<'a> {
 
 impl Arg<'_> {
     /// A count with its digits in threes.
-    #[expect(
-        dead_code,
-        reason = "the extinction line in status is its first user, once status is converted"
-    )]
     pub(crate) const fn grouped(number: u64) -> Self {
         Self::Count {
             number,

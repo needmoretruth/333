@@ -142,13 +142,9 @@ pub(crate) async fn bootstrap(common: &Common) -> anyhow::Result<n333_net::tor::
         .lock()
         .map_or_else(|held| held.into_inner().clone(), |held| held.clone());
     if bridges.is_empty() {
-        aloud!("waking   Tor. the unseen road takes a while to open.");
+        aloud_in!("commands-waking");
     } else {
-        aloud!(
-            "waking   Tor, through {} bridge{}. the unseen road takes a while to open.",
-            bridges.lines.len(),
-            if bridges.lines.len() == 1 { "" } else { "s" }
-        );
+        aloud_in!("commands-waking-through", bridges = bridges.lines.len());
     }
     tokio::time::timeout(
         common.timeout,
@@ -160,8 +156,11 @@ pub(crate) async fn bootstrap(common: &Common) -> anyhow::Result<n333_net::tor::
     )
     .await
     // The deadline's own words are "deadline has elapsed", which says it twice.
-    .map_err(|_| anyhow::anyhow!("no Tor connection after {} s", common.timeout.as_secs()))?
-    .context("starting the Tor client")
+    .map_err(|_| {
+        let seconds = common.timeout.as_secs();
+        anyhow::anyhow!(words!("commands-no-tor", seconds = seconds))
+    })?
+    .with_context(|| words!("commands-starting-tor"))
 }
 
 /// What opening a node found, said once at the start.
@@ -255,16 +254,13 @@ pub(crate) fn report_heard(heard: &crate::node::Heard) {
 #[must_use]
 pub(crate) fn what_was_signed(transfer: &n333_core::Transfer, ours_was_the_giving: bool) -> String {
     let epoch = transfer.epoch().0;
-    let (first, second) = if ours_was_the_giving {
-        ("you", "they")
+    // Two messages rather than two pronouns handed in: which of the two said which
+    // sentence changes the whole sentence in most languages, not one word of it.
+    if ours_was_the_giving {
+        words!("commands-signed-giving", epoch = epoch)
     } else {
-        ("they", "you")
-    };
-    format!(
-        "signed   {first} said: I handed the file to you in epoch {epoch}.\n\
-         \x20        {second} said: I received the file from you in epoch {epoch}.\n\
-         \x20        it is written in two hands, and neither hand can take it back."
-    )
+        words!("commands-signed-taking", epoch = epoch)
+    }
 }
 
 /// The line that says a name was found, said as the naming it is.
@@ -286,10 +282,7 @@ pub(crate) fn naming(not_called: u64) -> String {
 /// until somebody wonders why the roll stopped growing.
 pub(crate) fn report_left_behind(tidings: &crate::node::Tidings) {
     if tidings.left_behind != 0 {
-        aloud!(
-            "brimming {} statements would not fit in one run and wait for the next",
-            tidings.left_behind
-        );
+        aloud_in!("commands-brimming", statements = tidings.left_behind);
     }
 }
 
@@ -473,6 +466,39 @@ mod tests {
                     words!("commands-spoke-first"),
                     "spoke first, which proves only that it spoke",
                 ),
+                (
+                    words!("commands-waking"),
+                    "waking   Tor. the unseen road takes a while to open.",
+                ),
+                (
+                    words!("commands-waking-through", bridges = 1_usize),
+                    "waking   Tor, through 1 bridge. the unseen road takes a while to open.",
+                ),
+                (
+                    words!("commands-waking-through", bridges = 3_usize),
+                    "waking   Tor, through 3 bridges. the unseen road takes a while to open.",
+                ),
+                (
+                    words!("commands-no-tor", seconds = 120_u64),
+                    "no Tor connection after 120 s",
+                ),
+                (words!("commands-starting-tor"), "starting the Tor client"),
+                (
+                    words!("commands-signed-giving", epoch = 89_612_u64),
+                    "signed   you said: I handed the file to you in epoch 89612.\n\
+                     \x20        they said: I received the file from you in epoch 89612.\n\
+                     \x20        it is written in two hands, and neither hand can take it back.",
+                ),
+                (
+                    words!("commands-signed-taking", epoch = 89_612_u64),
+                    "signed   they said: I handed the file to you in epoch 89612.\n\
+                     \x20        you said: I received the file from you in epoch 89612.\n\
+                     \x20        it is written in two hands, and neither hand can take it back.",
+                ),
+                (
+                    words!("commands-brimming", statements = 40_usize),
+                    "brimming 40 statements would not fit in one run and wait for the next",
+                ),
                 (clocks(4_999), "clocks together"),
                 (clocks(-42_000), "their clock 42s behind ours"),
                 (clocks(185_000), "their clock 3m 05s ahead of ours"),
@@ -509,6 +535,36 @@ mod tests {
             exchange.starts_with("witness  333abc  epoch 100  "),
             "{exchange}"
         );
+    }
+
+    #[test]
+    fn in_korean_every_line_this_file_says_begins_its_words_in_the_ninth_column() {
+        use crate::words::count::Base;
+        use crate::words::layout::{COLUMN, where_the_words_begin};
+        let lines = crate::words::speaking("ko", Base::Ten, || {
+            [
+                words!("commands-waking"),
+                words!("commands-waking-through", bridges = 2_usize),
+                words!("commands-signed-giving", epoch = 89_612_u64),
+                words!("commands-signed-taking", epoch = 89_612_u64),
+                words!("commands-brimming", statements = 40_usize),
+                naming(3),
+                words!("commands-unseen"),
+                words!("commands-rejoined", members = 30_usize, were = 9_usize),
+            ]
+        });
+        for line in &lines {
+            let mut rows = line.split('\n');
+            let first = rows.next().unwrap_or_default();
+            assert_eq!(where_the_words_begin(first), COLUMN, "{first:?}");
+            for row in rows {
+                assert_eq!(
+                    row.chars().take_while(|c| *c == ' ').count(),
+                    COLUMN,
+                    "{row:?}"
+                );
+            }
+        }
     }
 
     #[test]

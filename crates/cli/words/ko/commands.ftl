@@ -85,3 +85,29 @@ commands-clocks-behind = 상대 시계가 우리보다 { $apart } 늦음
 commands-hours-and-minutes = { $hours }시간 { $minutes }분
 commands-minutes-and-seconds = { $minutes }분 { $seconds }초
 commands-seconds = { $seconds }초
+
+
+commands-waking = Tor. 보이지 않는 길이 열리려면 시간이 걸립니다.
+    .keyword = 깨움
+
+commands-waking-through = Tor, 브리지 { $bridges }개를 거쳐서. 보이지 않는 길이 열리려면
+    시간이 걸립니다.
+    .keyword = 깨움
+
+commands-no-tor = { $seconds }초가 지나도록 Tor 연결이 없습니다
+commands-starting-tor = Tor 클라이언트 시작하기
+
+# The two sentences a handover is signed under: they await review by a person who
+# reads Korean, and should be read beside the English.
+commands-signed-giving = 당신이 말했습니다: 에포크 { $epoch }에 당신에게 파일을 건넸습니다.
+    상대가 말했습니다: 에포크 { $epoch }에 당신에게서 파일을 받았습니다.
+    두 손으로 적혔고, 어느 손도 되돌릴 수 없습니다.
+    .keyword = 서명
+
+commands-signed-taking = 상대가 말했습니다: 에포크 { $epoch }에 당신에게 파일을 건넸습니다.
+    당신이 말했습니다: 에포크 { $epoch }에 당신에게서 파일을 받았습니다.
+    두 손으로 적혔고, 어느 손도 되돌릴 수 없습니다.
+    .keyword = 서명
+
+commands-brimming = 진술 { $statements }개가 한 번에 다 들어가지 않아 다음을 기다립니다
+    .keyword = 넘침

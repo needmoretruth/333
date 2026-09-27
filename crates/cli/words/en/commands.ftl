@@ -85,3 +85,31 @@ commands-clocks-behind = their clock { $apart } behind ours
 commands-hours-and-minutes = { $hours }h { $minutes }m
 commands-minutes-and-seconds = { $minutes }m { $seconds }s
 commands-seconds = { $seconds }s
+
+
+commands-waking = Tor. the unseen road takes a while to open.
+    .keyword = waking
+
+commands-waking-through = Tor, through { $bridges ->
+        [one] { $bridges } bridge
+       *[other] { $bridges } bridges
+    }. the unseen road takes a while to open.
+    .keyword = waking
+
+commands-no-tor = no Tor connection after { $seconds } s
+commands-starting-tor = starting the Tor client
+
+# What a handover puts a signature under, read back. The closing line is the same
+# at both ends: it is the one formula both sides of the act speak.
+commands-signed-giving = you said: I handed the file to you in epoch { $epoch }.
+    they said: I received the file from you in epoch { $epoch }.
+    it is written in two hands, and neither hand can take it back.
+    .keyword = signed
+
+commands-signed-taking = they said: I handed the file to you in epoch { $epoch }.
+    you said: I received the file from you in epoch { $epoch }.
+    it is written in two hands, and neither hand can take it back.
+    .keyword = signed
+
+commands-brimming = { $statements } statements would not fit in one run and wait for the next
+    .keyword = brimming

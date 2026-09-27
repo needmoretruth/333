@@ -15,6 +15,9 @@ use n333_core::presence;
 use n333_core::{Epoch, utterance};
 
 use super::Node;
+// An epoch in these errors names the folder its statements are kept in, which is
+// written in ten on every disk, so it is written the same way here.
+use crate::words::Arg;
 
 impl Node {
     /// Keep a statement about some epoch.
@@ -38,14 +41,14 @@ impl Node {
         state
             .window
             .record(epoch, frame)
-            .with_context(|| format!("keeping a statement about epoch {}", epoch.0))?;
+            .with_context(|| words!("node-words-keeping", epoch = Arg::exact(epoch.0)))?;
         if attestation::open(frame)
             .is_ok_and(|signed| signed.attestation.prover == self.identity.public_key())
         {
             state
                 .witnessed
                 .keep(frame)
-                .context("keeping what was witnessed of this node")?;
+                .with_context(|| words!("node-words-keeping-witnessed"))?;
         }
         Ok(())
     }
@@ -65,7 +68,7 @@ impl Node {
             .await
             .window
             .read(epoch)
-            .with_context(|| format!("reading the statements about epoch {}", epoch.0))
+            .with_context(|| words!("node-words-reading-statements", epoch = Arg::exact(epoch.0)))
     }
 
     /// Keep an utterance, whoever it came from, filed under the epoch it was said in.
@@ -73,7 +76,8 @@ impl Node {
     /// # Errors
     /// Fails if the file cannot be written.
     pub(crate) async fn keep_utterance(&self, frame: &[u8]) -> anyhow::Result<Epoch> {
-        let signed = utterance::open(frame).context("reading an utterance")?;
+        let signed =
+            utterance::open(frame).with_context(|| words!("node-words-reading-utterance"))?;
         let epoch = signed.utterance.epoch();
         self.keep(epoch, frame).await?;
         Ok(epoch)
@@ -107,7 +111,7 @@ impl Node {
             .await
             .window
             .touch(epoch)
-            .with_context(|| format!("marking epoch {} as kept", epoch.0))
+            .with_context(|| words!("node-words-marking", epoch = Arg::exact(epoch.0)))
     }
 
     /// What this node watched, epoch by epoch, over everything it still holds.
@@ -128,7 +132,7 @@ impl Node {
             let statements = state
                 .window
                 .read(epoch)
-                .with_context(|| format!("reading epoch {number}"))?;
+                .with_context(|| words!("node-words-reading-epoch", epoch = Arg::exact(number)))?;
             vigil.watch(
                 epoch,
                 if statements.is_empty() {
@@ -164,7 +168,7 @@ impl Node {
             for frame in state
                 .window
                 .read(epoch)
-                .with_context(|| format!("reading epoch {number}"))?
+                .with_context(|| words!("node-words-reading-epoch", epoch = Arg::exact(number)))?
             {
                 for who in signers_of(&frame, epoch) {
                     if who != me {
@@ -186,7 +190,7 @@ impl Node {
             .await
             .window
             .forget_before(now)
-            .context("forgetting old statements")
+            .with_context(|| words!("node-words-forgetting"))
     }
 }
 
@@ -266,6 +270,46 @@ mod tests {
         Attestation::silent(&verifier, prover, epoch, [3; 32])
             .seal(&verifier)
             .expect("seals")
+    }
+
+    /// What the errors said before their words moved into a catalog, byte for byte:
+    /// with the epoch in ten, as the folder it names is, whatever the reader counts in.
+    #[test]
+    fn in_english_every_moved_error_says_exactly_what_it_said_before() {
+        use crate::words::count::Base;
+        let pairs = crate::words::speaking("en", Base::Twelve, || {
+            let epoch = Arg::exact(89_612_u64);
+            [
+                (
+                    words!("node-words-keeping", epoch = epoch.clone()),
+                    "keeping a statement about epoch 89612",
+                ),
+                (
+                    words!("node-words-keeping-witnessed"),
+                    "keeping what was witnessed of this node",
+                ),
+                (
+                    words!("node-words-reading-statements", epoch = epoch.clone()),
+                    "reading the statements about epoch 89612",
+                ),
+                (
+                    words!("node-words-reading-utterance"),
+                    "reading an utterance",
+                ),
+                (
+                    words!("node-words-marking", epoch = epoch.clone()),
+                    "marking epoch 89612 as kept",
+                ),
+                (
+                    words!("node-words-reading-epoch", epoch = epoch),
+                    "reading epoch 89612",
+                ),
+                (words!("node-words-forgetting"), "forgetting old statements"),
+            ]
+        });
+        for (now, before) in pairs {
+            assert_eq!(now, before);
+        }
     }
 
     #[tokio::test]
