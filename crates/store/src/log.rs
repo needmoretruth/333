@@ -35,7 +35,7 @@ pub const MAX_RECORD_LEN: usize = 1 << 20;
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     /// The file could not be read, written or created.
-    #[error("{path}: {source}")]
+    #[error("{path}")]
     Io {
         /// Which file.
         path: PathBuf,

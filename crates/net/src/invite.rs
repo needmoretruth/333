@@ -60,7 +60,7 @@ pub enum InviteError {
     #[error("an invitation is at most {MAX_LEN} characters; this one is {0}")]
     TooLong(usize),
     /// The address inside it could not be read.
-    #[error("{0}")]
+    #[error(transparent)]
     Address(#[from] AddressError),
     /// The address is readable but written a second way.
     ///

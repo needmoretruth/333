@@ -60,16 +60,16 @@ pub const MAX_EPOCH_SKEW: u64 = n333_core::epoch::MAX_CLOCK_SKEW_EPOCHS;
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     /// The stream failed mid-frame.
-    #[error("frame: {0}")]
+    #[error(transparent)]
     Frame(#[from] frame::Error),
     /// A signed message was malformed, or its signature did not check out.
-    #[error("message: {0}")]
+    #[error(transparent)]
     Message(#[from] wire::Error),
     /// What arrived is not the file.
-    #[error("what arrived is not the file: {0}")]
+    #[error("what arrived is not the file")]
     NotTheFile(#[from] NotTheFile),
     /// The two halves of the record do not fit together.
-    #[error("the halves do not fit: {0}")]
+    #[error("the halves do not fit")]
     Mismatch(#[from] Mismatch),
     /// The record is about somebody who is not on this connection.
     #[error("the record handed over is about somebody else")]

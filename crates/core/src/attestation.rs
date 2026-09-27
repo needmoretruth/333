@@ -146,13 +146,13 @@ impl SignedAttestation {
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub enum Invalid {
     /// The frame or a signature is wrong.
-    #[error("{0}")]
+    #[error(transparent)]
     Frame(#[from] wire::Error),
     /// The answer inside a positive does not answer this statement.
     ///
     /// A verifier attaching somebody else's answer, or an answer from another epoch,
     /// is caught here rather than being believed because the outer signature checked.
-    #[error("the answer inside does not match this statement: {0}")]
+    #[error("the answer inside does not match this statement")]
     Mismatched(#[from] challenge::NotAnAnswer),
 }
 

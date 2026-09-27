@@ -22,10 +22,10 @@ use crate::frame;
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     /// The stream failed, or the peer sent a frame this node will not read.
-    #[error("frame: {0}")]
+    #[error(transparent)]
     Frame(#[from] frame::Error),
     /// The bytes arrived but are not a heartbeat this node accepts.
-    #[error("message: {0}")]
+    #[error(transparent)]
     Message(#[from] n333_core::WireError),
     /// The peer signed an answer to a nonce this node never sent. Either it is
     /// answering someone else's heartbeat, or it is replaying a recorded one.

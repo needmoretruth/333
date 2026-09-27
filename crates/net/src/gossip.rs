@@ -27,10 +27,10 @@ use crate::frame::{self, AsReceived};
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     /// The stream failed mid-frame, or a run ran past its end.
-    #[error("frame: {0}")]
+    #[error(transparent)]
     Frame(#[from] frame::Error),
     /// A signed message was malformed, or its signature did not check out.
-    #[error("message: {0}")]
+    #[error(transparent)]
     Message(#[from] wire::Error),
     /// What came back where a header was expected is not one.
     #[error("the peer answered with something other than a run of statements")]

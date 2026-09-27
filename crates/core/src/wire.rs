@@ -87,7 +87,7 @@ pub enum Error {
     #[error("signature does not verify")]
     BadSignature,
     /// The sender's public key is unusable.
-    #[error("sender key: {0}")]
+    #[error("sender key")]
     SenderKey(#[from] crate::identity::PublicKeyError),
     /// The message announces a protocol version this build does not speak.
     #[error("protocol version {got}, this build speaks {expected}")]

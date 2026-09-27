@@ -41,7 +41,7 @@ pub const SERVICE: &str = "_n333._tcp.local.";
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     /// The responder could not be started, or the network refused it.
-    #[error("{0}")]
+    #[error(transparent)]
     Mdns(#[from] mdns_sd::Error),
 }
 

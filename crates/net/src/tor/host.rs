@@ -29,17 +29,17 @@ pub enum Error {
     #[error(transparent)]
     Tor(#[from] TorError),
     /// Arti refused an operation. Boxed for the same reason as in the parent module.
-    #[error("tor: {0}")]
+    #[error(transparent)]
     Arti(#[from] Box<arti_client::Error>),
     /// A peer's connection attempt could not be completed. This is the peer's
     /// circuit failing, not this node's service failing, so the service goes on.
-    #[error("incoming stream: {0}")]
+    #[error("incoming stream")]
     IncomingStream(#[from] Box<tor_hsservice::ClientError>),
     /// The service configuration is not valid.
-    #[error("service configuration: {0}")]
+    #[error("service configuration")]
     Config(#[from] arti_client::config::ConfigBuildError),
     /// The nickname is not one arti accepts: lowercase letters, digits, `_` and `-`.
-    #[error("service nickname: {0}")]
+    #[error("service nickname")]
     Nickname(#[from] tor_hsservice::InvalidNickname),
     /// The service was configured off. Nothing here ever does that, so reaching this
     /// means the configuration was assembled by something that did.

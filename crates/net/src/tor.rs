@@ -47,13 +47,13 @@ pub enum Error {
     ///
     /// Boxed because arti's error type is 168 bytes; unboxed it would make every
     /// `Result` in this module that large, on the success path too.
-    #[error("tor: {0}")]
+    #[error(transparent)]
     Tor(#[from] Box<arti_client::Error>),
     /// The configuration this node assembled is not valid.
-    #[error("tor configuration: {0}")]
+    #[error("tor configuration")]
     Config(#[from] arti_client::config::ConfigBuildError),
     /// The peer's address is not one arti will dial.
-    #[error("address: {0}")]
+    #[error(transparent)]
     Address(#[from] arti_client::TorAddrError),
     /// A bridge line was not one arti could read.
     ///

@@ -31,7 +31,7 @@ pub const MAX_BATCH_FRAMES: usize = 333;
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     /// The stream failed, or ended in the middle of a frame.
-    #[error("stream: {0}")]
+    #[error(transparent)]
     Io(#[from] std::io::Error),
     /// The peer announced a frame larger than this node will read.
     #[error("peer announced a {got}-byte frame, over the {MAX_FRAME_LEN}-byte limit")]

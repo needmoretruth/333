@@ -167,7 +167,7 @@ pub fn open(frame: &[u8]) -> Result<SignedEntry, wire::Error> {
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub enum Broken {
     /// An entry does not open, or its signature does not check out.
-    #[error("entry {index}: {source}")]
+    #[error("entry {index}")]
     Entry {
         /// Which position in the sequence.
         index: u64,

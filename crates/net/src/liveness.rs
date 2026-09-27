@@ -40,16 +40,16 @@ use crate::frame::{self, AsReceived};
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     /// The stream failed, or the peer sent a frame this node will not read.
-    #[error("frame: {0}")]
+    #[error(transparent)]
     Frame(#[from] frame::Error),
     /// The bytes arrived but are not the message this node was waiting for.
-    #[error("message: {0}")]
+    #[error(transparent)]
     Message(#[from] n333_core::WireError),
     /// The peer's statement does not hold together.
-    #[error("statement: {0}")]
+    #[error("statement")]
     Statement(#[from] attestation::Invalid),
     /// The answer does not answer the challenge that was sent.
-    #[error("answer: {0}")]
+    #[error("answer")]
     Answer(#[from] challenge::NotAnAnswer),
     /// A node that was not drawn for this epoch asked the question.
     ///

@@ -23,7 +23,7 @@ use crate::frame::{self, AsReceived};
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     /// The stream failed mid-frame.
-    #[error("frame: {0}")]
+    #[error(transparent)]
     Frame(#[from] frame::Error),
     /// The frame opened as none of the things a peer may ask for.
     #[error("this node was sent something it does not understand")]
