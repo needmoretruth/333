@@ -1,0 +1,66 @@
+# The .deb and the .rpm, for a system that installs things that way.
+#
+# Made from the binaries the release workflow attaches rather than built again, so the
+# program inside a package is byte for byte the one a person could download beside it.
+# That workflow is started by the same tag at the same moment, so this waits for the
+# binary it needs to appear on the release: for as long as a release build takes, and
+# then it gives up and says so.
+#
+# A package puts the program and a user unit on the machine and starts nothing. What it
+# carries is written in crates/cli/Cargo.toml, under [package.metadata.deb] and
+# [package.metadata.generate-rpm].
+name: packages
+
+on:
+  push:
+    tags: ["v*"]
+
+env:
+  CARGO_TERM_COLOR: never
+
+jobs:
+  package:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: x86-64
+            asset: 333-x86_64-linux
+            target: x86_64-unknown-linux-gnu
+            deb-variant: ""
+            rpm-variant: ""
+          - name: 64-bit ARM
+            asset: 333-aarch64-linux
+            target: aarch64-unknown-linux-gnu
+            deb-variant: --variant arm64
+            rpm-variant: --variant aarch64
+    name: Packages, Linux on ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: cargo install --locked cargo-deb@3.8.0 cargo-generate-rpm@0.21.0
+      - name: Wait for the release to carry the binary
+        run: |
+          for attempt in $(seq 1 90); do
+            if gh release download "$GITHUB_REF_NAME" --pattern "$ASSET" --dir fetched --clobber; then
+              exit 0
+            fi
+            echo "$ASSET is not on the release yet ($attempt of 90)"
+            sleep 60
+          done
+          echo "$ASSET did not appear on the release within 90 minutes"
+          exit 1
+        env:
+          ASSET: ${{ matrix.asset }}
+          GH_TOKEN: ${{ github.token }}
+      # Where both tools look for a binary they did not build themselves.
+      - run: |
+          install -D -m 755 "fetched/${{ matrix.asset }}" "target/${{ matrix.target }}/release/333"
+          mkdir -p dist
+      - run: cargo deb -p n333-cli --no-build --no-strip --target ${{ matrix.target }} ${{ matrix.deb-variant }} -o dist/
+      - run: cargo generate-rpm -p crates/cli --target ${{ matrix.target }} ${{ matrix.rpm-variant }} -o dist/
+      - run: gh release upload "$GITHUB_REF_NAME" dist/* --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}

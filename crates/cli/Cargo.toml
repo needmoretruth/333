@@ -43,3 +43,59 @@ tracing-subscriber.workspace = true
 
 [lints]
 workspace = true
+
+# The .deb and the .rpm, made from the released binaries by the packages workflow.
+#
+# What a package installs is the program, a user unit for it, and the notices that
+# travel with it. It does not enable, start or schedule anything, and it has no
+# scripts that run at install: installing it puts 333 on the machine, and keeping a
+# vigil is something the person then asks for, with `systemctl --user enable --now
+# 333` or `333 service install`.
+#
+# Standard on x86-64 links the system's TLS and SQLite, so its dependencies are read off
+# the binary. The ARM one carries both inside it, and is built on a machine that cannot
+# read an ARM binary's needs, so they are written down: the C library and nothing else.
+[package.metadata.deb]
+name = "333"
+maintainer = "333 <https://github.com/needmoretruth/333>"
+copyright = "2026 needmoretruth"
+license-file = "../../LICENSE"
+section = "net"
+priority = "optional"
+extended-description = """\
+One node of 333. It keeps the hours, answers when asked, and passes the file on. \
+Nothing is started by installing this: `systemctl --user enable --now 333`, or \
+`333 service install`, begins the vigil for the user who runs it."""
+depends = "$auto"
+assets = [
+    ["target/release/333", "usr/bin/", "755"],
+    ["../../packaging/package/333.service", "usr/lib/systemd/user/333.service", "644"],
+    ["../../LICENSE", "usr/share/doc/333/", "644"],
+    ["../../NOTICE", "usr/share/doc/333/", "644"],
+    ["../../THIRD-PARTY.md", "usr/share/doc/333/", "644"],
+]
+
+[package.metadata.deb.variants.arm64]
+# Named here, or the variant's name would be added to the package's.
+name = "333"
+depends = "libc6, libgcc-s1"
+
+[package.metadata.generate-rpm]
+name = "333"
+summary = "One node of 333: it keeps the hours, answers when asked, and passes the file on"
+# No scripts, so nothing needs a shell to install it.
+require-sh = false
+assets = [
+    { source = "target/release/333", dest = "/usr/bin/333", mode = "755" },
+    { source = "packaging/package/333.service", dest = "/usr/lib/systemd/user/333.service", mode = "644" },
+    { source = "LICENSE", dest = "/usr/share/licenses/333/LICENSE", mode = "644", doc = true },
+    { source = "NOTICE", dest = "/usr/share/licenses/333/NOTICE", mode = "644", doc = true },
+    { source = "THIRD-PARTY.md", dest = "/usr/share/doc/333/THIRD-PARTY.md", mode = "644", doc = true },
+]
+
+[package.metadata.generate-rpm.variants.aarch64]
+auto-req = "no"
+
+[package.metadata.generate-rpm.variants.aarch64.requires]
+"libc.so.6()(64bit)" = "*"
+"libgcc_s.so.1()(64bit)" = "*"
