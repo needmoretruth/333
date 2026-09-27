@@ -160,9 +160,9 @@ async fn pressed(
                 *saying = Saying::Which(String::new());
                 Pressed::Carry
             }
-            // Everything the terminal can be told, told here instead. The node holding
-            // these files is this one, so a second terminal is not another way of
-            // doing it — it is another program opening files this one is writing.
+            // Everything the terminal can be told, told here. The node holding these
+            // files is this one, so the same words typed in another terminal are handed
+            // to this process too, rather than opening files it is writing.
             KeyCode::Char(':') => {
                 *saying = Saying::Typing(String::new());
                 Pressed::Carry

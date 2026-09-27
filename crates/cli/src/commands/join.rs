@@ -9,6 +9,8 @@
 //! handed it over and when. Those halves are what everybody else reads as this node's
 //! beginning.
 
+use std::time::Duration;
+
 use anyhow::Context as _;
 use n333_core::Epoch;
 use n333_core::enrollment;
@@ -26,9 +28,31 @@ pub(crate) async fn run(common: &Common, address: &n333_net::PeerAddress) -> any
     let (node, opened) = Node::open(&common.mistrust(), common.paths.root(), common.keeping)?;
     aloud!("name     {}", node.identity().node_id());
     crate::commands::report_opening(&opened);
+    ask(&node, &Dialer::new(common.clone()), common.timeout, address).await?;
+    aloud!(
+        "vigil    run `333 serve` and stay awake. Nothing can be witnessed of a node\n\
+         \x20        nobody can reach, and this stretch is witnessed once or never."
+    );
+    Ok(())
+}
+
+/// Ask for the file, as a node that is already open.
+///
+/// Shared with the vigil, which holds the node and the dialler already. Opening either
+/// a second time inside it would be a second writer to files it is writing.
+///
+/// # Errors
+/// Fails if the peer cannot be reached, it will not hand the file over, or what it
+/// hands over is not the file.
+pub(crate) async fn ask(
+    node: &Node,
+    dialer: &Dialer,
+    timeout: Duration,
+    address: &n333_net::PeerAddress,
+) -> anyhow::Result<()> {
     aloud!("knocking {address}");
 
-    let mut stream = match Dialer::new(common.clone()).dial(address).await {
+    let mut stream = match dialer.dial(address).await {
         Ok(stream) => stream,
         Err(e) => {
             // Not the end of anything. A door nobody opens is a door nobody opens.
@@ -50,14 +74,9 @@ pub(crate) async fn run(common: &Common, address: &n333_net::PeerAddress) -> any
             .await
             .context("asking for the file")
     };
-    let taken = tokio::time::timeout(common.timeout, round)
+    let taken = tokio::time::timeout(timeout, round)
         .await
-        .with_context(|| {
-            format!(
-                "no answer from {address} after {} s",
-                common.timeout.as_secs()
-            )
-        })??;
+        .with_context(|| format!("no answer from {address} after {} s", timeout.as_secs()))??;
 
     let joined = taken.handover.transfer.epoch();
     aloud!("given    by {}", taken.handover.transfer.giver());
@@ -83,10 +102,6 @@ pub(crate) async fn run(common: &Common, address: &n333_net::PeerAddress) -> any
          \x20        Until then, answer everything that is asked of you. What is witnessed\n\
          \x20        in that time is the whole of the proof that you were ever here at all.",
         enrollment::active_from(joined).0
-    );
-    aloud!(
-        "vigil    run `333 serve` and stay awake. Nothing can be witnessed of a node\n\
-         \x20        nobody can reach, and this stretch is witnessed once or never."
     );
     Ok(())
 }

@@ -14,7 +14,6 @@
 //! for once it is through is [`answering`].
 
 pub(crate) mod answering;
-#[cfg(feature = "screen")]
 mod carrying;
 mod door;
 mod invitation;
@@ -22,6 +21,7 @@ mod neighbours;
 mod onion;
 mod reach;
 mod socket;
+mod told;
 
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -133,19 +133,15 @@ pub(crate) async fn run(common: &Common, how: Vigil) -> anyhow::Result<()> {
     let mut bound_at: Option<SocketAddr> = None;
     let mut listening = tokio::task::JoinSet::new();
     // What the person types into the screen, carried out where the dialler is. The
-    // smallest edition has no screen, so it has nothing that could type an order and
-    // none of this is built into it.
-    #[cfg(feature = "screen")]
+    // smallest edition has no screen, and its sender is dropped at once.
     let (asked, orders) = tokio::sync::mpsc::unbounded_channel();
-    #[cfg(feature = "screen")]
-    let (order_node, order_common, order_dialer) =
-        (Arc::clone(&node), common.clone(), dialer.clone());
     #[cfg(feature = "screen")]
     if let Some(lines) = watching {
         listening.spawn(crate::screen::keep(Arc::clone(&node), lines, asked.clone()));
     }
-    #[cfg(feature = "screen")]
     drop(asked);
+    let (order_node, order_common, order_dialer) =
+        (Arc::clone(&node), common.clone(), dialer.clone());
 
     if let Some(bind) = bind {
         let listener = direct::Listener::bind(bind)
@@ -217,21 +213,24 @@ pub(crate) async fn run(common: &Common, how: Vigil) -> anyhow::Result<()> {
         }
     }
 
-    // What the screen asked for, done where the dialler is. Spawned before the hours
-    // so that a person who opens the screen and types at once is answered rather than
-    // queued behind a round.
-    #[cfg(feature = "screen")]
-    listening.spawn(async move {
-        carrying::until_the_screen_goes(
-            orders,
-            order_node,
-            order_common,
-            order_dialer,
+    // What the screen asked for, and what other terminals hand over, done where the
+    // dialler is. Before the hours, so that a person who types at once is answered
+    // rather than queued behind a round. Not one of the tasks the vigil waits on: with
+    // no screen and no socket it has nobody to listen to and ends, and the vigil must
+    // not end with it.
+    let (tell, told) = tokio::sync::mpsc::unbounded_channel();
+    let _taking_orders = told::listen(common.paths.root(), tell);
+    tokio::spawn(carrying::until_nobody_asks(
+        orders,
+        told,
+        carrying::Carrier {
+            node: order_node,
+            common: order_common,
+            dialer: order_dialer,
             found_address,
-        )
-        .await;
-        Ok(())
-    });
+            unseen: std::sync::Mutex::new(None),
+        },
+    ));
 
     // The hours run alongside the listeners rather than after them: answering is what
     // this node owes others, and keeping the hours is what it owes itself.

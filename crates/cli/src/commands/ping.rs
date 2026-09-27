@@ -5,7 +5,10 @@
 //! before the first byte moves. Nothing else differs between the two, and neither
 //! this file nor anything above it knows which one happened.
 
+use std::time::Duration;
+
 use anyhow::Context as _;
+use n333_core::Identity;
 use n333_net::{PeerAddress, initiate};
 
 use crate::commands::{Common, describe};
@@ -21,10 +24,32 @@ pub(crate) async fn run(common: &Common, address: &PeerAddress) -> anyhow::Resul
     let (identity, _origin) =
         identity_file::load_or_create(&common.mistrust(), common.paths.root())?;
     aloud!("name     {}", identity.node_id());
+    knock(
+        &identity,
+        &Dialer::new(common.clone()),
+        common.timeout,
+        address,
+    )
+    .await
+}
+
+/// Exchange one heartbeat, as a node that is already running.
+///
+/// Shared with the vigil, which has the key and a dialler of its own already and must
+/// not start a second of either.
+///
+/// # Errors
+/// Fails if the peer cannot be reached or the answer does not check out.
+pub(crate) async fn knock(
+    identity: &Identity,
+    dialer: &Dialer,
+    timeout: Duration,
+    address: &PeerAddress,
+) -> anyhow::Result<()> {
     aloud!("knocking {address}");
 
-    let mut stream = Dialer::new(common.clone()).dial(address).await?;
-    let exchange = tokio::time::timeout(common.timeout, initiate(&mut stream, &identity))
+    let mut stream = dialer.dial(address).await?;
+    let exchange = tokio::time::timeout(timeout, initiate(&mut stream, identity))
         .await
         .context("the peer accepted the connection but did not finish the exchange")?
         .context("exchanging heartbeats")?;

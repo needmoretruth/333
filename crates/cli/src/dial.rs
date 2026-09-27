@@ -154,8 +154,6 @@ impl Dialer {
     ///
     /// Asked before offering to change something that only the start reads, so that a
     /// person is told their bridge will do nothing rather than left believing it will.
-    /// Only the screen asks, and the smallest edition has no screen.
-    #[cfg_attr(not(feature = "screen"), allow(dead_code))]
     pub(crate) fn tor_is_up(&self) -> bool {
         self.tor.get().is_some()
     }
@@ -192,9 +190,6 @@ impl Dialer {
     pub(crate) async fn wake_for(&self, _addresses: &[String]) {}
 
     /// Never, in a build with no Tor in it to be up.
-    ///
-    /// Only the screen asks, and the smallest edition has no screen.
-    #[cfg_attr(not(feature = "screen"), allow(dead_code))]
     pub(crate) const fn tor_is_up(&self) -> bool {
         false
     }

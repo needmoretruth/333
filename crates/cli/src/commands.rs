@@ -4,6 +4,7 @@
 //! person reads are part of the command, not a detail of it.
 
 pub(crate) mod bootstrap;
+pub(crate) mod elsewhere;
 pub(crate) mod hours;
 pub(crate) mod id;
 pub(crate) mod join;
@@ -30,9 +31,10 @@ pub(crate) struct Common {
     /// Here rather than on the one command that starts Tor, because every command
     /// that can reach an onion address can need it, and a person on a network that
     /// blocks Tor needs it on all of them or on none.
-    /// Behind a lock because the screen can add one while the node is running, and
-    /// the next Tor start is the one that reads it. Once Tor is up, adding is a thing
-    /// that has no effect, and the screen says so rather than pretending.
+    /// Behind a lock because a running vigil can be told to add one, from its screen
+    /// or from another terminal, and the next Tor start is the one that reads it. Once
+    /// Tor is up, adding is a thing that has no effect, and the vigil says so rather
+    /// than pretending.
     // Read where Tor is started, which is a build with arti in it. Every shipped
     // build has one; the bare build with no features is checked and not released, and
     // in that one this is carried and never opened.

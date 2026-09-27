@@ -15,7 +15,14 @@
 //! bound, because the alternative is a node whose work waits on a screen being drawn.
 //! When the screen is gone the send fails and the line is lost, which is correct: the
 //! screen is gone.
+//!
+//! WHOEVER ASKED HEARS THE ANSWER. An order handed over from another terminal is
+//! carried out on a task that knows who asked, and every line said on that task goes
+//! to them as well as to the vigil. Only those lines: the person who typed `333 say 7`
+//! wants to know what became of it, not what the vigil said about everything else in
+//! the same second.
 
+use std::future::Future;
 use std::sync::OnceLock;
 
 use tokio::sync::mpsc::UnboundedSender;
@@ -25,16 +32,37 @@ use tokio::sync::mpsc::{UnboundedReceiver, unbounded_channel};
 /// Where the lines go once a screen has asked for them.
 static SCREEN: OnceLock<UnboundedSender<String>> = OnceLock::new();
 
+tokio::task_local! {
+    /// Whoever handed over the order this task is carrying out.
+    static ASKER: UnboundedSender<String>;
+}
+
 /// Say one thing out loud.
 pub(crate) fn say(line: std::fmt::Arguments<'_>) {
+    let line = line.to_string();
+    // A send that fails is somebody who stopped waiting. The order goes on; they will
+    // not hear how it went, which is what hanging up means.
+    let _ = ASKER.try_with(|asker| asker.send(line.clone()));
     match SCREEN.get() {
         // Sent whole, newlines and all: what is said in several lines is one thing
         // said, and the screen is the place that knows how to lay one thing out.
         Some(screen) => {
-            let _ = screen.send(line.to_string());
+            let _ = screen.send(line);
         }
         None => println!("{line}"),
     }
+}
+
+/// Carry out `work` so that everything it says also reaches `asker`.
+pub(crate) async fn heard_by<F: Future>(asker: UnboundedSender<String>, work: F) -> F::Output {
+    ASKER.scope(asker, work).await
+}
+
+/// Whoever asked for what this task is doing, if it was asked from elsewhere.
+///
+/// For work that goes on in a task of its own and should still be heard by them.
+pub(crate) fn the_asker() -> Option<UnboundedSender<String>> {
+    ASKER.try_with(Clone::clone).ok()
 }
 
 /// Take everything said from here on, instead of printing it.

@@ -61,7 +61,9 @@ igd-next = { version = "0.17.1", default-features = false, features = ["aio_toki
 tor-error = "=0.46.0"
 safelog = "0.9"
 futures = "0.3"
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "signal", "sync", "net"] }
+# `io-util` is the line reader a vigil reads an order from another terminal with; it
+# adds no crate to the tree.
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "signal", "sync", "net", "io-util"] }
 # Bridges Tokio's socket traits to the futures ones arti's streams already speak, so
 # one exchange is written once for both transports. Already in the tree; this only
 # turns on a feature of it.

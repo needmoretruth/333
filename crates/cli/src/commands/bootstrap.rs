@@ -35,7 +35,20 @@ pub(crate) async fn run(common: &Common, meet: &str, anyway: bool) -> anyhow::Re
     let (node, opened) = Node::open(&common.mistrust(), common.paths.root(), common.keeping)?;
     aloud!("name     {}", node.identity().node_id());
     crate::commands::report_opening(&opened);
+    if begin(&node, meet, anyway).await? {
+        aloud!("vigil    run `333 serve` to answer.");
+    }
+    Ok(())
+}
 
+/// Begin a line of your own, as a node that is already open. True if it began.
+///
+/// Shared with the vigil, which holds the node already and is already answering.
+///
+/// # Errors
+/// Fails if the node already has the file, if the meeting point cannot be reached, or
+/// if what comes back is not the file.
+pub(crate) async fn begin(node: &Node, meet: &str, anyway: bool) -> anyhow::Result<bool> {
     if node.subject().await.is_some() {
         bail!("this node already has the file. There is nothing to begin.");
     }
@@ -56,7 +69,7 @@ pub(crate) async fn run(common: &Common, meet: &str, anyway: bool) -> anyhow::Re
              \x20        If you have read that and still mean to begin, `--anyway` says so.",
             meeting.browse()
         );
-        return Ok(());
+        return Ok(false);
     }
 
     let bytes = ask_for_it(&meeting, meet).await?;
@@ -74,11 +87,10 @@ pub(crate) async fn run(common: &Common, meet: &str, anyway: bool) -> anyhow::Re
          \x20        this node is never drawn to ask anybody. It can still go to the\n\
          \x20        ones drawn to ask it and be witnessed that way.\n\
          \n\
-         \x20        Run `333 serve` to answer. Whoever you hand the file to afterwards\n\
-         \x20        is admitted the ordinary way, with both of you signing, and is\n\
-         \x20        counted from that moment."
+         \x20        Whoever you hand the file to afterwards is admitted the ordinary\n\
+         \x20        way, with both of you signing, and is counted from that moment."
     );
-    Ok(())
+    Ok(true)
 }
 
 /// How many nodes are already saying where they are.

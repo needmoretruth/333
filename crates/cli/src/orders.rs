@@ -1,22 +1,27 @@
-//! What a person can ask for from inside the screen, and how it is typed.
+//! What a person can ask a running vigil for, and how it is typed.
 //!
 //! The screen used to do two things: quit, and say one of the 333. Everything else a
 //! node can be told to do was a separate command, run in a separate terminal, against
 //! the same directory this node has open. That is not a second way of doing it. It is
 //! a second program, and this one is holding the files.
 //!
-//! So the words are the same words. `ping 333:somewhere:3333` inside the screen does
-//! what `333 ping 333:somewhere:3333` does outside it, and it does it in this process,
-//! which is the one that already has the connection, the identity and the roll open.
+//! So the words are the same words, and they are carried out by the vigil wherever
+//! they were typed. `ping 333:somewhere:3333` inside the screen does what
+//! `333 ping 333:somewhere:3333` does outside it, and while a vigil is running both of
+//! them are done in that one process, which is the one that already has the
+//! connection, the identity and the roll open. A node with no screen at all — the
+//! Light edition, or one kept by a service manager — is told the same words through
+//! its directory, by `333 tell` and by the commands that share a name with them.
 //!
 //! WHAT IS NOT HERE. Nothing that only makes sense before the node started: where its
 //! directory is, how long it waits, whether it keeps everything. Those are settled by
-//! the time there is a screen to type into, and the terminal cannot change them after
-//! the fact either.
+//! the time there is a vigil to tell anything, and it cannot change them after the
+//! fact either.
 
 use std::fmt;
 
-/// Something the person at the keyboard has asked this node to do.
+/// Something a person has asked this node to do, in the screen or from another
+/// terminal.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Order {
     /// Reach a node and exchange one heartbeat with it.

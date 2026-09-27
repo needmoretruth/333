@@ -28,11 +28,12 @@
 // First, so that everything below it can say something out loud.
 #[macro_use]
 mod aloud;
+mod claim;
 mod commands;
+mod control;
 mod dial;
 mod identity_file;
 mod node;
-#[cfg(feature = "screen")]
 mod orders;
 mod paths;
 #[cfg(feature = "screen")]
@@ -40,11 +41,14 @@ mod screen;
 
 use std::net::SocketAddr;
 use std::path::PathBuf;
+use std::process::ExitCode;
 use std::time::Duration;
 
 use clap::{Parser, Subcommand};
 
+use claim::Taken;
 use commands::Common;
+use commands::elsewhere::Wanted;
 use n333_net::PeerAddress;
 use paths::NodePaths;
 
@@ -229,6 +233,38 @@ enum Command {
         #[arg(value_parser = n333_net::invite::address_or_invite)]
         address: PeerAddress,
     },
+    /// Tell the vigil running in this directory something, in its screen's words.
+    ///
+    /// `tor on`, `tor off`, `bridge <line>`, `helper <program>`, and every other word
+    /// the screen takes after `:`. The vigil carries it out and what it says about it
+    /// is printed here. `say`, `join`, `ping`, `bootstrap` and `status` are handed to a
+    /// running vigil the same way without this.
+    Tell {
+        /// The order, as it would be typed into the screen.
+        #[arg(required = true, trailing_var_arg = true, allow_hyphen_values = true)]
+        order: Vec<String>,
+    },
+}
+
+impl Command {
+    /// What this command wants, put the way a running vigil could be asked for it.
+    fn wanted(&self) -> Wanted {
+        match self {
+            Self::Id => Wanted::Name,
+            Self::Serve { .. } => Wanted::Vigil,
+            Self::Bootstrap { meet, .. } if meet != n333_net::meeting::THE_PLACE => Wanted::Kept(
+                "it looks for people only where it always does.\n\
+                 \x20        Leave --meet out, or run this when it has stopped.",
+            ),
+            Self::Bootstrap { anyway: true, .. } => Wanted::Order("bootstrap anyway".to_owned()),
+            Self::Bootstrap { anyway: false, .. } => Wanted::Order("bootstrap".to_owned()),
+            Self::Say { index } => Wanted::Order(format!("say {index}")),
+            Self::Status => Wanted::Order("status".to_owned()),
+            Self::Join { address } => Wanted::Order(format!("join {address}")),
+            Self::Ping { address } => Wanted::Order(format!("ping {address}")),
+            Self::Tell { order } => Wanted::Order(order.join(" ")),
+        }
+    }
 }
 
 /// Listen on every interface, on the port peers expect.
@@ -237,7 +273,7 @@ fn default_bind() -> SocketAddr {
 }
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> anyhow::Result<ExitCode> {
     // Everything the libraries under this say goes where everything this client says
     // goes. Otherwise arti writes a warning straight into a terminal the screen is
     // drawing on, and what a person sees is a bootstrap message wearing a border.
@@ -271,6 +307,15 @@ async fn main() -> anyhow::Result<()> {
     // epoch and a node whose clock is wrong is refused everywhere without being told
     // why.
     commands::check_the_clock(n333_core::Epoch::now());
+
+    // Before anything in the directory is read, and held until this process exits.
+    let _claim = match claim::take(&common.mistrust(), common.paths.root())? {
+        Taken::Ours(claim) => claim,
+        Taken::Theirs(holder) => {
+            let beside = commands::elsewhere::run(&common, holder, cli.command.wanted()).await;
+            return quietly_if_walked_away(beside);
+        }
+    };
 
     let done = match cli.command {
         Command::Id => commands::id::run(&common),
@@ -306,11 +351,16 @@ async fn main() -> anyhow::Result<()> {
         Command::Status => commands::status::run(&common).await,
         Command::Join { address } => commands::join::run(&common, &address).await,
         Command::Ping { address } => commands::ping::run(&common, &address).await,
+        Command::Tell { .. } => return Ok(commands::elsewhere::nobody_to_tell()),
     };
+    quietly_if_walked_away(done.map(|()| ExitCode::SUCCESS))
+}
+
+/// A reader that walked away — `333 status | head` — is not a failure and has nothing
+/// to be told about it. Anything else is reported as it is.
+fn quietly_if_walked_away(done: anyhow::Result<ExitCode>) -> anyhow::Result<ExitCode> {
     match done {
-        // A reader that walked away — `333 status | head` — is not a failure and has
-        // nothing to be told about it. Anything else is reported as it is.
-        Err(e) if walked_away(&e) => Ok(()),
+        Err(e) if walked_away(&e) => Ok(ExitCode::SUCCESS),
         other => other,
     }
 }

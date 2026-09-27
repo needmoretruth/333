@@ -47,17 +47,46 @@ pub(crate) async fn run(common: &Common) -> anyhow::Result<()> {
     writeln!(out, "epoch    {}", now.0)?;
     crate::commands::report_opening(&opened);
     writeln!(out)?;
+    report(out, &node, now).await
+}
 
+/// All of it, the name and the epoch first, for a node that is already open.
+///
+/// # Errors
+/// Fails if what is held cannot be read or written out.
+pub(crate) async fn whole(
+    out: &mut impl std::io::Write,
+    node: &Node,
+    now: Epoch,
+) -> anyhow::Result<()> {
+    writeln!(out, "name     {}", node.identity().node_id())?;
+    writeln!(out, "epoch    {}", now.0)?;
+    writeln!(out)?;
+    report(out, node, now).await
+}
+
+/// Everything after the name and the epoch, for a node that is already open.
+///
+/// Shared with the vigil, which answers `333 status` from another terminal with this
+/// rather than letting that terminal open files it is writing.
+///
+/// # Errors
+/// Fails if what is held cannot be read.
+pub(crate) async fn report(
+    out: &mut impl std::io::Write,
+    node: &Node,
+    now: Epoch,
+) -> anyhow::Result<()> {
     let answering = node.answering(now).await?;
-    the_count(out, &node, &answering, now).await?;
+    the_count(out, node, &answering, now).await?;
     writeln!(out)?;
-    yourself::this_node(out, &node, now).await?;
+    yourself::this_node(out, node, now).await?;
     writeln!(out)?;
-    the_hands(out, &node).await?;
+    the_hands(out, node).await?;
     writeln!(out)?;
-    what_was_said(out, &node, &answering, now).await?;
+    what_was_said(out, node, &answering, now).await?;
     writeln!(out)?;
-    the_silence(out, &node, now).await
+    the_silence(out, node, now).await
 }
 
 /// How many of us are answering, first and largest.

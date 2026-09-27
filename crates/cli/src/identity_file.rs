@@ -72,6 +72,27 @@ pub(crate) fn load_or_create(
     }
 }
 
+/// Read this node's identity if it has one, and write nothing either way.
+///
+/// For when another 333 holds the directory. Reading the seed is safe beside it — the
+/// file is written once and never again — and making one is not: that other 333 may be
+/// in the middle of searching for the very name this would be searching for.
+///
+/// # Errors
+/// Fails if `home` is reachable by other users, or the file there cannot be read or
+/// holds no eligible identity.
+pub(crate) fn load(mistrust: &Mistrust, home: &Path) -> anyhow::Result<Option<Identity>> {
+    let home = mistrust
+        .verifier()
+        .secure_dir(home)
+        .with_context(|| private_directory_advice(home))?;
+    match home.read(SEED_FILE) {
+        Ok(bytes) => Ok(Some(from_seed_bytes(&bytes)?)),
+        Err(fs_mistrust::Error::NotFound(_)) => Ok(None),
+        Err(e) => Err(anyhow::Error::new(e).context(private_file_advice(&home))),
+    }
+}
+
 /// Interpret the bytes of the seed file.
 fn from_seed_bytes(bytes: &[u8]) -> anyhow::Result<Identity> {
     let seed: [u8; 32] = bytes.try_into().map_err(|_| {
@@ -140,7 +161,7 @@ fn create(home: &CheckedDir) -> anyhow::Result<(Identity, Origin)> {
 }
 
 /// What to tell someone whose node directory is not private.
-fn private_directory_advice(home: &Path) -> String {
+pub(crate) fn private_directory_advice(home: &Path) -> String {
     format!(
         "{} must be readable only by you: it holds this node's whole identity.\n\
          Fix it with: chmod 700 {}\n\
