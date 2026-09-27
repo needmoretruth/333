@@ -86,7 +86,7 @@ pub(crate) struct Cli {
     /// Count in ten, twelve, or twelve-ascii.
     ///
     /// Every count shown is written in it, and every number typed is read in it:
-    /// `say 239` in twelve is the same signal as `say 333` in ten. Names, addresses,
+    /// `say 238` in twelve is the same signal as `say 332` in ten. Names, addresses,
     /// ports and versions are never re-counted, and nothing on the wire changes.
     /// Twelve is written with ↊ and ↋, or with X and E where the terminal cannot show
     /// them. Without it, `THE333_COUNT_IN`, then ten.
