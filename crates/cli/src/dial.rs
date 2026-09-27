@@ -177,7 +177,7 @@ impl Dialer {
             n333_net::tor::connect(&client, address.host(), address.port()),
         )
         .await
-        .with_context(|| self.gave_up_on())?
+        .map_err(|_| anyhow::Error::msg(self.gave_up_on()))?
         .with_context(|| format!("connecting to {address}"))?;
         Ok(Box::new(stream))
     }

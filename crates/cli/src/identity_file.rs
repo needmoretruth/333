@@ -68,16 +68,17 @@ pub(crate) fn load_or_create(
     let home = secure(mistrust, home)?;
     crate::dwelling::refuse_if_packed(home.as_path())?;
 
+    let seed = home.as_path().join(SEED_FILE);
     match home.read(SEED_FILE) {
         Ok(bytes) => {
-            let identity = from_seed_bytes(&bytes)?;
+            let identity = from_seed_bytes(&bytes, &seed)?;
             if let Some(elsewhere) = crate::dwelling::check_here(&home)? {
                 aloud!("{elsewhere}");
             }
             Ok((identity, Origin::Loaded))
         }
         Err(fs_mistrust::Error::NotFound(_)) => create(&home),
-        Err(e) => Err(anyhow::Error::new(e).context(private_file_advice(&home))),
+        Err(e) => Err(refused(e, &format!("reading {}", seed.display()), &seed)),
     }
 }
 
@@ -91,14 +92,15 @@ pub(crate) fn load_or_create(
 /// Fails if `home` is reachable by other users, or the file there cannot be read or
 /// holds no eligible identity.
 pub(crate) fn load(mistrust: &Mistrust, home: &Path) -> anyhow::Result<Option<Identity>> {
-    let home = mistrust
-        .verifier()
-        .secure_dir(home)
-        .with_context(|| private_directory_advice(home))?;
+    let home = match mistrust.verifier().secure_dir(home) {
+        Ok(checked) => checked,
+        Err(e) => return Err(refused(e, &format!("reading {}", home.display()), home)),
+    };
+    let seed = home.as_path().join(SEED_FILE);
     match home.read(SEED_FILE) {
-        Ok(bytes) => Ok(Some(from_seed_bytes(&bytes)?)),
+        Ok(bytes) => Ok(Some(from_seed_bytes(&bytes, &seed)?)),
         Err(fs_mistrust::Error::NotFound(_)) => Ok(None),
-        Err(e) => Err(anyhow::Error::new(e).context(private_file_advice(&home))),
+        Err(e) => Err(refused(e, &format!("reading {}", seed.display()), &seed)),
     }
 }
 
@@ -107,10 +109,13 @@ pub(crate) fn load(mistrust: &Mistrust, home: &Path) -> anyhow::Result<Option<Id
 /// # Errors
 /// Fails, saying how to fix it, if it or any directory above it is reachable by others.
 pub(crate) fn secure(mistrust: &Mistrust, home: &Path) -> anyhow::Result<CheckedDir> {
-    mistrust
-        .verifier()
-        .make_secure_dir(home)
-        .with_context(|| private_directory_advice(home))
+    mistrust.verifier().make_secure_dir(home).map_err(|e| {
+        refused(
+            e,
+            &format!("making {} this node's home", home.display()),
+            home,
+        )
+    })
 }
 
 /// Whether a name has been made in `home`, without making one or checking anything.
@@ -119,14 +124,75 @@ pub(crate) fn holds_a_name(home: &Path) -> bool {
     home.join(SEED_FILE).exists()
 }
 
-/// Interpret the bytes of the seed file.
+/// A permissions check that said no, with every reason it gave and what would fix it.
+///
+/// fs-mistrust folds several reasons into one that says only that there were several,
+/// which is the category and not the cause, so they are unfolded here. The way out is
+/// only offered for the one failure it fixes: a path other people can reach.
+fn refused(error: fs_mistrust::Error, attempted: &str, target: &Path) -> anyhow::Error {
+    let loose = match &error {
+        fs_mistrust::Error::Multiple(all) => all.iter().find_map(|one| loose_path(one)),
+        one => loose_path(one),
+    }
+    .map(Path::to_path_buf);
+    let failed = match error {
+        fs_mistrust::Error::Multiple(all) => anyhow::anyhow!(
+            all.iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+                .join("; ")
+        ),
+        // Kept whole, so that what it ran into underneath is said too.
+        one => anyhow::Error::new(one),
+    }
+    .context(attempted.to_owned());
+    match loose {
+        Some(path) => crate::failed::next_step(failed, private_advice(target, &path)),
+        None => failed,
+    }
+}
+
+/// The path a permissions refusal is about, if that is what it is.
+fn loose_path(error: &fs_mistrust::Error) -> Option<&Path> {
+    match error {
+        fs_mistrust::Error::BadPermission(path, ..) => Some(path),
+        _ => None,
+    }
+}
+
+/// What to tell someone whose node directory, or something above it, others can reach.
+///
+/// The home and the file in it must be private; the directories above them only have to
+/// be closed to writing by others, which is all fs-mistrust asks of them.
+fn private_advice(target: &Path, loose: &Path) -> String {
+    let same = |one: &Path| std::fs::canonicalize(one).unwrap_or_else(|_| one.to_path_buf());
+    let fix = if same(loose) == same(target) {
+        if target.is_dir() {
+            "chmod 700"
+        } else {
+            "chmod 600"
+        }
+    } else {
+        "chmod go-w"
+    };
+    format!(
+        "It holds this node's whole identity, so nobody else may reach it.\n\
+         Fix it with: {fix} {}\n\
+         Or, if you understand what you are giving up, pass \
+         --dangerously-trust-directory-permissions",
+        loose.display()
+    )
+}
+
+/// Interpret the bytes of the seed file found at `path`, which names it in a refusal.
 ///
 /// # Errors
 /// Fails if they are not a seed, or the name they make is not one 333 answers to.
-pub(crate) fn from_seed_bytes(bytes: &[u8]) -> anyhow::Result<Identity> {
+pub(crate) fn from_seed_bytes(bytes: &[u8], path: &Path) -> anyhow::Result<Identity> {
     let seed: [u8; 32] = bytes.try_into().map_err(|_| {
         anyhow::anyhow!(
-            "identity file holds {} bytes; a seed is exactly 32",
+            "{} holds {} bytes; a seed is exactly 32",
+            path.display(),
             bytes.len()
         )
     })?;
@@ -172,13 +238,16 @@ fn create(home: &CheckedDir) -> anyhow::Result<(Identity, Origin)> {
     let (identity, tried) = Identity::mine();
     // `create_new` is what stops a second process, or a second run, from replacing an
     // identity that already exists. fs-mistrust supplies the mode on unix systems.
+    let path = home.as_path().join(SEED_FILE);
+    let writing = || format!("writing {}", path.display());
     let mut file = home
         .open(SEED_FILE, OpenOptions::new().write(true).create_new(true))
-        .context("creating the identity file")?;
-    file.write_all(identity.seed().as_slice())?;
+        .with_context(|| format!("creating {}", path.display()))?;
+    file.write_all(identity.seed().as_slice())
+        .with_context(writing)?;
     // Without this the seed can still be in the page cache when the machine loses
     // power, and the node comes back with an address nobody can reach.
-    file.sync_all()?;
+    file.sync_all().with_context(writing)?;
     crate::began::record(
         home,
         std::time::SystemTime::now(),
@@ -194,28 +263,6 @@ fn create(home: &CheckedDir) -> anyhow::Result<(Identity, Origin)> {
             not_called: tried - 1,
         },
     ))
-}
-
-/// What to tell someone whose node directory is not private.
-pub(crate) fn private_directory_advice(home: &Path) -> String {
-    format!(
-        "{} must be readable only by you: it holds this node's whole identity.\n\
-         Fix it with: chmod 700 {}\n\
-         Or, if you understand what you are giving up, pass \
-         --dangerously-trust-directory-permissions",
-        home.display(),
-        home.display()
-    )
-}
-
-/// What to tell someone whose identity file is not private.
-fn private_file_advice(home: &CheckedDir) -> String {
-    let path = home.as_path().join(SEED_FILE);
-    format!(
-        "cannot read {}\nIf the permissions are the problem: chmod 600 {}",
-        path.display(),
-        path.display()
-    )
 }
 
 #[cfg(test)]
@@ -414,6 +461,26 @@ mod tests {
         let checked = secure(&strict(), &home).expect("is private");
         assert_eq!(crate::dwelling::check_here(&checked).expect("checks"), None);
         assert!(home.join(crate::dwelling::HERE_FILE).exists());
+        let _ = std::fs::remove_dir_all(&home);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_home_others_can_enter_is_refused_with_the_command_that_closes_it() {
+        use std::os::unix::fs::PermissionsExt as _;
+        let home = scratch("loose");
+        std::fs::create_dir_all(&home).expect("creates dir");
+        std::fs::set_permissions(&home, std::fs::Permissions::from_mode(0o755)).expect("loosens");
+        let refused = load_or_create(&strict(), &home).expect_err("refuses");
+        let said = crate::failed::said(&refused);
+        assert!(said.starts_with("failed   making "), "{said}");
+        assert!(
+            said.contains(&format!(
+                "\n         Fix it with: chmod 700 {}\n",
+                home.display()
+            )),
+            "{said}"
+        );
         let _ = std::fs::remove_dir_all(&home);
     }
 }

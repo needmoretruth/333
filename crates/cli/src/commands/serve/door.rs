@@ -27,7 +27,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use futures::{AsyncRead, AsyncWrite};
-use n333_net::{Asked, respond, session};
+use n333_net::{Asked, asked, frame, gossip, handover, liveness, respond, session};
 use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 
 use crate::commands::describe;
@@ -183,9 +183,14 @@ where
     // propagated. The place is given back when the task ends, whichever way.
     tokio::spawn(async move {
         let _slot: Slot = slot;
-        match tokio::time::timeout(EXCHANGE_TIMEOUT, greet_then_listen(&mut stream, &node)).await {
+        match tokio::time::timeout(
+            EXCHANGE_TIMEOUT,
+            greet_then_listen(&mut stream, &node, caller),
+        )
+        .await
+        {
             Ok(Ok(())) => {}
-            Ok(Err(e)) => aloud!("refused  {e:#}"),
+            Ok(Err(e)) => aloud!("{}", ended(caller, &e)),
             Err(_elapsed) => aloud!(
                 "silence  {} s of it, so we let go",
                 EXCHANGE_TIMEOUT.as_secs()
@@ -195,11 +200,11 @@ where
 }
 
 /// The heartbeat, and then whatever the peer came for.
-async fn greet_then_listen<S>(stream: &mut S, node: &Node) -> anyhow::Result<()>
+async fn greet_then_listen<S>(stream: &mut S, node: &Node, caller: Caller) -> anyhow::Result<()>
 where
     S: AsyncRead + AsyncWrite + Unpin,
 {
-    let asked = match tokio::time::timeout(GREETING_TIMEOUT, greeting(stream, node)).await {
+    let asked = match tokio::time::timeout(GREETING_TIMEOUT, greeting(stream, node, caller)).await {
         Ok(asked) => asked?,
         Err(_elapsed) => {
             aloud!(
@@ -222,7 +227,7 @@ where
 }
 
 /// Trade heartbeats and hear what the peer came for, or nothing if it was not a peer.
-async fn greeting<S>(stream: &mut S, node: &Node) -> anyhow::Result<Option<Asked>>
+async fn greeting<S>(stream: &mut S, node: &Node, caller: Caller) -> anyhow::Result<Option<Asked>>
 where
     S: AsyncRead + AsyncWrite + Unpin,
 {
@@ -237,21 +242,50 @@ where
         }
         Ok(exchange) => aloud!("{}", describe(&exchange)),
         Err(e) => {
-            report(&e);
+            aloud!("{}", unmet(caller, &e));
             return Ok(None);
         }
     }
     Ok(Some(n333_net::take_request(stream).await?))
 }
 
-/// A failed exchange is the peer's problem, not this node's, so it is printed and
-/// forgotten. Distinguishing the kinds matters: a stream that died mid-message is a bad
-/// connection, while a bad signature is someone doing it on purpose.
-fn report(error: &session::Error) {
+/// A heartbeat that did not happen is the peer's problem, not this node's, so it is said
+/// and forgotten. Distinguishing the kinds matters: a stream that stopped is a bad
+/// connection or a port scan, while a bad signature or an oversized frame is somebody
+/// sending what this node will not take.
+fn unmet(caller: Caller, error: &session::Error) -> String {
     match error {
-        session::Error::Frame(e) => aloud!("broken   the connection failed mid-message: {e}"),
-        other => aloud!("refused  {other}"),
+        session::Error::Frame(frame::Error::Io(e)) => {
+            format!("broken   {caller} stopped before the heartbeat was done: {e}")
+        }
+        other => format!("refused  {caller}: {other}"),
     }
+}
+
+/// An exchange that ended before it was done, said as whose doing it was.
+///
+/// "Refused" is only one of three. This node's own record failing to take a statement is
+/// this node's failure and says so. A connection that stopped is nobody's decision. What
+/// is left is this node declining what it was sent.
+fn ended(caller: Caller, error: &anyhow::Error) -> String {
+    if crate::failed::is_our_own(error) {
+        return format!("failed   answering {caller}: {error:#}");
+    }
+    if error.chain().any(stopped) {
+        return format!("broken   {caller} stopped before the exchange was done: {error:#}");
+    }
+    format!("refused  {caller}: {error:#}")
+}
+
+/// Whether one cause is a connection that stopped, at whichever layer it surfaced.
+fn stopped(cause: &(dyn std::error::Error + 'static)) -> bool {
+    let io = |frame: &frame::Error| matches!(frame, frame::Error::Io(_));
+    cause.downcast_ref::<frame::Error>().is_some_and(io)
+        || matches!(cause.downcast_ref(), Some(session::Error::Frame(f)) if io(f))
+        || matches!(cause.downcast_ref(), Some(asked::Error::Frame(f)) if io(f))
+        || matches!(cause.downcast_ref(), Some(gossip::Error::Frame(f)) if io(f))
+        || matches!(cause.downcast_ref(), Some(handover::Error::Frame(f)) if io(f))
+        || matches!(cause.downcast_ref(), Some(liveness::Error::Frame(f)) if io(f))
 }
 
 #[cfg(test)]
@@ -260,6 +294,35 @@ mod tests {
 
     fn caller(address: &str) -> Caller {
         Caller::At(address.parse().expect("an address"))
+    }
+
+    #[test]
+    fn an_exchange_that_ended_says_whose_doing_it_was() {
+        let at = caller("10.0.0.1:4000");
+        let eof = || frame::Error::from(std::io::Error::from(std::io::ErrorKind::UnexpectedEof));
+        let broke = anyhow::Error::new(handover::Error::from(eof())).context("giving the file");
+        assert!(
+            ended(at, &broke).starts_with("broken   10.0.0.1:4000 stopped"),
+            "{}",
+            ended(at, &broke)
+        );
+
+        let declined = anyhow::Error::new(handover::Error::NotUs).context("giving the file");
+        assert_eq!(
+            ended(at, &declined),
+            "refused  10.0.0.1:4000: giving the file: the record handed over is about somebody else"
+        );
+
+        let disk = n333_store::log::Error::Io {
+            path: "/n/window/9".into(),
+            source: std::io::Error::from(std::io::ErrorKind::StorageFull),
+        };
+        let own = anyhow::Error::new(disk).context("keeping a statement about epoch 9");
+        assert!(
+            ended(at, &own).starts_with("failed   answering 10.0.0.1:4000: keeping"),
+            "{}",
+            ended(at, &own)
+        );
     }
 
     #[test]

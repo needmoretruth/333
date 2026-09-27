@@ -174,6 +174,10 @@ async fn knock_and_say(
              \x20        on your address belongs to something else, so an invitation naming\n\
              \x20        it would send people to the wrong machine."
         ),
+        Answer::Unfinished(why) => aloud!(
+            "shut     something at {outside} took the connection and did not finish a\n\
+             \x20        heartbeat: {why}. An invitation naming it is not one to hand out."
+        ),
         Answer::Nothing => aloud!(
             "shut     nothing answered at {outside}, so as far as the outside world can\n\
              \x20        tell this node is not listening. Either the router in front of it\n\
@@ -192,6 +196,8 @@ enum Answer {
     ItWasUs,
     /// Something answered and it held a different key.
     SomebodyElse,
+    /// Something took the connection and did not finish a heartbeat, for this reason.
+    Unfinished(String),
     /// Nothing answered at all.
     Nothing,
 }
@@ -205,6 +211,8 @@ async fn knock(dialer: &Dialer, node: &Node, outside: &PeerAddress) -> Answer {
     match initiate(&mut stream, identity).await {
         Ok(exchange) if exchange.peer.node_id == identity.node_id() => Answer::ItWasUs,
         Ok(_) => Answer::SomebodyElse,
-        Err(_) => Answer::Nothing,
+        // Something is there: the connection was taken. Saying nothing answered would
+        // send a person to look at their router for a fault that is somewhere else.
+        Err(e) => Answer::Unfinished(e.to_string()),
     }
 }

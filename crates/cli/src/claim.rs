@@ -62,10 +62,7 @@ pub(crate) enum Taken {
 /// # Errors
 /// Fails if the directory is not private or the lock file cannot be opened or locked.
 pub(crate) fn take(mistrust: &Mistrust, home: &Path) -> anyhow::Result<Taken> {
-    let checked = mistrust
-        .verifier()
-        .make_secure_dir(home)
-        .with_context(|| crate::identity_file::private_directory_advice(home))?;
+    let checked = crate::identity_file::secure(mistrust, home)?;
     // Not truncated on opening: the number in it is the other process's until the lock
     // says the file is this one's.
     let file = checked

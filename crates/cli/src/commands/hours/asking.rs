@@ -136,7 +136,7 @@ async fn trade_with(
         anyhow::Ok((exchange.peer.node_id, theirs))
     })
     .await
-    .with_context(|| format!("no answer from {address} within the window"))??;
+    .map_err(|_| within("no answer", ROUND_TIMEOUT))??;
     node.answered_at(typed, teller).await;
     let from = crate::node::sources::Source::Peer {
         name: teller.to_string(),
@@ -192,13 +192,18 @@ async fn present_to(node: &Node, dialer: &Dialer, address: &str, now: Epoch) -> 
     let address: PeerAddress = address.parse().context("reading a peer's address")?;
     let mut stream = tokio::time::timeout(ROUND_TIMEOUT, dialer.dial(&address))
         .await
-        .with_context(|| format!("{address} did not answer in time"))??;
+        .map_err(|_| within(&format!("{address} did not answer"), ROUND_TIMEOUT))??;
     tokio::time::timeout(
         ROUND_TIMEOUT,
         n333_net::initiate(&mut stream, node.identity()),
     )
     .await
-    .with_context(|| format!("{address} did not finish the heartbeat in time"))?
+    .map_err(|_| {
+        within(
+            &format!("{address} did not finish the heartbeat"),
+            ROUND_TIMEOUT,
+        )
+    })?
     .context("exchanging heartbeats")?;
 
     let frame = Presenting::of(node.identity(), now)
@@ -215,7 +220,12 @@ async fn present_to(node: &Node, dialer: &Dialer, address: &str, now: Epoch) -> 
         n333_net::liveness::take_question(&mut stream),
     )
     .await
-    .with_context(|| format!("{address} neither asked nor hung up in time"))??
+    .map_err(|_| {
+        within(
+            &format!("{address} neither asked nor hung up"),
+            ROUND_TIMEOUT,
+        )
+    })??
     else {
         return Ok(());
     };
@@ -275,13 +285,18 @@ async fn ask_one(
     let address: PeerAddress = address.parse().context("reading a peer's address")?;
     let mut stream = tokio::time::timeout(ROUND_TIMEOUT, dialer.dial(&address))
         .await
-        .with_context(|| format!("{address} did not answer in time"))??;
+        .map_err(|_| within(&format!("{address} did not answer"), ROUND_TIMEOUT))??;
     tokio::time::timeout(
         ROUND_TIMEOUT,
         n333_net::initiate(&mut stream, node.identity()),
     )
     .await
-    .with_context(|| format!("{address} did not finish the heartbeat in time"))?
+    .map_err(|_| {
+        within(
+            &format!("{address} did not finish the heartbeat"),
+            ROUND_TIMEOUT,
+        )
+    })?
     .context("exchanging heartbeats")?;
 
     // From here on the peer has been reached, so silence is the peer's silence and not
@@ -299,7 +314,17 @@ async fn ask_one(
             );
             node.keep(now, &witnessed.attestation).await
         }
-        Ok(Err(e)) => unanswered(node, &question, now, &e.to_string()).await,
+        // The whole of it: the outermost sentence of a liveness failure is only which
+        // part of the exchange it was in.
+        Ok(Err(e)) => {
+            unanswered(
+                node,
+                &question,
+                now,
+                &format!("{:#}", anyhow::Error::new(e)),
+            )
+            .await
+        }
         Err(_elapsed) => {
             unanswered(
                 node,
@@ -328,4 +353,15 @@ async fn unanswered(
     aloud!("silence  epoch {}: {why}", now.0);
     node.keep(now, &question.frame).await?;
     node.keep(now, &sealed).await
+}
+
+/// A deadline that passed, said as what did not happen and how long it was given.
+///
+/// The deadline's own words are "deadline has elapsed", which says the same thing again
+/// and not how long.
+fn within(what: &str, deadline: Duration) -> anyhow::Error {
+    anyhow::anyhow!(
+        "{what} within the {} s the window allows",
+        deadline.as_secs()
+    )
 }

@@ -57,7 +57,8 @@ pub(crate) async fn run(common: &Common, file: &Path) -> anyhow::Result<ExitCode
     refuse_if_occupied(common, target, file)?;
 
     let looked = archive::look(file)?;
-    let identity = identity_file::from_seed_bytes(&looked.seed)?;
+    let seed = format!("the {} in {}", identity_file::SEED_FILE, file.display());
+    let identity = identity_file::from_seed_bytes(&looked.seed, Path::new(&seed))?;
     let name = identity.node_id().to_string();
     if name != looked.manifest.name {
         bail!(

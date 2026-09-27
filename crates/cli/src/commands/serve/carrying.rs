@@ -148,8 +148,9 @@ impl Carrier {
                 }
                 true
             }
+            // The failure already names the address when the address is what failed.
             Err(e) => {
-                aloud!("unheard  {address}: {e:#}");
+                aloud!("unheard  {e:#}");
                 false
             }
         }
@@ -162,10 +163,7 @@ impl Carrier {
         };
         let asked =
             crate::commands::join::ask(&self.node, &self.dialer, self.common.timeout, &address);
-        asked
-            .await
-            .map_err(|e| aloud!("unheard  {address}: {e:#}"))
-            .is_ok()
+        asked.await.map_err(|e| aloud!("unheard  {e:#}")).is_ok()
     }
 
     /// Begin a line of this node's own, if nobody has begun one.
@@ -190,7 +188,7 @@ impl Carrier {
         // Saying it says its own lines, so there is nothing to add when it works.
         crate::commands::say::speak(&self.node, index)
             .await
-            .map_err(|e| aloud!("refused  {e:#}"))
+            .map_err(|e| aloud!("{}", crate::failed::not_said(&e)))
             .is_ok()
     }
 
@@ -227,10 +225,11 @@ impl Carrier {
         let mut raised = self.found_address.subscribe();
         let (fell, fallen) = oneshot::channel();
         {
-            let Ok(mut unseen) = self.unseen.lock() else {
-                aloud!("unheard  the unseen address could not be reached to start");
-                return false;
-            };
+            // As with the bridges: a poisoned lock still holds the listener.
+            let mut unseen = self
+                .unseen
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             if unseen.as_ref().is_some_and(|task| !task.is_finished()) {
                 aloud!("standing the unseen address is already up. `tor off` takes it down.");
                 return true;
@@ -263,10 +262,10 @@ impl Carrier {
 
     /// Stop answering on the onion address.
     fn tor_off(&self) -> bool {
-        let Ok(mut unseen) = self.unseen.lock() else {
-            aloud!("unheard  the unseen address could not be reached to stop");
-            return false;
-        };
+        let mut unseen = self
+            .unseen
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         match unseen.take() {
             // One that failed to come up has already said so, and there is nothing to stop.
             Some(task) if !task.is_finished() => {
@@ -294,10 +293,14 @@ impl Carrier {
             );
             return false;
         }
-        let Ok(mut bridges) = self.common.bridges.lock() else {
-            aloud!("unheard  the bridges could not be reached to add to");
-            return false;
-        };
+        // A lock another task panicked while holding still holds the list, and the list
+        // is what is wanted. Refusing here would say the bridges "could not be reached",
+        // which is not a thing that happened to them.
+        let mut bridges = self
+            .common
+            .bridges
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         bridges.lines.push(line);
         aloud!(
             "bridged  {} bridge{} will be used the next time Tor starts.",
@@ -309,10 +312,11 @@ impl Carrier {
 
     /// Name the program that speaks an obfuscated bridge.
     fn helper(&self, program: String) -> bool {
-        let Ok(mut bridges) = self.common.bridges.lock() else {
-            aloud!("unheard  the bridges could not be reached to add to");
-            return false;
-        };
+        let mut bridges = self
+            .common
+            .bridges
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         aloud!("bridged  {program} will be run for any obfuscated bridge.");
         bridges.helper = Some(program);
         true

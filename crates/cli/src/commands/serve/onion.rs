@@ -40,7 +40,7 @@ pub(super) async fn answer(
     let waiting = dialer.timeout();
     tokio::time::timeout(waiting, host.wait_until_reachable())
         .await
-        .with_context(|| format!("not reachable after {} s", waiting.as_secs()))?
+        .map_err(|_| anyhow::anyhow!("not reachable after {} s", waiting.as_secs()))?
         .context("waiting for the service to be reachable")?;
     let address = PeerAddress::Onion {
         host: host.address()?,

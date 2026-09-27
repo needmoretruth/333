@@ -35,6 +35,7 @@ mod commands;
 mod control;
 mod dial;
 mod dwelling;
+mod failed;
 mod identity_file;
 mod named;
 mod node;
@@ -45,6 +46,7 @@ mod screen;
 mod typed;
 mod version;
 
+use std::io::Write as _;
 use std::process::ExitCode;
 use std::time::Duration;
 
@@ -56,7 +58,24 @@ use paths::NodePaths;
 use typed::{Cli, Command};
 
 #[tokio::main]
-async fn main() -> anyhow::Result<ExitCode> {
+async fn main() -> ExitCode {
+    match run().await {
+        Ok(code) => code,
+        // A reader that walked away — `333 status | head` — is not a failure and has
+        // nothing to be told about it. Anything else is reported as it is.
+        Err(e) if walked_away(&e) => ExitCode::SUCCESS,
+        Err(e) => {
+            // Straight to the error stream, and past the screen: by the time a command
+            // has failed the screen is gone, and a line sent to it would be lost. A
+            // stream nobody is reading is not a reason to fail harder.
+            let _ = writeln!(std::io::stderr(), "{}", failed::said(&e));
+            ExitCode::FAILURE
+        }
+    }
+}
+
+/// Read the command line and do what it asks, with the exit code it ends in.
+async fn run() -> anyhow::Result<ExitCode> {
     // Everything the libraries under this say goes where everything this client says
     // goes. Otherwise arti writes a warning straight into a terminal the screen is
     // drawing on, and what a person sees is a bootstrap message wearing a border.
@@ -112,23 +131,22 @@ async fn main() -> anyhow::Result<ExitCode> {
     // The service manager is asked, and the awake stamp read, and nothing in the node's
     // directory is opened, so none of it waits for the directory or makes it.
     if let Command::Service { order } = cli.command {
-        let done = commands::service::run(&common, order).await;
-        return quietly_if_walked_away(done.map(|()| ExitCode::SUCCESS));
+        return commands::service::run(&common, order)
+            .await
+            .map(|()| ExitCode::SUCCESS);
     }
 
     // Unpacking takes the directory itself: it may not exist yet, and it has to be
     // empty when the node is renamed into it, which a lock file inside it would not be.
     if let Command::Unpack { file } = &cli.command {
-        let done = commands::unpack::run(&common, file).await;
-        return quietly_if_walked_away(done);
+        return commands::unpack::run(&common, file).await;
     }
 
     // Before anything in the directory is read, and held until this process exits.
     let _claim = match claim::take(&common.mistrust(), common.paths.root())? {
         Taken::Ours(claim) => claim,
         Taken::Theirs(holder) => {
-            let beside = commands::elsewhere::run(&common, holder, cli.command.wanted()).await;
-            return quietly_if_walked_away(beside);
+            return commands::elsewhere::run(&common, holder, cli.command.wanted()).await;
         }
     };
 
@@ -174,16 +192,7 @@ async fn main() -> anyhow::Result<ExitCode> {
         // Dispatched above, before the directory is taken.
         Command::Service { .. } | Command::Unpack { .. } => Ok(()),
     };
-    quietly_if_walked_away(done.map(|()| ExitCode::SUCCESS))
-}
-
-/// A reader that walked away — `333 status | head` — is not a failure and has nothing
-/// to be told about it. Anything else is reported as it is.
-fn quietly_if_walked_away(done: anyhow::Result<ExitCode>) -> anyhow::Result<ExitCode> {
-    match done {
-        Err(e) if walked_away(&e) => Ok(ExitCode::SUCCESS),
-        other => other,
-    }
+    done.map(|()| ExitCode::SUCCESS)
 }
 
 /// Did this end because whoever was reading the output closed the pipe?

@@ -30,7 +30,7 @@ use std::sync::Arc;
 
 use anyhow::{Context as _, bail};
 use n333_core::Epoch;
-use n333_net::{Invite, PeerAddress, direct};
+use n333_net::{Invite, PeerAddress};
 use tokio::sync::watch;
 
 use crate::commands::{Common, hours};
@@ -40,7 +40,7 @@ use crate::node::Node;
 use door::Door;
 use invitation::say_the_invitation;
 use neighbours::greet_the_neighbours;
-use socket::answer_direct;
+use socket::{answer_direct, listen};
 
 /// Everything about how one vigil is kept.
 ///
@@ -146,9 +146,7 @@ pub(crate) async fn run(common: &Common, how: Vigil) -> anyhow::Result<()> {
         (Arc::clone(&node), common.clone(), dialer.clone());
 
     if let Some(bind) = bind {
-        let listener = direct::Listener::bind(bind)
-            .await
-            .with_context(|| format!("listening on {bind}"))?;
+        let listener = listen(bind).await?;
         // True the instant the socket is bound, which is why it is printed here.
         let bound = listener.address()?;
         bound_at = Some(bound);
@@ -172,7 +170,11 @@ pub(crate) async fn run(common: &Common, how: Vigil) -> anyhow::Result<()> {
                     let (node, dialer) = (Arc::clone(&node), dialer.clone());
                     listening.spawn(greet_the_neighbours(node, dialer, nearby));
                 }
-                Err(e) => aloud!("nearby   this network would not carry the announcement: {e}"),
+                // What fails here is this machine's responder starting, not the network
+                // declining to carry anything.
+                Err(e) => aloud!(
+                    "nearby   could not start saying on this network that this node is here: {e}"
+                ),
             }
         }
         let node = Arc::clone(&node);
@@ -300,6 +302,7 @@ mod tests {
     use n333_core::presence::Attendance;
     use n333_core::subject::DIGEST;
     use n333_core::transfer::{Half, Record};
+    use n333_net::direct;
 
     use crate::node::Keeping;
     use crate::paths::NodePaths;

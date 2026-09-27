@@ -242,7 +242,7 @@ async fn say_it(node: &Arc<Node>, typed: &str) -> String {
     match crate::commands::say::speak(node, index).await {
         // Saying it says its own lines; there is nothing to add here.
         Ok(()) => String::new(),
-        Err(e) => format!("refused  {e:#}"),
+        Err(e) => crate::failed::not_said(&e),
     }
 }
 

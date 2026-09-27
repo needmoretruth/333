@@ -202,7 +202,7 @@ impl Node {
         let (mut whereabouts, _) =
             Log::open(&home.join(WHEREABOUTS_FILE)).context("opening the addresses")?;
         let (directory, _) =
-            Directory::from_frames(&whereabouts.read_all().context("reading them")?);
+            Directory::from_frames(&whereabouts.read_all().context("reading the addresses")?);
 
         let (sources, loaded) = sources::load(home, n333_core::Epoch::now());
         let subject = read_the_file(home);

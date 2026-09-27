@@ -101,8 +101,8 @@ async fn look_first(meeting: &Meeting) -> anyhow::Result<usize> {
     let asking = meeting.clone();
     let board = tokio::task::spawn_blocking(move || asking.read())
         .await
-        .context("looking at the meeting point")?
-        .context("reading the meeting point")?;
+        .with_context(|| format!("reading the board at {}", meeting.place()))?
+        .with_context(|| format!("reading the board at {}", meeting.place()))?;
     Ok(board
         .iter()
         .filter(|frame| n333_core::whereabouts::open(frame).is_ok())
@@ -113,8 +113,10 @@ async fn look_first(meeting: &Meeting) -> anyhow::Result<usize> {
 async fn ask_for_it(meeting: &Meeting, meet: &str) -> anyhow::Result<Vec<u8>> {
     aloud!("asking   {meet} for the file");
     let asking = meeting.clone();
+    // Not "would not hand it over": most of the ways this fails are the meeting point
+    // not being reached at all, and the sentence under this one says which.
     tokio::task::spawn_blocking(move || asking.the_file())
         .await
-        .context("asking for the file")?
-        .context("the meeting point would not hand over the file")
+        .with_context(|| format!("asking {meet} for the file"))?
+        .with_context(|| format!("asking {meet} for the file"))
 }

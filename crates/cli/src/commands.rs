@@ -163,7 +163,8 @@ pub(crate) async fn bootstrap(common: &Common) -> anyhow::Result<n333_net::tor::
         ),
     )
     .await
-    .with_context(|| format!("no Tor connection after {} s", common.timeout.as_secs()))?
+    // The deadline's own words are "deadline has elapsed", which says it twice.
+    .map_err(|_| anyhow::anyhow!("no Tor connection after {} s", common.timeout.as_secs()))?
     .context("starting the Tor client")
 }
 

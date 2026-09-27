@@ -58,10 +58,18 @@ pub(crate) async fn knock(
 ) -> anyhow::Result<NodeId> {
     aloud!("knocking {address}");
 
-    let mut stream = dialer.dial(address).await?;
+    let mut stream = dialer
+        .dial(address)
+        .await
+        .with_context(|| format!("knocking on {address}"))?;
     let exchange = tokio::time::timeout(timeout, initiate(&mut stream, identity))
         .await
-        .context("the peer accepted the connection but did not finish the exchange")?
+        .map_err(|_| {
+            anyhow::anyhow!(
+                "{address} took the connection and did not finish the exchange within {} s",
+                timeout.as_secs()
+            )
+        })?
         .context("exchanging heartbeats")?;
 
     aloud!("{}", describe(&exchange));

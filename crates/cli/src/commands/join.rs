@@ -58,14 +58,15 @@ pub(crate) async fn ask(
     let mut stream = match dialer.dial(address).await {
         Ok(stream) => stream,
         Err(e) => {
-            // Not the end of anything. A door nobody opens is a door nobody opens.
+            // Not the end of anything. A door nobody opens is a door nobody opens. What
+            // stood in the way is the failure below this: nobody answering is one of
+            // several things it can be, and a name that does not resolve is another.
             aloud!(
-                "silence  nobody answered at {address}. That is not proof that 333 is\n\
-                 \x20        over; it is proof that nobody is there. This client carries the\n\
-                 \x20        hash of the file and not the file: there is no way in except\n\
-                 \x20        from someone who holds it."
+                "silence  nobody was reached at {address}. That is not proof that 333 is\n\
+                 \x20        over. This client carries the hash of the file and not the file:\n\
+                 \x20        there is no way in except from someone who holds it."
             );
-            return Err(e);
+            return Err(e.context(format!("knocking on {address}")));
         }
     };
     let round = async {
@@ -81,7 +82,7 @@ pub(crate) async fn ask(
     };
     let taken = tokio::time::timeout(timeout, round)
         .await
-        .with_context(|| format!("no answer from {address} after {} s", timeout.as_secs()))??;
+        .map_err(|_| anyhow::anyhow!("no answer from {address} after {} s", timeout.as_secs()))??;
 
     let joined = taken.handover.transfer.epoch();
     aloud!("given    by {}", taken.handover.transfer.giver());
