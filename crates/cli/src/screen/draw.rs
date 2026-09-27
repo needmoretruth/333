@@ -189,7 +189,7 @@ fn marked(text: &str, width: usize, colour: Color, style: Style) -> Vec<Line<'st
     let mut lines = Vec::new();
     for (at, line) in text
         .split('\n')
-        .flat_map(|line| right::fold(line, room))
+        .flat_map(|line| right::flush(line, room))
         .enumerate()
     {
         let lead = if at == 0 {

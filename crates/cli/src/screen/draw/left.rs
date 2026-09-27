@@ -9,8 +9,9 @@ use ratatui::widgets::Paragraph;
 use n333_core::presence::{Standing, WINDOW_EPOCHS};
 use n333_core::signal::SIGNAL_COUNT;
 
-use super::right::fold;
+use super::right::flush;
 use super::{ahead, marked, padded, titled};
+use crate::node::sources::Counts;
 use crate::screen::watch::{Said, Watch, Where};
 
 /// The left column: the count, then this node, then what was said.
@@ -35,6 +36,9 @@ pub(super) fn this_node<'a>(watch: &'a Watch, area: Rect) -> Paragraph<'a> {
             watch.addresses,
             false,
         ),
+    ]);
+    lines.extend(heard_from(&watch.known, width));
+    lines.extend([
         counted(words!("screen-draw-left-witnessed"), watch.witnessed, false),
         Line::raw(""),
         Line::from(Span::styled(
@@ -43,6 +47,9 @@ pub(super) fn this_node<'a>(watch: &'a Watch, area: Rect) -> Paragraph<'a> {
         )),
     ]);
     lines.extend(standing(&watch.standing, width));
+    if watch.unseen {
+        lines.extend(unseen(width));
+    }
     lines.push(Line::raw(""));
     let rows = usize::from(area.height).saturating_sub(2 + lines.len());
     lines.extend(said(&watch.said, rows, width));
@@ -81,6 +88,69 @@ pub(super) fn at_a_glance(watch: &Watch, width: usize) -> Vec<Line<'static>> {
         ));
     }
     lines.extend(standing(&watch.standing, width).into_iter().take(1));
+    if watch.unseen {
+        lines.extend(unseen(width).into_iter().take(1));
+    }
+    lines
+}
+
+/// Where the addresses this node holds were first heard of, in one line folded to the
+/// column, naming only the ways some of them came. Nothing when it holds none.
+fn heard_from(known: &Counts, width: usize) -> Vec<Line<'static>> {
+    let ways = [
+        (
+            known.by_hand,
+            words!("screen-draw-left-heard-by-hand", count = known.by_hand),
+        ),
+        (
+            known.this_network,
+            words!("screen-draw-left-heard-nearby", count = known.this_network),
+        ),
+        (
+            known.meeting_point,
+            words!(
+                "screen-draw-left-heard-meeting-point",
+                count = known.meeting_point
+            ),
+        ),
+        (
+            known.from_peers,
+            words!(
+                "screen-draw-left-heard-from-us",
+                count = known.from_peers,
+                peers = known.peers
+            ),
+        ),
+        (
+            known.unrecorded,
+            words!("screen-draw-left-heard-not-noted", count = known.unrecorded),
+        ),
+    ];
+    let said: Vec<String> = ways
+        .into_iter()
+        .filter(|(count, _)| *count != 0)
+        .map(|(_, way)| way)
+        .collect();
+    if said.is_empty() {
+        return Vec::new();
+    }
+    broken(&said.join(" · "), width, Style::new().fg(Color::DarkGray))
+}
+
+/// What this screen says while this node is unseen: that being reached is what is
+/// counted, and the one order that reaches it from behind any router.
+fn unseen(width: usize) -> Vec<Line<'static>> {
+    let mut lines = marked(
+        &words!("screen-draw-left-unseen"),
+        width,
+        Color::Yellow,
+        Style::new().add_modifier(Modifier::BOLD),
+    );
+    lines.extend(broken(
+        &words!("screen-draw-left-unseen-why"),
+        width,
+        Style::new().fg(Color::DarkGray),
+    ));
     lines
 }
 
@@ -133,7 +203,7 @@ fn counted(name: String, count: usize, loud: bool) -> Line<'static> {
 /// column: a translation broken for a wider column than this one is folded again.
 fn broken(text: &str, width: usize, style: Style) -> Vec<Line<'static>> {
     text.split('\n')
-        .flat_map(|line| fold(line, width))
+        .flat_map(|line| flush(line, width))
         .map(|line| Line::styled(line.trim_start().to_owned(), style))
         .collect()
 }
@@ -402,6 +472,35 @@ mod tests {
             english(&|| said(&some, 4, 30)),
             "SAID  3 of 9 spoke\n #42     2  66.6%  a third\n and 2 more said\n you said #42"
         );
+    }
+
+    #[test]
+    fn where_addresses_came_from_names_only_the_ways_some_came() {
+        let known = Counts {
+            by_hand: 1,
+            meeting_point: 2,
+            from_peers: 4,
+            peers: 2,
+            ..Counts::default()
+        };
+        let said = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+            text(&heard_from(&known, 30))
+        });
+        assert_eq!(said, "1 by hand · 2 from a meeting\npoint · 4 from 2 of us");
+        assert!(heard_from(&Counts::default(), 30).is_empty());
+    }
+
+    #[test]
+    fn an_unseen_node_is_told_the_order_that_reaches_it() {
+        let mut watch = watching(Vec::new());
+        watch.unseen = true;
+        let area = Rect::new(0, 0, 34, 40);
+        let said = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+            text(&at_a_glance(&watch, 30)) + "\n" + &text(&unseen(30))
+        });
+        assert!(said.contains("\u{25cf} UNSEEN"), "{said}");
+        assert!(said.contains("`: tor on` needs no router."), "{said}");
+        let _ = this_node(&watch, area);
     }
 
     #[test]

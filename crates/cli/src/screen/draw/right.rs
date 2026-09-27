@@ -39,13 +39,24 @@ const UNDER: &str = "          ";
 /// has to say, and the ends are where the meaning is. Measured in the columns a
 /// terminal gives each letter, not in letters: Korean and Chinese take two each, and a
 /// line counted by letters runs off the edge of the pane by half its length.
-pub(super) fn fold(entry: &str, width: usize) -> Vec<String> {
-    let mut folded = Vec::new();
-    let mut rest = entry.trim_end();
+fn fold(entry: &str, width: usize) -> Vec<String> {
     // The hanging indent helps on a wide pane and shreds a narrow one: ten columns of
     // it out of fifteen leaves five for the words, and a node's name would come out
     // two letters at a time.
     let under = if width >= UNDER.len() * 2 { UNDER } else { "" };
+    folded_under(entry, width, under)
+}
+
+/// [`fold`] with every line starting at the edge: for a sentence in a column of its
+/// own rather than an entry in the log.
+pub(super) fn flush(entry: &str, width: usize) -> Vec<String> {
+    folded_under(entry, width, "")
+}
+
+/// Break a line to `width`, lining every line after the first up under `under`.
+fn folded_under(entry: &str, width: usize, under: &str) -> Vec<String> {
+    let mut folded = Vec::new();
+    let mut rest = entry.trim_end();
     let mut indent = "";
     while !rest.is_empty() {
         let room = width.saturating_sub(indent.len());

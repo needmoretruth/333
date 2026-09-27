@@ -50,3 +50,17 @@ screen-draw-left-number = { $number }
 screen-draw-left-a-third = 삼분의 일
 screen-draw-left-more-said = 그 밖에 { $rows }개를 말함
 screen-draw-left-you-said = 당신은 #{ $index }를 말함
+
+screen-draw-left-heard-by-hand = 직접 입력 { $count }
+screen-draw-left-heard-nearby = 이 네트워크 { $count }
+screen-draw-left-heard-meeting-point = 만남의 장소 { $count }
+screen-draw-left-heard-from-us = 우리 { $peers }명에게서 { $count }
+screen-draw-left-heard-not-noted = 기록 없음 { $count }
+
+screen-draw-left-unseen = 미관측
+screen-draw-left-unseen-why =
+    어느 에포크에서도 이 노드에
+    대해 서명된 것이 없습니다.
+    세는 것은 연락을 받는
+    것입니다. `: tor on`은
+    공유기가 필요 없습니다.

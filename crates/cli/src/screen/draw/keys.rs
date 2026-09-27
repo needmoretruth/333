@@ -13,7 +13,7 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Clear, Paragraph};
 use unicode_width::UnicodeWidthStr as _;
 
-use super::right::fold;
+use super::right::flush;
 use super::{padded, titled};
 
 /// Each key and each order as it is typed, with what it does.
@@ -85,14 +85,14 @@ fn row(keys: &str, does: &str, typed: usize, beside: usize) -> Vec<Line<'static>
         let mut lines = vec![Line::styled(keys.to_owned(), bold)];
         let under = (typed + 2 + beside).saturating_sub(2);
         lines.extend(
-            fold(does, under)
+            flush(does, under)
                 .into_iter()
                 .map(|line| Line::raw(format!("  {line}"))),
         );
         return lines;
     }
     let mut lines = Vec::new();
-    for (at, line) in fold(does, beside).into_iter().enumerate() {
+    for (at, line) in flush(does, beside).into_iter().enumerate() {
         let lead = if at == 0 { keys } else { "" };
         lines.push(Line::from(vec![
             Span::styled(padded(lead, typed + 2), bold),

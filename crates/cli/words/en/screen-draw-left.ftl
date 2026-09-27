@@ -48,3 +48,16 @@ screen-draw-left-number = { $number }
 screen-draw-left-a-third = a third
 screen-draw-left-more-said = and { $rows } more said
 screen-draw-left-you-said = you said #{ $index }
+
+screen-draw-left-heard-by-hand = { $count } by hand
+screen-draw-left-heard-nearby = { $count } on this network
+screen-draw-left-heard-meeting-point = { $count } from a meeting point
+screen-draw-left-heard-from-us = { $count } from { $peers } of us
+screen-draw-left-heard-not-noted = { $count } not noted
+
+screen-draw-left-unseen = UNSEEN
+screen-draw-left-unseen-why =
+    nothing has been signed about
+    this node in any epoch. being
+    reached is what is counted.
+    `: tor on` needs no router.

@@ -41,6 +41,11 @@ pub(super) struct Watch {
     pub(super) vigil: Vigil,
     /// Statements under this node's key that it did not make.
     pub(super) copies: Vec<crate::node::sources::Sighting>,
+    /// Whether it holds the file and has been answering for a while, and nobody has
+    /// ever signed anything about it: what `serve` says as `unseen` when it starts.
+    pub(super) unseen: bool,
+    /// How many of the addresses it holds were first heard of each way.
+    pub(super) known: crate::node::sources::Counts,
 }
 
 /// Where this node stands, which is three different sentences.
@@ -118,6 +123,8 @@ impl Watch {
             said,
             vigil: node.watched(now).await?,
             copies: node.copies().await,
+            unseen: crate::commands::unseen_now(node).await,
+            known: node.known().await,
         })
     }
 }
@@ -143,6 +150,8 @@ impl Watch {
             },
             vigil: Vigil::new(),
             copies,
+            unseen: false,
+            known: crate::node::sources::Counts::default(),
         }
     }
 }
