@@ -1,0 +1,79 @@
+name: I kept a vigil on one of the release files
+description: You ran one of the files from the releases page. Say what happened, including if it worked.
+title: "Kept a vigil: "
+labels: ["kept a vigil"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Every release builds twelve files, and a file nobody has reported running is a file nobody knows works. It may be perfect; nobody knowing is the problem. This form is how somebody finds out, and it needs no skill at all. If a question asks for something you do not know, write that you do not know.
+
+        What is asked for is one full hour as this network counts them: an epoch, which is 333 minutes, about five and a half hours on a clock. Start it with `333 serve`, leave it running, and come back.
+  - type: dropdown
+    id: file
+    attributes:
+      label: Which file did you run?
+      description: The name of the file as you downloaded it from the releases page.
+      options:
+        - 333-x86_64-linux
+        - 333-light-x86_64-linux
+        - 333-aarch64-linux
+        - 333-light-aarch64-linux
+        - 333-armv6-linux
+        - 333-light-armv6-linux
+        - 333-aarch64-macos
+        - 333-light-aarch64-macos
+        - 333-x86_64-macos
+        - 333-light-x86_64-macos
+        - 333-x86_64-windows.exe
+        - 333-light-x86_64-windows.exe
+    validations:
+      required: true
+  - type: input
+    id: release
+    attributes:
+      label: Which release?
+      description: Run `333 --version` and paste what it prints. If that does not work, the title of the release page you took the file from.
+      placeholder: 333 0.5.1 (Standard, tor, x86_64-linux)
+    validations:
+      required: true
+  - type: input
+    id: machine
+    attributes:
+      label: What machine, and what system on it?
+      description: As much as you know. The name on the box and the name of the system is plenty.
+      placeholder: Raspberry Pi Zero W, Raspberry Pi OS Lite (32-bit)
+    validations:
+      required: true
+  - type: dropdown
+    id: how-long
+    attributes:
+      label: How long did it run?
+      options:
+        - Less than one epoch (under 333 minutes)
+        - One epoch or more (333 minutes, about five and a half hours)
+        - A day or more
+        - A week or more
+    validations:
+      required: true
+  - type: textarea
+    id: shown
+    attributes:
+      label: What did the screen or the lines show?
+      description: |
+        Paste what it printed, or say in your own words what the screen showed. A photograph of the screen is fine too: drag it into this box.
+
+        The `answer` and `invite` lines can show your address. Cut them out if you would rather it were not public. Your node's name is public anyway; that is what it is for.
+    validations:
+      required: true
+  - type: textarea
+    id: wrong
+    attributes:
+      label: What went wrong, if anything?
+      description: Leave it empty if nothing did.
+  - type: checkboxes
+    id: worked
+    attributes:
+      label: If it worked
+      options:
+        - label: It worked. That is worth reporting too, and this is me reporting it.

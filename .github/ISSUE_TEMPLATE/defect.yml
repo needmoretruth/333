@@ -1,0 +1,43 @@
+name: Something did not work
+description: The client did something it should not have, or did not do something it should.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A rough report that is true is worth more than a polished one that is guessed, and you do not need to know why it happened to say that it did.
+
+        **Not here:** anything that could be used against somebody's node before it is fixed. That goes privately, through [this form](https://github.com/needmoretruth/333/security/advisories/new), which needs no email address. [SECURITY.md](https://github.com/needmoretruth/333/blob/main/SECURITY.md) says what counts.
+  - type: textarea
+    id: did
+    attributes:
+      label: What did you do?
+      description: The commands you ran, or what you pressed, in the order you did it.
+      placeholder: |
+        333 id
+        333 serve
+    validations:
+      required: true
+  - type: textarea
+    id: happened
+    attributes:
+      label: What happened?
+      description: Paste what it printed. The `answer` and `invite` lines can show your address; cut them out if you would rather it were not public.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect instead?
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: What does `333 --version` print?
+      description: If you built it yourself, say so, and from which commit if you know.
+      placeholder: 333 0.5.1 (Standard, tor, x86_64-linux)
+  - type: input
+    id: machine
+    attributes:
+      label: What machine, and what system on it?
+      placeholder: A laptop, Fedora 42

@@ -1,0 +1,7 @@
+# A blank issue stays open: a question about why something is the way it is fits neither
+# form, and those questions are asked for by name in the Vision.
+blank_issues_enabled: true
+contact_links:
+  - name: A flaw that could be used against somebody's node
+    url: https://github.com/needmoretruth/333/security/advisories/new
+    about: Reported privately rather than in public, through a form that needs no email address. SECURITY.md says what counts.
