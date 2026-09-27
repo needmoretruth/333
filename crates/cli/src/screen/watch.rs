@@ -122,6 +122,31 @@ impl Watch {
     }
 }
 
+#[cfg(test)]
+impl Watch {
+    /// A node nobody has handed the file, that has seen nothing, in epoch 9.
+    pub(super) fn quiet(copies: Vec<crate::node::sources::Sighting>) -> Self {
+        Self {
+            name: "333".into(),
+            epoch: Epoch(9),
+            has_the_file: false,
+            answering: 0,
+            roll: 0,
+            addresses: 0,
+            witnessed: 0,
+            standing: Where::OnNobodysRoll,
+            said: Said {
+                rows: Vec::new(),
+                spoken: 0,
+                observed: 0,
+                mine: None,
+            },
+            vigil: Vigil::new(),
+            copies,
+        }
+    }
+}
+
 /// Which of the three sentences about this node is the true one.
 async fn stands(node: &Node, now: Epoch) -> anyhow::Result<Where> {
     let Some(joined) = node.joined_in().await else {

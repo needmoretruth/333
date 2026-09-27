@@ -27,7 +27,7 @@ pub(super) fn vigil(log: &[String], area: Rect) -> Paragraph<'static> {
     upward.truncate(room);
     upward.reverse();
     Paragraph::new(upward.into_iter().map(Line::raw).collect::<Vec<Line<'_>>>())
-        .block(titled("the vigil"))
+        .block(titled(words!("screen-draw-right-title")))
 }
 
 /// What a line is lined up under when it does not fit: the text, not the hour.
@@ -39,7 +39,7 @@ const UNDER: &str = "          ";
 /// has to say, and the ends are where the meaning is. Measured in the columns a
 /// terminal gives each letter, not in letters: Korean and Chinese take two each, and a
 /// line counted by letters runs off the edge of the pane by half its length.
-fn fold(entry: &str, width: usize) -> Vec<String> {
+pub(super) fn fold(entry: &str, width: usize) -> Vec<String> {
     let mut folded = Vec::new();
     let mut rest = entry.trim_end();
     // The hanging indent helps on a wide pane and shreds a narrow one: ten columns of

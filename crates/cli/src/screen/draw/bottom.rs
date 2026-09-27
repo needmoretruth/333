@@ -12,118 +12,131 @@ use n333_core::signal::SIGNAL_COUNT;
 
 use crate::screen::Saying;
 use crate::screen::watch::Watch;
+use crate::words::Arg;
 
 /// Whether anybody is here, and what is left if nobody is.
 pub(super) fn the_silence<'a>(watch: &'a Watch, wide: bool) -> Paragraph<'a> {
-    let line = match watch.vigil.verdict() {
-        Verdict::NothingToSay => Line::styled(
+    let (said, style) = match watch.vigil.verdict() {
+        Verdict::NothingToSay => (
             if wide {
-                " no one has ever answered this node, which is what a node looks like before it has been anywhere"
+                words!("screen-draw-bottom-never-answered-wide")
             } else {
-                " no one has ever answered this node"
+                words!("screen-draw-bottom-never-answered")
             },
             Style::new().fg(Color::DarkGray),
         ),
-        Verdict::Alive => Line::styled(
+        Verdict::Alive => (
             if wide {
-                " somebody is here. nothing further is owed to the arithmetic"
+                words!("screen-draw-bottom-alive-wide")
             } else {
-                " somebody is here"
+                words!("screen-draw-bottom-alive")
             },
             Style::new().fg(Color::DarkGray),
         ),
-        Verdict::Waiting { silent, needed } => Line::styled(
+        Verdict::Waiting { silent, needed } => (
             if wide {
-                format!(
-                    " nobody has answered for {silent} of the {needed} epochs it would take to say so"
+                words!(
+                    "screen-draw-bottom-waiting-wide",
+                    silent = silent,
+                    needed = needed
                 )
             } else {
-                format!(" nobody for {silent} of {needed} epochs")
+                words!(
+                    "screen-draw-bottom-waiting",
+                    silent = silent,
+                    needed = needed
+                )
             },
             Style::new().fg(Color::Yellow),
         ),
-        Verdict::Ended { since } => Line::styled(
+        Verdict::Ended { since } => (
             match watch.vigil.remaining_at(epoch::unix_now_seconds()) {
-                Some(Remaining { years, days }) => format!(
-                    " nobody has answered since epoch {}. {years} years and {days} days until it is gone",
-                    since.0
+                Some(Remaining { years, days }) => words!(
+                    "screen-draw-bottom-ended",
+                    since = since.0,
+                    years = Arg::grouped(years),
+                    days = days
                 ),
-                None => format!(
-                    " nobody has answered since epoch {}, and the last of the years has run out",
-                    since.0
-                ),
+                None => words!("screen-draw-bottom-ended-and-gone", since = since.0),
             },
             Style::new().fg(Color::Red).add_modifier(Modifier::BOLD),
         ),
     };
-    Paragraph::new(line)
+    // A line broken over several in its catalog, to keep the file readable, is one
+    // line here, after the one space the bottom lines start with.
+    Paragraph::new(Line::styled(format!(" {}", said.replace('\n', " ")), style))
 }
+
+/// The order words, as they are typed. The command line's own, in every language.
+const ORDER_WORDS: &str =
+    "ping · join · bootstrap · say · tor on · tor off · bridge · status · quit";
 
 /// What the keys do, or what is being typed.
 pub(super) fn the_keys<'a>(watch: &'a Watch, saying: &'a Saying, wide: bool) -> Paragraph<'a> {
+    let bold = Style::new().add_modifier(Modifier::BOLD);
+    let grey = Style::new().fg(Color::DarkGray);
     if let Saying::Typing(typed) = saying {
         let mut asked = vec![
-            Span::styled(" : ", Style::new().add_modifier(Modifier::BOLD)),
-            Span::styled(
-                format!("{typed}\u{258f}"),
-                Style::new().add_modifier(Modifier::BOLD),
-            ),
+            Span::styled(" : ", bold),
+            Span::styled(format!("{typed}\u{258f}"), bold),
         ];
         if wide {
-            asked.push(Span::styled(
-                "   ping · join · bootstrap · say · tor on · tor off · bridge · status · quit",
-                Style::new().fg(Color::DarkGray),
-            ));
+            asked.push(Span::styled(format!("   {ORDER_WORDS}"), grey));
         }
         return Paragraph::new(Line::from(asked));
     }
     if let Saying::Which(typed) = saying {
         let mut asked = vec![
             Span::styled(
-                format!(" say which of the {SIGNAL_COUNT}? "),
-                Style::new().add_modifier(Modifier::BOLD),
+                format!(
+                    " {} ",
+                    words!("screen-draw-bottom-say-which", signals = SIGNAL_COUNT)
+                ),
+                bold,
             ),
-            Span::styled(
-                format!("{typed}▏"),
-                Style::new().add_modifier(Modifier::BOLD),
-            ),
+            Span::styled(format!("{typed}▏"), bold),
         ];
         if wide {
             asked.push(Span::styled(
-                "   enter to say it · esc to say nothing",
-                Style::new().fg(Color::DarkGray),
+                format!("   {}", words!("screen-draw-bottom-say-keys")),
+                grey,
             ));
         }
         return Paragraph::new(Line::from(asked));
     }
+    let key = Style::new().add_modifier(Modifier::REVERSED);
+    let (leave, say, more) = if wide {
+        (
+            format!(" {}   ", words!("screen-draw-bottom-leave-wide")),
+            format!(
+                " {}   ",
+                words!("screen-draw-bottom-say-wide", signals = SIGNAL_COUNT)
+            ),
+            format!(" {}   ", words!("screen-draw-bottom-more-wide")),
+        )
+    } else {
+        (
+            format!(" {}  ", words!("screen-draw-bottom-leave")),
+            format!(" {}  ", words!("screen-draw-bottom-say")),
+            format!(" {}   ", words!("screen-draw-bottom-more")),
+        )
+    };
     let mut keys = vec![
-        Span::styled(" q ", Style::new().add_modifier(Modifier::REVERSED)),
-        Span::raw(if wide {
-            " leave the vigil   "
-        } else {
-            " leave  "
-        }),
-        Span::styled(" s ", Style::new().add_modifier(Modifier::REVERSED)),
-        Span::raw(if wide {
-            format!(" say one of the {SIGNAL_COUNT}   ")
-        } else {
-            " say  ".to_owned()
-        }),
-        Span::styled(" : ", Style::new().add_modifier(Modifier::REVERSED)),
-        Span::raw(if wide {
-            " everything else   "
-        } else {
-            " more   "
-        }),
+        Span::styled(" q ", key),
+        Span::raw(leave),
+        Span::styled(" s ", key),
+        Span::raw(say),
+        Span::styled(" : ", key),
+        Span::raw(more),
     ];
     if wide {
         keys.push(Span::styled(
             if watch.has_the_file {
-                "the file is here"
+                words!("screen-draw-bottom-has-the-file")
             } else {
-                "this node has not been given the file"
+                words!("screen-draw-bottom-not-given")
             },
-            Style::new().fg(Color::DarkGray),
+            grey,
         ));
     }
     Paragraph::new(Line::from(keys))

@@ -6,10 +6,11 @@ use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
 
-use n333_core::presence::WINDOW_EPOCHS;
+use n333_core::presence::{Standing, WINDOW_EPOCHS};
 use n333_core::signal::SIGNAL_COUNT;
 
-use super::titled;
+use super::right::fold;
+use super::{ahead, padded, titled};
 use crate::screen::watch::{Said, Watch, Where};
 
 /// The left column: the count, then this node, then what was said.
@@ -18,200 +19,251 @@ use crate::screen::watch::{Said, Watch, Where};
 /// one thing on this screen that the person has to act on and that nothing else
 /// will act on for them.
 pub(super) fn this_node<'a>(watch: &'a Watch, area: Rect) -> Paragraph<'a> {
-    let mut lines = another_copy(watch);
+    let width = usize::from(area.width).saturating_sub(4);
+    let mut lines = another_copy(watch, width);
     lines.extend([
-        counted("ANSWERING", watch.answering, true),
-        counted("silent", watch.roll.saturating_sub(watch.answering), false),
+        counted(words!("screen-draw-left-answering"), watch.answering, true),
+        counted(
+            words!("screen-draw-left-silent"),
+            watch.roll.saturating_sub(watch.answering),
+            false,
+        ),
         Line::from(Span::styled("─────────", Style::new().fg(Color::DarkGray))),
-        counted("roll", watch.roll, false),
-        counted("known where", watch.addresses, false),
-        counted("witnessed", watch.witnessed, false),
+        counted(words!("screen-draw-left-roll"), watch.roll, false),
+        counted(
+            words!("screen-draw-left-known-where"),
+            watch.addresses,
+            false,
+        ),
+        counted(words!("screen-draw-left-witnessed"), watch.witnessed, false),
         Line::raw(""),
         Line::from(Span::styled(
-            "YOU",
+            words!("screen-draw-left-you"),
             Style::new().add_modifier(Modifier::BOLD),
         )),
     ]);
-    lines.extend(standing(&watch.standing));
+    lines.extend(standing(&watch.standing, width));
     lines.push(Line::raw(""));
-    lines.extend(said(&watch.said, area.height));
-    Paragraph::new(lines).block(titled("this node"))
+    lines.extend(said(&watch.said, area.height, width));
+    Paragraph::new(lines).block(titled(words!("screen-draw-left-title")))
 }
 
 /// What this screen says while another copy of this name is out there.
-fn another_copy(watch: &Watch) -> Vec<Line<'static>> {
+fn another_copy(watch: &Watch, width: usize) -> Vec<Line<'static>> {
     let Some(latest) = watch.copies.iter().max_by_key(|copy| copy.said_in) else {
         return Vec::new();
     };
     let loud = Style::new().fg(Color::Red).add_modifier(Modifier::BOLD);
     let red = Style::new().fg(Color::Red);
-    vec![
-        Line::styled("ANOTHER COPY OF THIS NAME", loud),
-        Line::styled("says it is at", red),
-        Line::styled(latest.address.clone(), red),
-        Line::styled(format!("in epoch {}.", latest.said_in), red),
-        Line::styled("this node never said so.", red),
-        Line::styled("stop one of them.", loud),
-        Line::styled("`333 status` says more.", Style::new().fg(Color::DarkGray)),
-        Line::raw(""),
-    ]
+    let mut lines = Vec::new();
+    for (said, style) in [
+        (words!("screen-draw-left-another-copy"), loud),
+        (words!("screen-draw-left-says-it-is-at"), red),
+        (latest.address.clone(), red),
+        (
+            words!("screen-draw-left-in-epoch", epoch = latest.said_in),
+            red,
+        ),
+        (words!("screen-draw-left-never-said-so"), red),
+        (words!("screen-draw-left-stop-one"), loud),
+        (
+            words!("screen-draw-left-status-says-more"),
+            Style::new().fg(Color::DarkGray),
+        ),
+    ] {
+        lines.extend(broken(&said, width, style));
+    }
+    lines.push(Line::raw(""));
+    lines
 }
 
 /// One number with its name, in a column.
-fn counted<'a>(name: &'a str, count: usize, loud: bool) -> Line<'a> {
+fn counted(name: String, count: usize, loud: bool) -> Line<'static> {
     let style = if loud {
         Style::new().add_modifier(Modifier::BOLD)
     } else {
         Style::new()
     };
     Line::from(vec![
-        Span::styled(format!("{name:<13}"), style),
-        Span::styled(count.to_string(), style),
+        Span::styled(padded(&name, 13), style),
+        Span::styled(words!("screen-draw-left-number", number = count), style),
     ])
 }
 
+/// A phrase broken over several lines, each line styled alike and none wider than the
+/// column: a translation broken for a wider column than this one is folded again.
+fn broken(text: &str, width: usize, style: Style) -> Vec<Line<'static>> {
+    text.split('\n')
+        .flat_map(|line| fold(line, width))
+        .map(|line| Line::styled(line.trim_start().to_owned(), style))
+        .collect()
+}
+
 /// What this node's own record says about it, in the words that are true of it.
-fn standing(standing: &Where) -> Vec<Line<'static>> {
+fn standing(standing: &Where, width: usize) -> Vec<Line<'static>> {
+    let grey = Style::new().fg(Color::DarkGray);
     match standing {
-        Where::OnNobodysRoll => vec![
-            Line::raw("on nobody's roll."),
-            Line::raw("nobody has handed you"),
-            Line::raw("the file yet. it takes"),
-            Line::raw("an invitation."),
-            Line::styled(crate::commands::THE_PLACE, Style::new().fg(Color::DarkGray)),
-        ],
+        Where::OnNobodysRoll => {
+            let mut lines = broken(
+                &words!("screen-draw-left-on-nobodys-roll"),
+                width,
+                Style::new(),
+            );
+            lines.push(Line::styled(crate::commands::THE_PLACE, grey));
+            lines
+        }
         Where::Waiting {
             joined,
             counted_from,
-        } => vec![
-            Line::raw(format!("given the file in {}", joined.0)),
-            Line::raw(format!("counted from {}", counted_from.0)),
-            Line::styled("answer everything until", Style::new().fg(Color::DarkGray)),
-            Line::styled(
-                "then. none of it is banked.",
-                Style::new().fg(Color::DarkGray),
-            ),
-        ],
+        } => {
+            let mut lines = vec![
+                Line::raw(words!("screen-draw-left-given-in", epoch = joined.0)),
+                Line::raw(words!(
+                    "screen-draw-left-counted-from",
+                    epoch = counted_from.0
+                )),
+            ];
+            lines.extend(broken(&words!("screen-draw-left-until-then"), width, grey));
+            lines
+        }
         Where::Counted {
             standing,
             silent_on,
-        } => {
-            let share = standing.per_mille().map_or_else(
-                || "—".to_owned(),
-                |per_mille| format!("{}.{}%", per_mille / 10, per_mille % 10),
-            );
-            let mut lines = vec![Line::from(vec![
-                Span::raw(format!(
-                    "present in {} of {} — ",
-                    standing.present, standing.counted
-                )),
-                Span::styled(share, Style::new().add_modifier(Modifier::BOLD)),
-            ])];
-            if standing.qualifies() {
-                lines.push(Line::styled(
-                    "by your own record, counted",
-                    Style::new().fg(Color::DarkGray),
-                ));
-            } else {
-                lines.push(Line::styled(
-                    "not counted. two of every",
-                    Style::new().fg(Color::Red),
-                ));
-                lines.push(Line::styled(
-                    "three is all that is asked",
-                    Style::new().fg(Color::Red),
-                ));
-            }
-            if *silent_on != 0 {
-                lines.push(Line::styled(
-                    format!("silent on {silent_on} of {WINDOW_EPOCHS}"),
-                    Style::new().fg(Color::DarkGray),
-                ));
-            }
-            lines
-        }
+        } => counted_standing(standing, *silent_on, width),
     }
 }
 
-/// The shape of what everybody said this epoch, as much of it as there is room for.
-fn said(said: &Said, height: u16) -> Vec<Line<'static>> {
-    if said.spoken == 0 {
-        return vec![
-            Line::from(Span::styled(
-                "SAID",
-                Style::new().add_modifier(Modifier::BOLD),
-            )),
-            Line::styled(
-                format!("nothing yet. {SIGNAL_COUNT} things"),
-                Style::new().fg(Color::DarkGray),
-            ),
-            Line::styled("can be said.", Style::new().fg(Color::DarkGray)),
-        ];
-    }
+/// The share of the window this node was present for, as a person reads a share.
+fn share(per_mille: Option<u64>) -> String {
+    per_mille.map_or_else(
+        || words!("screen-draw-left-no-share"),
+        |per_mille| {
+            words!(
+                "screen-draw-left-share",
+                whole = per_mille / 10,
+                tenth = per_mille % 10
+            )
+        },
+    )
+}
+
+/// The lines for a node its own record counts over the window.
+fn counted_standing(standing: &Standing, silent_on: u64, width: usize) -> Vec<Line<'static>> {
     let mut lines = vec![Line::from(vec![
-        Span::styled("SAID  ", Style::new().add_modifier(Modifier::BOLD)),
-        Span::raw(format!("{} of {} spoke", said.spoken, said.observed)),
+        Span::raw(words!(
+            "screen-draw-left-present",
+            present = standing.present,
+            counted = standing.counted
+        )),
+        Span::styled(
+            share(standing.per_mille()),
+            Style::new().add_modifier(Modifier::BOLD),
+        ),
     ])];
-    // However many rows are left on this column, and a line saying what did not fit.
-    // Cutting the tail off in silence would make a distribution look like the whole of
-    // one, which is the one thing this screen must never do.
-    let room = usize::from(height).saturating_sub(lines.len() + 14).max(1);
-    for (index, count, share, reached) in said.rows.iter().take(room) {
-        let share = share.map_or_else(
-            || "—".to_owned(),
-            |per_mille| format!("{}.{}%", per_mille / 10, per_mille % 10),
-        );
-        let mark = if *reached { "  a third" } else { "" };
-        let style = if *reached {
-            Style::new().add_modifier(Modifier::BOLD)
-        } else {
-            Style::new()
-        };
+    if standing.qualifies() {
         lines.push(Line::styled(
-            format!(" #{index:<5}{count:>3} {share:>6}{mark}"),
-            style,
-        ));
-    }
-    if said.rows.len() > room {
-        lines.push(Line::styled(
-            format!(" and {} more said", said.rows.len() - room),
+            words!("screen-draw-left-counted"),
             Style::new().fg(Color::DarkGray),
         ));
+    } else {
+        lines.extend(broken(
+            &words!("screen-draw-left-not-counted"),
+            width,
+            Style::new().fg(Color::Red),
+        ));
     }
-    if let Some(mine) = said.mine {
+    if silent_on != 0 {
         lines.push(Line::styled(
-            format!(" you said #{mine}"),
+            words!(
+                "screen-draw-left-silent-on",
+                epochs = silent_on,
+                window = WINDOW_EPOCHS
+            ),
             Style::new().fg(Color::DarkGray),
         ));
     }
     lines
 }
 
+/// The shape of what everybody said this epoch, as much of it as there is room for.
+fn said(said: &Said, height: u16, width: usize) -> Vec<Line<'static>> {
+    let bold = Style::new().add_modifier(Modifier::BOLD);
+    if said.spoken == 0 {
+        let mut lines = vec![Line::from(Span::styled(
+            words!("screen-draw-left-said"),
+            bold,
+        ))];
+        lines.extend(broken(
+            &words!("screen-draw-left-nothing-said", signals = SIGNAL_COUNT),
+            width,
+            Style::new().fg(Color::DarkGray),
+        ));
+        return lines;
+    }
+    let mut lines = vec![Line::from(vec![
+        Span::styled(padded(&words!("screen-draw-left-said"), 6), bold),
+        Span::raw(words!(
+            "screen-draw-left-spoke",
+            spoken = said.spoken,
+            observed = said.observed
+        )),
+    ])];
+    // However many rows are left on this column, and a line saying what did not fit.
+    // Cutting the tail off in silence would make a distribution look like the whole of
+    // one, which is the one thing this screen must never do.
+    let room = usize::from(height).saturating_sub(lines.len() + 14).max(1);
+    for row in said.rows.iter().take(room) {
+        lines.push(said_row(*row));
+    }
+    if said.rows.len() > room {
+        lines.push(Line::styled(
+            format!(
+                " {}",
+                words!("screen-draw-left-more-said", rows = said.rows.len() - room)
+            ),
+            Style::new().fg(Color::DarkGray),
+        ));
+    }
+    if let Some(mine) = said.mine {
+        lines.push(Line::styled(
+            format!(" {}", words!("screen-draw-left-you-said", index = mine)),
+            Style::new().fg(Color::DarkGray),
+        ));
+    }
+    lines
+}
+
+/// One signal said this epoch: which, how many said it, their share, and whether that
+/// share reached a third.
+fn said_row((index, count, per_mille, reached): (u16, u64, Option<u64>, bool)) -> Line<'static> {
+    let mark = if reached {
+        format!("  {}", words!("screen-draw-left-a-third"))
+    } else {
+        String::new()
+    };
+    let style = if reached {
+        Style::new().add_modifier(Modifier::BOLD)
+    } else {
+        Style::new()
+    };
+    Line::styled(
+        format!(
+            " {}{} {}{mark}",
+            padded(&words!("screen-draw-left-signal", index = index), 6),
+            ahead(&words!("screen-draw-left-number", number = count), 3),
+            ahead(&share(per_mille), 6),
+        ),
+        style,
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::node::sources::{Heard, Sighting, Source};
-    use crate::screen::watch::Said;
 
     fn watching(copies: Vec<Sighting>) -> Watch {
-        Watch {
-            name: "333".into(),
-            epoch: n333_core::Epoch(9),
-            has_the_file: false,
-            answering: 0,
-            roll: 0,
-            addresses: 0,
-            witnessed: 0,
-            standing: Where::OnNobodysRoll,
-            said: Said {
-                rows: Vec::new(),
-                spoken: 0,
-                observed: 0,
-                mine: None,
-            },
-            vigil: n333_core::extinction::Vigil::new(),
-            copies,
-        }
+        Watch::quiet(copies)
     }
 
     fn text(lines: &[Line<'_>]) -> String {
@@ -220,6 +272,78 @@ mod tests {
             .map(ToString::to_string)
             .collect::<Vec<_>>()
             .join("\n")
+    }
+
+    #[test]
+    fn in_english_every_moved_line_says_exactly_what_it_said_before() {
+        use n333_core::Epoch;
+        let english = |then: &dyn Fn() -> Vec<Line<'static>>| {
+            crate::words::speaking("en", crate::words::count::Base::Ten, || text(&then()))
+        };
+        let copy = Sighting {
+            address: "192.0.2.9:3333".into(),
+            said_in: 8,
+            heard: Heard {
+                from: Source::ThisNetwork,
+                epoch: 9,
+            },
+        };
+        let watch = watching(vec![copy]);
+        assert_eq!(
+            english(&|| another_copy(&watch, 30)),
+            "ANOTHER COPY OF THIS NAME\nsays it is at\n192.0.2.9:3333\nin epoch 8.\n\
+             this node never said so.\nstop one of them.\n`333 status` says more.\n"
+        );
+        assert_eq!(
+            english(&|| vec![counted(words!("screen-draw-left-answering"), 7, true)]),
+            "ANSWERING    7"
+        );
+        assert_eq!(
+            english(&|| standing(&Where::OnNobodysRoll, 30)),
+            "on nobody's roll.\nnobody has handed you\nthe file yet. it takes\n\
+             an invitation.\nthe333.dev"
+        );
+        let waiting = Where::Waiting {
+            joined: Epoch(5),
+            counted_from: Epoch(8),
+        };
+        assert_eq!(
+            english(&|| standing(&waiting, 30)),
+            "given the file in 5\ncounted from 8\nanswer everything until\n\
+             then. none of it is banked."
+        );
+        let short = Standing {
+            counted: 300,
+            present: 100,
+        };
+        assert_eq!(
+            english(&|| counted_standing(&short, 33, 30)),
+            "present in 100 of 300 — 33.3%\nnot counted. two of every\n\
+             three is all that is asked\nsilent on 33 of 333"
+        );
+        let enough = Standing {
+            counted: 3,
+            present: 3,
+        };
+        assert_eq!(
+            english(&|| counted_standing(&enough, 0, 30)),
+            "present in 3 of 3 — 100.0%\nby your own record, counted"
+        );
+        let nothing = watch.said;
+        assert_eq!(
+            english(&|| said(&nothing, 40, 30)),
+            "SAID\nnothing yet. 333 things\ncan be said."
+        );
+        let some = Said {
+            rows: vec![(42, 2, Some(666), true), (7, 1, Some(333), false)],
+            spoken: 3,
+            observed: 9,
+            mine: Some(42),
+        };
+        assert_eq!(
+            english(&|| said(&some, 16, 30)),
+            "SAID  3 of 9 spoke\n #42     2  66.6%  a third\n and 1 more said\n you said #42"
+        );
     }
 
     #[test]
@@ -232,11 +356,11 @@ mod tests {
                 epoch: 9,
             },
         };
-        let said = text(&another_copy(&watching(vec![copy])));
+        let said = text(&another_copy(&watching(vec![copy]), 30));
         assert!(said.starts_with("ANOTHER COPY OF THIS NAME"), "{said}");
         assert!(said.contains("192.0.2.9:3333") && said.contains("epoch 8"));
         assert!(
-            another_copy(&watching(Vec::new())).is_empty(),
+            another_copy(&watching(Vec::new()), 30).is_empty(),
             "and nothing when there is none"
         );
     }

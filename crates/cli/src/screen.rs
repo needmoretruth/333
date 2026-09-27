@@ -30,6 +30,7 @@ use n333_core::signal::SIGNAL_COUNT;
 
 use crate::node::Node;
 use crate::orders::Order;
+use crate::words::Arg;
 use watch::Watch;
 
 /// How often everything is read off the disk again.
@@ -186,7 +187,7 @@ async fn pressed(
                 // Echoed as it was typed rather than as it was understood. A person who
                 // mistyped wants to see what they typed, and the shape of the thing this
                 // program turned it into is not something they asked to be shown.
-                let said = format!("asked    {}", typed.trim());
+                let said = words!("screen-asked", typed = typed.trim());
                 let asked = Order::read(typed);
                 *saying = Saying::Nothing;
                 match asked {
@@ -196,13 +197,11 @@ async fn pressed(
                     // would be a second node inside the first.
                     Ok(order) => {
                         if orders.send(order).is_err() {
-                            return Pressed::Said(
-                                "unheard  nothing is carrying orders out any more".to_owned(),
-                            );
+                            return Pressed::Said(words!("screen-unheard"));
                         }
                         Pressed::Said(said)
                     }
-                    Err(why) => Pressed::Said(format!("unread   {why}")),
+                    Err(why) => Pressed::Said(words!("screen-unread", why = why.to_string())),
                 }
             }
             _ => Pressed::Carry,
@@ -234,10 +233,13 @@ async fn pressed(
 /// Say one of the 333, and say what happened either way.
 async fn say_it(node: &Arc<Node>, typed: &str) -> String {
     let Some(index) = crate::words::count::index(typed) else {
-        return format!(
-            "refused  there are {SIGNAL_COUNT} of them, numbered 0 to {}. \"{typed}\" is not one.",
-            SIGNAL_COUNT - 1
+        let why = words!(
+            "say-not-one",
+            count = SIGNAL_COUNT,
+            last = SIGNAL_COUNT - 1,
+            typed = typed
         );
+        return words!("screen-refused", why = why);
     };
     match crate::commands::say::speak(node, index).await {
         // Saying it says its own lines; there is nothing to add here.
@@ -257,12 +259,13 @@ fn remember(log: &mut Vec<String>, said: &str) {
         return;
     };
     let seconds = n333_core::epoch::unix_now_seconds();
-    log.push(format!(
-        "{:02}:{:02}:{:02}  {first}",
-        seconds / 3600 % 24,
-        seconds / 60 % 60,
-        seconds % 60
-    ));
+    let at = words!(
+        "screen-at",
+        hours = Arg::padded(seconds / 3600 % 24, 2),
+        minutes = Arg::padded(seconds / 60 % 60, 2),
+        seconds = Arg::padded(seconds % 60, 2)
+    );
+    log.push(format!("{at}  {first}"));
     log.extend(lines.map(|line| format!("          {}", line.trim_start())));
     if log.len() > REMEMBERED {
         log.drain(..log.len() - REMEMBERED);
@@ -293,4 +296,51 @@ fn read_keys() -> (UnboundedReceiver<event::KeyEvent>, Arc<AtomicBool>) {
         }
     });
     (receiver, reading)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::words::count::Base;
+
+    #[test]
+    fn in_english_every_moved_line_says_exactly_what_it_said_before() {
+        let pairs = crate::words::speaking("en", Base::Ten, || {
+            [
+                (words!("screen-asked", typed = "ping x"), "asked    ping x"),
+                (
+                    words!("screen-unheard"),
+                    "unheard  nothing is carrying orders out any more",
+                ),
+                (
+                    words!("screen-unread", why = "nothing typed"),
+                    "unread   nothing typed",
+                ),
+                (
+                    words!(
+                        "screen-refused",
+                        why = words!(
+                            "say-not-one",
+                            count = SIGNAL_COUNT,
+                            last = SIGNAL_COUNT - 1,
+                            typed = "400"
+                        )
+                    ),
+                    "refused  there are 333 of them, numbered 0 to 332. \"400\" is not one.",
+                ),
+                (
+                    words!(
+                        "screen-at",
+                        hours = Arg::padded(7, 2),
+                        minutes = Arg::padded(5, 2),
+                        seconds = Arg::padded(0, 2)
+                    ),
+                    "07:05:00",
+                ),
+            ]
+        });
+        for (now, before) in pairs {
+            assert_eq!(now, before);
+        }
+    }
 }

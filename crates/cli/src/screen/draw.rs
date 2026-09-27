@@ -24,7 +24,10 @@ use ratatui::widgets::{Block, Padding, Paragraph};
 
 use super::Saying;
 use super::watch::Watch;
-use crate::commands::hours::{to_the_boundary, until};
+use unicode_width::UnicodeWidthStr as _;
+
+use crate::commands::hours::to_the_boundary;
+use crate::words::Arg;
 
 use bottom::{the_keys, the_silence};
 use left::this_node;
@@ -66,7 +69,12 @@ pub(super) fn everything(frame: &mut Frame<'_>, watch: &Watch, log: &[String], s
 
 /// The one line that is always true: who this is, when it is, and how long is left.
 fn header<'a>(watch: &'a Watch, wide: bool) -> Paragraph<'a> {
-    let left = if wide { " to the boundary" } else { " left" };
+    let left = remaining(to_the_boundary(watch.epoch));
+    let left = if wide {
+        words!("screen-draw-to-the-boundary", left = left)
+    } else {
+        words!("screen-draw-time-left", left = left)
+    };
     Paragraph::new(Line::from(vec![
         Span::styled(" 333 ", Style::new().add_modifier(Modifier::REVERSED)),
         Span::raw("  "),
@@ -74,17 +82,35 @@ fn header<'a>(watch: &'a Watch, wide: bool) -> Paragraph<'a> {
             crate::commands::shorten(&watch.name),
             Style::new().add_modifier(Modifier::BOLD),
         ),
-        Span::raw("   epoch "),
+        Span::raw(format!("   {} ", words!("screen-draw-epoch"))),
         Span::styled(
-            watch.epoch.0.to_string(),
+            words!("screen-draw-number", number = watch.epoch.0),
             Style::new().add_modifier(Modifier::BOLD),
         ),
-        Span::raw(format!("   {}{left}", until(to_the_boundary(watch.epoch)))),
+        Span::raw(format!("   {left}")),
     ]))
 }
 
+/// How long is left of this epoch, the way a person waiting would say it, in the base
+/// they count in: hours and minutes, or minutes and seconds in the last hour.
+fn remaining(seconds: u64) -> String {
+    let (hours, minutes) = (seconds / 3600, (seconds % 3600) / 60);
+    if hours == 0 {
+        return words!(
+            "commands-minutes-and-seconds",
+            minutes = minutes,
+            seconds = seconds % 60
+        );
+    }
+    words!(
+        "commands-hours-and-minutes",
+        hours = hours,
+        minutes = Arg::padded(minutes, 2)
+    )
+}
+
 /// A pane's frame, with its name on it.
-fn titled(name: &str) -> Block<'_> {
+fn titled(name: String) -> Block<'static> {
     Block::bordered()
         .border_style(Style::new().fg(Color::DarkGray))
         .padding(Padding::horizontal(1))
@@ -92,4 +118,78 @@ fn titled(name: &str) -> Block<'_> {
             format!(" {name} "),
             Style::new().fg(Color::DarkGray),
         ))
+}
+
+/// Text followed by spaces to fill `columns` terminal columns, counted as a terminal
+/// counts them: a Korean label padded by its letters would push the number after it
+/// out of line by the width of the label.
+fn padded(text: &str, columns: usize) -> String {
+    format!("{text}{}", " ".repeat(columns.saturating_sub(text.width())))
+}
+
+/// Spaces, then text, to fill `columns` terminal columns: a number lined up on the right.
+fn ahead(text: &str, columns: usize) -> String {
+    format!("{}{text}", " ".repeat(columns.saturating_sub(text.width())))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ratatui::Terminal;
+    use ratatui::backend::TestBackend;
+
+    use crate::words::count::Base;
+
+    /// Every row of the screen drawn at this size, as text, without trailing spaces.
+    fn drawn(width: u16, height: u16, saying: &Saying) -> Vec<String> {
+        let watch = Watch::quiet(Vec::new());
+        let mut terminal = Terminal::new(TestBackend::new(width, height)).unwrap();
+        terminal
+            .draw(|frame| everything(frame, &watch, &[], saying))
+            .unwrap();
+        let buffer = terminal.backend().buffer();
+        (0..height)
+            .map(|y| {
+                let row: String = (0..width).map(|x| buffer[(x, y)].symbol()).collect();
+                row.trim_end().to_owned()
+            })
+            .collect()
+    }
+
+    #[test]
+    fn in_english_the_header_and_the_bottom_say_what_they_said_before() {
+        let rows = |saying| crate::words::speaking("en", Base::Ten, || drawn(130, 20, &saying));
+        let watching = rows(Saying::Nothing);
+        assert!(
+            watching[0].starts_with(" 333   333   epoch 9   "),
+            "{}",
+            watching[0]
+        );
+        assert!(watching[0].ends_with(" to the boundary"), "{}", watching[0]);
+        assert_eq!(
+            watching[18],
+            " no one has ever answered this node, which is what a node looks like before it has been anywhere"
+        );
+        assert_eq!(
+            watching[19],
+            " q  leave the vigil    s  say one of the 333    :  everything else   \
+             this node has not been given the file"
+        );
+        assert_eq!(
+            rows(Saying::Which("4".into()))[19],
+            " say which of the 333? 4▏   enter to say it · esc to say nothing"
+        );
+        assert_eq!(
+            rows(Saying::Typing("pi".into()))[19],
+            " : pi\u{258f}   ping · join · bootstrap · say · tor on · tor off · bridge · status · quit"
+        );
+    }
+
+    #[test]
+    fn in_english_the_countdown_is_said_as_it_was() {
+        let said = crate::words::speaking("en", Base::Ten, || {
+            [remaining(2 * 3600 + 5 * 60 + 9), remaining(4 * 60 + 5)]
+        });
+        assert_eq!(said, ["2h 05m".to_owned(), "4m 5s".to_owned()]);
+    }
 }
