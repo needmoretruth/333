@@ -80,7 +80,7 @@ pub(crate) async fn run(common: &Common, how: Vigil) -> anyhow::Result<()> {
         ask_the_router,
     } = how;
     if bind.is_none() && !tor {
-        bail!("nothing would be listening: --no-direct needs --tor");
+        bail!(words!("serve-nothing-listening"));
     }
     // Claimed before anything is said, so that the first lines — the name, the
     // invitation — are in the screen's own pane rather than printed underneath it and
@@ -91,25 +91,15 @@ pub(crate) async fn run(common: &Common, how: Vigil) -> anyhow::Result<()> {
     let _ = plain;
     let (node, opened) = Node::open(&common.mistrust(), common.paths.root(), common.keeping)?;
     let node = Arc::new(node);
-    aloud!("name     {}", node.identity().node_id());
+    aloud_in!("serve-name", name = node.identity().node_id().to_string());
     crate::commands::report_opening(&opened);
     // The one thing a person who has just downloaded this needs to be told, in the one
     // place they will be sitting when they wonder. `status` says it; `serve` is where
     // they wait, and it was saying everything except this.
     if !opened.has_the_file {
-        aloud!(
-            "waiting  this node has not been given the file, so nothing is counted for it\n\
-             \x20        yet and there is nothing yet for anybody to witness. It cannot make\n\
-             \x20        one. It only ever arrives from somebody who already holds it, and\n\
-             \x20        the two of you sign for the handover. Ask for an\n\
-             \x20        invitation, then `333 join 333:their.address:3333`. Answering in the\n\
-             \x20        meantime costs nothing and is how people find you."
-        );
+        aloud_in!("serve-waiting-for-the-file");
     }
-    aloud!(
-        "hand     an invitation names a place, not a person. it swears to nothing;\n\
-         \x20        whoever answers there proves themselves by holding a key."
-    );
+    aloud_in!("serve-hand");
 
     // A node that answers on no socket is hiding, and a hiding node that dials
     // clearnet peers has shown its address itself, at the far end, where it can be
@@ -128,7 +118,10 @@ pub(crate) async fn run(common: &Common, how: Vigil) -> anyhow::Result<()> {
     // not be, so the one that arrives last is the one worth publishing.
     let (found_address, address) = watch::channel(announce.clone());
     if let Some(announce) = &announce {
-        aloud!("invite   {}", Invite::to(announce.clone()));
+        aloud_in!(
+            "serve-invite",
+            invitation = Invite::to(announce.clone()).to_string()
+        );
     }
     // The address the socket actually got, which is not the one that was asked for
     // when the port was left to the system to choose.
@@ -150,7 +143,7 @@ pub(crate) async fn run(common: &Common, how: Vigil) -> anyhow::Result<()> {
         // True the instant the socket is bound, which is why it is printed here.
         let bound = listener.address()?;
         bound_at = Some(bound);
-        aloud!("answer   {bound}");
+        aloud_in!("serve-answer", bound = bound.to_string());
         if announce.is_none() {
             say_the_invitation(bound, &found_address);
         }
@@ -161,20 +154,13 @@ pub(crate) async fn run(common: &Common, how: Vigil) -> anyhow::Result<()> {
         if nearby {
             match n333_net::Nearby::start(bound.port()) {
                 Ok(nearby) => {
-                    aloud!(
-                        "nearby   saying on this network that something here speaks 333, and\n\
-                         \x20        listening for the others. Not this node's name: what goes out\n\
-                         \x20        is what a port scan of the same network would find. --no-mdns\n\
-                         \x20        keeps this node off it."
-                    );
+                    aloud_in!("serve-nearby");
                     let (node, dialer) = (Arc::clone(&node), dialer.clone());
                     listening.spawn(greet_the_neighbours(node, dialer, nearby));
                 }
                 // What fails here is this machine's responder starting, not the network
                 // declining to carry anything.
-                Err(e) => aloud!(
-                    "nearby   could not start saying on this network that this node is here: {e}"
-                ),
+                Err(e) => aloud_in!("serve-nearby-failed", why = e.to_string()),
             }
         }
         let node = Arc::clone(&node);
@@ -199,12 +185,7 @@ pub(crate) async fn run(common: &Common, how: Vigil) -> anyhow::Result<()> {
     // only one of the two that answers when somebody knocks.
     let board = meet.map(|place| hours::Board::at(&place));
     if let Some(board) = &board {
-        aloud!(
-            "meet     {} is where this node looks for people nobody introduced it to.\n\
-             \x20        Everything read there is signed by whoever said it, and nothing\n\
-             \x20        there is believed. --no-meet keeps this node away from it.",
-            board.place()
-        );
+        aloud_in!("serve-meet", place = board.place());
     }
     let lent = bound_at.map(|bound| {
         let (board, dialer, node) = (board.clone(), dialer.clone(), Arc::clone(&node));
@@ -248,7 +229,7 @@ pub(crate) async fn run(common: &Common, how: Vigil) -> anyhow::Result<()> {
         // The screen does, when the person watching leaves, and that is the end of the
         // vigil rather than the end of one part of it.
         finished = listening.join_next() => match finished {
-            Some(finished) => finished.context("a listener stopped unexpectedly")??,
+            Some(finished) => finished.with_context(|| words!("serve-listener-stopped"))??,
             None => return Ok(()),
         },
         // Ctrl-C and nothing else. A service being stopped by its manager has nobody
@@ -278,9 +259,15 @@ fn the_screen(plain: bool) -> Option<tokio::sync::mpsc::UnboundedReceiver<String
 /// What is true the moment this node stops answering.
 ///
 /// Printed rather than said, because by the time this runs the screen has given the
-/// terminal back and there is nobody left listening to what the node says.
+/// terminal back and there is nobody left listening to what the node says. Dropped if
+/// nobody reads standard output any more: a vigil piped into `head` has nobody to tell.
 fn farewell() {
-    println!("{}", said_at_the_end(Epoch::now()));
+    use std::io::Write as _;
+    let _ = writeln!(
+        std::io::stdout().lock(),
+        "{}",
+        said_at_the_end(Epoch::now())
+    );
 }
 
 /// The farewell's words, for the epoch it is said in.
@@ -486,6 +473,116 @@ mod tests {
             1,
             "and the verifier's statement says so, signed by the verifier"
         );
+    }
+
+    #[test]
+    fn in_english_every_moved_line_says_exactly_what_it_said_before() {
+        let pairs = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+            [
+                (
+                    words!("serve-nothing-listening"),
+                    "nothing would be listening: --no-direct needs --tor",
+                ),
+                (words!("serve-name", name = "333abc"), "name     333abc"),
+                (
+                    words!("serve-waiting-for-the-file"),
+                    "waiting  this node has not been given the file, so nothing is counted for it\n\
+                     \x20        yet and there is nothing yet for anybody to witness. It cannot make\n\
+                     \x20        one. It only ever arrives from somebody who already holds it, and\n\
+                     \x20        the two of you sign for the handover. Ask for an\n\
+                     \x20        invitation, then `333 join 333:their.address:3333`. Answering in the\n\
+                     \x20        meantime costs nothing and is how people find you.",
+                ),
+                (
+                    words!("serve-hand"),
+                    "hand     an invitation names a place, not a person. it swears to nothing;\n\
+                     \x20        whoever answers there proves themselves by holding a key.",
+                ),
+                (
+                    words!("serve-invite", invitation = "333:192.0.2.7:3333"),
+                    "invite   333:192.0.2.7:3333",
+                ),
+                (
+                    words!("serve-answer", bound = "0.0.0.0:3333"),
+                    "answer   0.0.0.0:3333",
+                ),
+                (
+                    words!("serve-nearby"),
+                    "nearby   saying on this network that something here speaks 333, and\n\
+                     \x20        listening for the others. Not this node's name: what goes out\n\
+                     \x20        is what a port scan of the same network would find. --no-mdns\n\
+                     \x20        keeps this node off it.",
+                ),
+                (
+                    words!("serve-nearby-failed", why = "no interface"),
+                    "nearby   could not start saying on this network that this node is here: \
+                     no interface",
+                ),
+                (
+                    words!("serve-meet", place = "the333.dev"),
+                    "meet     the333.dev is where this node looks for people nobody introduced it to.\n\
+                     \x20        Everything read there is signed by whoever said it, and nothing\n\
+                     \x20        there is believed. --no-meet keeps this node away from it.",
+                ),
+                (
+                    words!("serve-listener-stopped"),
+                    "a listener stopped unexpectedly",
+                ),
+            ]
+        });
+        for (now, before) in pairs {
+            assert_eq!(now, before);
+        }
+    }
+
+    /// Every keyword in the Korean catalogs whose names begin with `stem`, as written.
+    fn korean_keywords(stem: &str) -> Vec<(String, String)> {
+        crate::words::catalog::built_in("ko")
+            .into_iter()
+            .filter(|source| {
+                std::path::Path::new(&source.name)
+                    .file_stem()
+                    .is_some_and(|name| name.to_string_lossy().starts_with(stem))
+            })
+            .flat_map(|source| {
+                let name = source.name.clone();
+                source
+                    .text
+                    .lines()
+                    .filter_map(|line| line.trim_start().strip_prefix(".keyword = "))
+                    .map(|keyword| (name.clone(), keyword.replace("{\"\"}", "")))
+                    .collect::<Vec<_>>()
+            })
+            .collect()
+    }
+
+    #[test]
+    fn in_korean_every_line_of_the_vigil_and_its_hours_begins_its_words_in_the_ninth_column() {
+        use crate::words::layout::{COLUMN, where_the_words_begin};
+        use unicode_width::UnicodeWidthStr as _;
+        let mut keywords = korean_keywords("serve");
+        keywords.extend(korean_keywords("hours"));
+        assert!(keywords.len() > 60, "{keywords:?}");
+        for (file, keyword) in keywords {
+            assert!(keyword.width() < COLUMN, "{file}: {keyword}");
+        }
+        let lines = crate::words::speaking("ko", crate::words::count::Base::Ten, || {
+            [
+                words!("serve-waiting-for-the-file"),
+                words!("serve-name", name = "333abc"),
+                said_at_the_end(Epoch(89_612)),
+            ]
+        });
+        for line in &lines {
+            for (at, one) in line.lines().enumerate() {
+                let begins = if at == 0 {
+                    where_the_words_begin(one)
+                } else {
+                    one.len() - one.trim_start().len()
+                };
+                assert_eq!(begins, COLUMN, "{one:?}");
+            }
+        }
     }
 
     #[test]

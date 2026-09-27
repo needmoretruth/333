@@ -19,6 +19,7 @@
 
 mod router;
 
+use std::io::Write as _;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 use std::time::Duration;
@@ -30,6 +31,7 @@ use tokio::sync::{oneshot, watch};
 use crate::commands::hours::Board;
 use crate::dial::Dialer;
 use crate::node::Node;
+use crate::words::Arg;
 
 /// How long the end of the vigil waits for the router to take its port back.
 ///
@@ -57,11 +59,12 @@ impl Kept {
             .await
             .is_err()
         {
-            println!(
-                "closed   the router had not answered when the vigil ended. Whatever it\n\
-                 \x20        agreed to runs out by itself within {}.",
-                router::how_long(n333_net::doorway::ASK_FOR)
+            // Written rather than said: the screen has given the terminal back.
+            let said = words!(
+                "serve-reach-unanswered-at-the-end",
+                time = router::how_long(n333_net::doorway::ASK_FOR)
             );
+            let _ = writeln!(std::io::stdout().lock(), "{said}");
         }
     }
 }
@@ -100,13 +103,7 @@ pub(super) fn tell_them(
             };
             let outside = PeerAddress::from(SocketAddr::new(seen, port));
             if only_the_router && !outside.worth_telling_a_stranger() {
-                aloud!(
-                    "shut     the router says this household is at {seen}, which is not an\n\
-                     \x20        address on the open internet: another router, or the provider's\n\
-                     \x20        shared address, stands between it and everybody else, and\n\
-                     \x20        nothing here can ask that one. `333 serve --tor` needs no router\n\
-                     \x20        change at all."
-                );
+                aloud_in!("serve-reach-shut-behind-another", seen = seen.to_string());
                 return;
             }
             knock_and_say(&dialer, &node, outside, &found_address).await;
@@ -155,13 +152,15 @@ async fn knock_and_say(
 ) {
     match knock(dialer, node, &outside).await {
         Answer::ItWasUs => {
-            aloud!(
-                "open     port {} reaches this machine from outside. This node knocked at\n\
-                 \x20        {outside} and answered itself, so that address is one you can\n\
-                 \x20        hand to anybody.",
-                outside.port()
+            aloud_in!(
+                "serve-reach-open",
+                port = Arg::exact(outside.port()),
+                outside = outside.to_string()
             );
-            aloud!("invite   {}", Invite::to(outside.clone()));
+            aloud_in!(
+                "serve-reach-invite",
+                invitation = Invite::to(outside.clone()).to_string()
+            );
             // Only now, and only if nothing better is already standing: an onion
             // address is reachable from everywhere and this one is reachable from
             // wherever the router allows, so the onion address wins if it arrives.
@@ -169,23 +168,19 @@ async fn knock_and_say(
                 let _ = found_address.send(Some(outside));
             }
         }
-        Answer::SomebodyElse => aloud!(
-            "shut     something answered at {outside} and it was not this node. That port\n\
-             \x20        on your address belongs to something else, so an invitation naming\n\
-             \x20        it would send people to the wrong machine."
+        Answer::SomebodyElse => aloud_in!(
+            "serve-reach-shut-somebody-else",
+            outside = outside.to_string()
         ),
-        Answer::Unfinished(why) => aloud!(
-            "shut     something at {outside} took the connection and did not finish a\n\
-             \x20        heartbeat: {why}. An invitation naming it is not one to hand out."
+        Answer::Unfinished(why) => aloud_in!(
+            "serve-reach-shut-unfinished",
+            outside = outside.to_string(),
+            why = why
         ),
-        Answer::Nothing => aloud!(
-            "shut     nothing answered at {outside}, so as far as the outside world can\n\
-             \x20        tell this node is not listening. Either the router in front of it\n\
-             \x20        was never told to send port {} here, or it will not let a machine\n\
-             \x20        inside it dial its own outside address. `333 serve --tor` needs no\n\
-             \x20        router change at all and works from any network, including the\n\
-             \x20        ones that hand out no reachable address in the first place.",
-            outside.port()
+        Answer::Nothing => aloud_in!(
+            "serve-reach-shut-nothing",
+            outside = outside.to_string(),
+            port = Arg::exact(outside.port())
         ),
     }
 }
@@ -214,5 +209,77 @@ async fn knock(dialer: &Dialer, node: &Node, outside: &PeerAddress) -> Answer {
         // Something is there: the connection was taken. Saying nothing answered would
         // send a person to look at their router for a fault that is somewhere else.
         Err(e) => Answer::Unfinished(e.to_string()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn in_english_every_moved_line_says_exactly_what_it_said_before() {
+        let outside = "203.0.113.7:3333";
+        let pairs = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+            [
+                (
+                    words!("serve-reach-unanswered-at-the-end", time = "two hours"),
+                    "closed   the router had not answered when the vigil ended. Whatever it\n\
+                     \x20        agreed to runs out by itself within two hours.",
+                ),
+                (
+                    words!("serve-reach-shut-behind-another", seen = "100.64.0.9"),
+                    "shut     the router says this household is at 100.64.0.9, which is not an\n\
+                     \x20        address on the open internet: another router, or the provider's\n\
+                     \x20        shared address, stands between it and everybody else, and\n\
+                     \x20        nothing here can ask that one. `333 serve --tor` needs no router\n\
+                     \x20        change at all.",
+                ),
+                (
+                    words!(
+                        "serve-reach-open",
+                        port = Arg::exact(3333),
+                        outside = outside
+                    ),
+                    "open     port 3333 reaches this machine from outside. This node knocked at\n\
+                     \x20        203.0.113.7:3333 and answered itself, so that address is one you can\n\
+                     \x20        hand to anybody.",
+                ),
+                (
+                    words!("serve-reach-invite", invitation = "333:203.0.113.7:3333"),
+                    "invite   333:203.0.113.7:3333",
+                ),
+                (
+                    words!("serve-reach-shut-somebody-else", outside = outside),
+                    "shut     something answered at 203.0.113.7:3333 and it was not this node. That port\n\
+                     \x20        on your address belongs to something else, so an invitation naming\n\
+                     \x20        it would send people to the wrong machine.",
+                ),
+                (
+                    words!(
+                        "serve-reach-shut-unfinished",
+                        outside = outside,
+                        why = "the frame was too long"
+                    ),
+                    "shut     something at 203.0.113.7:3333 took the connection and did not finish a\n\
+                     \x20        heartbeat: the frame was too long. An invitation naming it is not one to hand out.",
+                ),
+                (
+                    words!(
+                        "serve-reach-shut-nothing",
+                        outside = outside,
+                        port = Arg::exact(3333)
+                    ),
+                    "shut     nothing answered at 203.0.113.7:3333, so as far as the outside world can\n\
+                     \x20        tell this node is not listening. Either the router in front of it\n\
+                     \x20        was never told to send port 3333 here, or it will not let a machine\n\
+                     \x20        inside it dial its own outside address. `333 serve --tor` needs no\n\
+                     \x20        router change at all and works from any network, including the\n\
+                     \x20        ones that hand out no reachable address in the first place.",
+                ),
+            ]
+        });
+        for (now, before) in pairs {
+            assert_eq!(now, before);
+        }
     }
 }

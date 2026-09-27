@@ -9,6 +9,7 @@ use anyhow::Context as _;
 use n333_net::direct;
 
 use crate::node::Node;
+use crate::words::Arg;
 
 use super::door::{Caller, Door, spawn_exchange};
 
@@ -23,21 +24,19 @@ pub(super) async fn listen(bind: SocketAddr) -> anyhow::Result<direct::Listener>
         Err(failed) => failed,
     };
     let step = match &failed {
-        direct::Error::Io { cause } if cause.kind() == ErrorKind::AddrInUse => Some(format!(
-            "Something on this machine already listens on port {}: another node, or another\n\
-             program. Stop it, or pass --bind with another port.",
-            bind.port()
+        direct::Error::Io { cause } if cause.kind() == ErrorKind::AddrInUse => Some(words!(
+            "serve-socket-port-taken",
+            port = Arg::exact(bind.port())
         )),
-        direct::Error::Io { cause } if cause.kind() == ErrorKind::AddrNotAvailable => {
-            Some(format!(
-                "{} is not an address of this machine. --bind 0.0.0.0:{} listens on all of them.",
-                bind.ip(),
-                bind.port()
-            ))
-        }
+        direct::Error::Io { cause } if cause.kind() == ErrorKind::AddrNotAvailable => Some(words!(
+            "serve-socket-not-here",
+            ip = bind.ip().to_string(),
+            port = Arg::exact(bind.port())
+        )),
         _ => None,
     };
-    let failed = anyhow::Error::new(failed).context(format!("listening on {bind}"));
+    let failed = anyhow::Error::new(failed)
+        .context(words!("serve-socket-listening-on", bind = bind.to_string()));
     Err(match step {
         Some(step) => crate::failed::next_step(failed, step),
         None => failed,
@@ -51,7 +50,10 @@ pub(super) async fn answer_direct(
     door: Door,
 ) -> anyhow::Result<()> {
     loop {
-        let (stream, from) = listener.accept().await.context("accepting a peer")?;
+        let (stream, from) = listener
+            .accept()
+            .await
+            .with_context(|| words!("serve-socket-accepting"))?;
         // A peer's address is not a name and is not recorded; it is shown so that the
         // operator of this node can see who is reaching it right now, and counted so
         // that one caller cannot be everybody at the door.
@@ -62,6 +64,38 @@ pub(super) async fn answer_direct(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn in_english_every_moved_line_says_what_it_said_before() {
+        let pairs = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+            [
+                (
+                    words!("serve-socket-listening-on", bind = "0.0.0.0:3333"),
+                    "listening on 0.0.0.0:3333",
+                ),
+                (words!("serve-socket-accepting"), "accepting a peer"),
+                // Both were one line nine columns wider than a terminal leaves once the
+                // step is indented under `failed`, and are broken earlier now.
+                (
+                    words!("serve-socket-port-taken", port = Arg::exact(3333)),
+                    "Something on this machine already listens on port 3333: another\n\
+                     node, or another program. Stop it, or pass --bind with another port.",
+                ),
+                (
+                    words!(
+                        "serve-socket-not-here",
+                        ip = "192.0.2.7",
+                        port = Arg::exact(3333)
+                    ),
+                    "192.0.2.7 is not an address of this machine. --bind 0.0.0.0:3333\n\
+                     listens on all of them.",
+                ),
+            ]
+        });
+        for (now, before) in pairs {
+            assert_eq!(now, before);
+        }
+    }
 
     #[tokio::test]
     async fn a_port_already_taken_says_what_to_change() {

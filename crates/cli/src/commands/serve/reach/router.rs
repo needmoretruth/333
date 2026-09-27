@@ -6,11 +6,14 @@
 //! as the vigil runs, and given back when the vigil ends. A mapping made over UPnP is
 //! left as it was made, as it always has been, and is said to be left.
 
+use std::io::Write as _;
 use std::net::IpAddr;
 use std::time::Duration;
 
 use n333_net::doorway::{self, Asked, Lasts, Lease, Way};
 use tokio::sync::oneshot;
+
+use crate::words::Arg;
 
 /// Ask the router to send `port` here, and say what it said.
 ///
@@ -24,40 +27,40 @@ pub(super) async fn ask(port: u16) -> Asked {
             port: outside_port,
             by: Way::Upnp,
             lasts,
-        } => aloud!(
-            "opened   the router says port {outside_port} {} now comes to this machine{}. It\n\
-             \x20        is listed there as `333` if you want to take it away again. Whether\n\
-             \x20        anything arrives is the next line.",
-            on(*outside),
+        } => {
+            let (port, on) = (Arg::exact(outside_port), on(*outside));
             match lasts {
-                Lasts::For(time) => format!(", for {}", how_long(*time)),
-                Lasts::UntilTakenAway | Lasts::WhileKept(_) => String::new(),
+                Lasts::For(time) => aloud_in!(
+                    "serve-reach-router-opened-upnp-for",
+                    port = port,
+                    on = on,
+                    time = how_long(*time)
+                ),
+                Lasts::UntilTakenAway | Lasts::WhileKept(_) => {
+                    aloud_in!("serve-reach-router-opened-upnp", port = port, on = on);
+                }
             }
-        ),
+        }
         Asked::Forwarded {
             lasts: Lasts::WhileKept(lease),
             ..
-        } => aloud!(
-            "opened   asked the router at {} over {} for port {port} for {}. It says port\n\
-             \x20        {} {} now comes here, for {}. This node asks again before that\n\
-             \x20        runs out and gives it back when the vigil ends; stopped any other\n\
-             \x20        way, the router drops it by itself when the time is up. Whether\n\
-             \x20        anything arrives is the next line.",
-            lease.router(),
-            lease.way(),
-            how_long(doorway::ASK_FOR),
-            lease.port(),
-            on(lease.outside()),
-            how_long(lease.granted()),
+        } => aloud_in!(
+            "serve-reach-router-opened-lease",
+            router = lease.router().to_string(),
+            way = lease.way().to_string(),
+            port = Arg::exact(port),
+            asked_for = how_long(doorway::ASK_FOR),
+            granted_port = Arg::exact(lease.port()),
+            on = on(lease.outside()),
+            granted = how_long(lease.granted()),
         ),
         Asked::Forwarded { .. } => {}
-        Asked::NobodyAnswered => aloud!(
-            "closed   no router here answered a request to open a port, over UPnP-IGD, PCP\n\
-             \x20        or NAT-PMP. That is ordinary: plenty have all three turned off, and a\n\
-             \x20        machine with an address of its own has nothing to ask. `--no-router`\n\
-             \x20        stops this node asking at all."
+        Asked::NobodyAnswered => aloud_in!("serve-reach-router-nobody-answered"),
+        Asked::Refused(why) => aloud_in!(
+            "serve-reach-router-refused",
+            port = Arg::exact(port),
+            why = why.to_string()
         ),
-        Asked::Refused(why) => aloud!("closed   the router would not open port {port}: {why}"),
     }
     asked
 }
@@ -73,12 +76,7 @@ pub(super) async fn keep(lease: Option<Lease>, mut leaving: oneshot::Receiver<()
     };
     loop {
         let Some(wait) = lease.ask_again_in() else {
-            aloud!(
-                "closed   the router let port {} go: it was not asked again in time, so nobody\n\
-                 \x20        outside can reach this node on it now. Starting the vigil again\n\
-                 \x20        asks again.",
-                lease.port()
-            );
+            aloud_in!("serve-reach-router-let-go", port = Arg::exact(lease.port()));
             return;
         };
         tokio::select! {
@@ -88,17 +86,21 @@ pub(super) async fn keep(lease: Option<Lease>, mut leaving: oneshot::Receiver<()
     }
     let (port, way) = (lease.port(), lease.way());
     let left = lease.left();
-    match lease.give_back().await {
-        Ok(()) => println!(
-            "closed   port {port} is given back to the router over {way}; it no longer\n\
-             \x20        comes to this machine."
+    let said = match lease.give_back().await {
+        Ok(()) => words!(
+            "serve-reach-router-given-back",
+            port = Arg::exact(port),
+            way = way.to_string()
         ),
-        Err(why) => println!(
-            "closed   the router did not take port {port} back ({why}). It drops it by\n\
-             \x20        itself within {}.",
-            how_long(left)
+        Err(why) => words!(
+            "serve-reach-router-not-taken-back",
+            port = Arg::exact(port),
+            why = why.to_string(),
+            time = how_long(left)
         ),
-    }
+    };
+    // Dropped if nobody reads standard output any more, as every other line is.
+    let _ = writeln!(std::io::stdout().lock(), "{said}");
 }
 
 /// Ask once more, and say so only if something changed or went wrong.
@@ -109,19 +111,18 @@ async fn renew(lease: &mut Lease) {
     let before = (lease.port(), lease.outside());
     match lease.renew().await {
         Ok(()) if (lease.port(), lease.outside()) == before => {}
-        Ok(()) => aloud!(
-            "opened   the router moved this node: port {} {} now comes here instead of\n\
-             \x20        port {} {}. An invitation naming the old one no longer arrives.",
-            lease.port(),
-            on(lease.outside()),
-            before.0,
-            on(before.1),
+        Ok(()) => aloud_in!(
+            "serve-reach-router-moved",
+            port = Arg::exact(lease.port()),
+            on = on(lease.outside()),
+            before_port = Arg::exact(before.0),
+            before_on = on(before.1),
         ),
-        Err(why) => aloud!(
-            "waiting  the router did not keep port {} when asked ({why}). It still has it\n\
-             \x20        for {}, and is asked again before then.",
-            lease.port(),
-            how_long(lease.left()),
+        Err(why) => aloud_in!(
+            "serve-reach-router-not-kept",
+            port = Arg::exact(lease.port()),
+            why = why.to_string(),
+            time = how_long(lease.left()),
         ),
     }
 }
@@ -129,8 +130,8 @@ async fn renew(lease: &mut Lease) {
 /// Where the port is, in the words the router gave or the ones it did not.
 fn on(outside: Option<IpAddr>) -> String {
     outside.map_or_else(
-        || "on its outside address".to_owned(),
-        |address| format!("on {address}"),
+        || words!("serve-reach-router-on-its-outside-address"),
+        |address| words!("serve-reach-router-on", address = address.to_string()),
     )
 }
 
@@ -142,21 +143,139 @@ fn on(outside: Option<IpAddr>) -> String {
 pub(super) fn how_long(time: Duration) -> String {
     let seconds = time.as_secs() + u64::from(time.subsec_nanos() > 0);
     let minutes = seconds.div_ceil(60);
-    let (count, unit) = match seconds {
-        s if s < 60 => (s, "second"),
-        _ if minutes.is_multiple_of(60) => (minutes / 60, "hour"),
-        _ => (minutes, "minute"),
-    };
-    match count {
-        1 => format!("one {unit}"),
-        2 => format!("two {unit}s"),
-        n => format!("{n} {unit}s"),
+    match seconds {
+        1 => words!("serve-reach-router-one-second"),
+        2 => words!("serve-reach-router-two-seconds"),
+        s if s < 60 => words!("serve-reach-router-seconds", count = s),
+        _ if minutes.is_multiple_of(60) => match minutes / 60 {
+            1 => words!("serve-reach-router-one-hour"),
+            2 => words!("serve-reach-router-two-hours"),
+            hours => words!("serve-reach-router-hours", count = hours),
+        },
+        _ => match minutes {
+            1 => words!("serve-reach-router-one-minute"),
+            2 => words!("serve-reach-router-two-minutes"),
+            minutes => words!("serve-reach-router-minutes", count = minutes),
+        },
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn in_english_every_moved_line_says_exactly_what_it_said_before() {
+        let on = || "on 203.0.113.7".to_owned();
+        let pairs = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+            [
+                (
+                    words!(
+                        "serve-reach-router-opened-upnp",
+                        port = Arg::exact(3333),
+                        on = on()
+                    ),
+                    "opened   the router says port 3333 on 203.0.113.7 now comes to this machine. It\n\
+                     \x20        is listed there as `333` if you want to take it away again. Whether\n\
+                     \x20        anything arrives is the next line.",
+                ),
+                (
+                    words!(
+                        "serve-reach-router-opened-upnp-for",
+                        port = Arg::exact(3333),
+                        on = on(),
+                        time = "two hours"
+                    ),
+                    "opened   the router says port 3333 on 203.0.113.7 now comes to this machine, \
+                     for two hours. It\n\
+                     \x20        is listed there as `333` if you want to take it away again. Whether\n\
+                     \x20        anything arrives is the next line.",
+                ),
+                (
+                    words!(
+                        "serve-reach-router-opened-lease",
+                        router = "192.168.1.1",
+                        way = "PCP",
+                        port = Arg::exact(3333),
+                        asked_for = "two hours",
+                        granted_port = Arg::exact(3334),
+                        on = on(),
+                        granted = "one hour",
+                    ),
+                    "opened   asked the router at 192.168.1.1 over PCP for port 3333 for two hours. \
+                     It says port\n\
+                     \x20        3334 on 203.0.113.7 now comes here, for one hour. This node asks again before that\n\
+                     \x20        runs out and gives it back when the vigil ends; stopped any other\n\
+                     \x20        way, the router drops it by itself when the time is up. Whether\n\
+                     \x20        anything arrives is the next line.",
+                ),
+                (
+                    words!("serve-reach-router-nobody-answered"),
+                    "closed   no router here answered a request to open a port, over UPnP-IGD, PCP\n\
+                     \x20        or NAT-PMP. That is ordinary: plenty have all three turned off, and a\n\
+                     \x20        machine with an address of its own has nothing to ask. `--no-router`\n\
+                     \x20        stops this node asking at all.",
+                ),
+                (
+                    words!(
+                        "serve-reach-router-refused",
+                        port = Arg::exact(3333),
+                        why = "no"
+                    ),
+                    "closed   the router would not open port 3333: no",
+                ),
+                (
+                    words!("serve-reach-router-let-go", port = Arg::exact(3333)),
+                    "closed   the router let port 3333 go: it was not asked again in time, so nobody\n\
+                     \x20        outside can reach this node on it now. Starting the vigil again\n\
+                     \x20        asks again.",
+                ),
+                (
+                    words!(
+                        "serve-reach-router-given-back",
+                        port = Arg::exact(3333),
+                        way = "NAT-PMP"
+                    ),
+                    "closed   port 3333 is given back to the router over NAT-PMP; it no longer\n\
+                     \x20        comes to this machine.",
+                ),
+                (
+                    words!(
+                        "serve-reach-router-not-taken-back",
+                        port = Arg::exact(3333),
+                        why = "timed out",
+                        time = "90 minutes"
+                    ),
+                    "closed   the router did not take port 3333 back (timed out). It drops it by\n\
+                     \x20        itself within 90 minutes.",
+                ),
+                (
+                    words!(
+                        "serve-reach-router-moved",
+                        port = Arg::exact(3334),
+                        on = on(),
+                        before_port = Arg::exact(3333),
+                        before_on = "on its outside address",
+                    ),
+                    "opened   the router moved this node: port 3334 on 203.0.113.7 now comes here instead of\n\
+                     \x20        port 3333 on its outside address. An invitation naming the old one no longer arrives.",
+                ),
+                (
+                    words!(
+                        "serve-reach-router-not-kept",
+                        port = Arg::exact(3333),
+                        why = "timed out",
+                        time = "45 seconds",
+                    ),
+                    "waiting  the router did not keep port 3333 when asked (timed out). It still has it\n\
+                     \x20        for 45 seconds, and is asked again before then.",
+                ),
+            ]
+        });
+        for (now, before) in pairs {
+            assert_eq!(now, before);
+        }
+    }
 
     #[test]
     fn a_lease_is_said_in_the_largest_unit_it_fills() {

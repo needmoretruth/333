@@ -56,7 +56,11 @@ where
 
     let answered =
         liveness::answer(stream, node.identity(), Epoch::now(), head, &roll, question).await?;
-    aloud!("asked    epoch {} by {asked_by}", epoch.0);
+    aloud_in!(
+        "serve-answering-asked",
+        epoch = epoch.0,
+        verifier = asked_by.to_string()
+    );
 
     // All of it is kept as the bytes that travelled. The challenge and the answer
     // together are what shows this node answered even if the verifier publishes
@@ -83,7 +87,7 @@ where
     S: AsyncRead + AsyncWrite + Unpin,
 {
     let Some(subject) = node.subject().await else {
-        aloud!("empty    somebody asked for the file. this node has nothing to give.");
+        aloud_in!("serve-answering-empty");
         return Ok(());
     };
     let tidings = node.tidings(Epoch::now()).await?;
@@ -102,17 +106,17 @@ where
         Err(e) => return Err(e.into()),
     };
 
-    aloud!(
-        "gave     the file to {} in epoch {}",
-        given.transfer.receiver(),
-        given.transfer.epoch().0
+    aloud_in!(
+        "serve-answering-gave",
+        receiver = given.transfer.receiver().to_string(),
+        epoch = given.transfer.epoch().0
     );
     aloud!(
         "{}",
         crate::commands::what_was_signed(&given.transfer, true)
     );
     let members = node.admit(&[given.gave, given.received]).await?;
-    aloud!("roll     {members} of us");
+    aloud_in!("serve-answering-roll", members = members);
     Ok(())
 }
 
@@ -124,10 +128,10 @@ where
 /// themselves; nobody has to point.
 async fn curse(name: &n333_core::NodeId) -> anyhow::Result<()> {
     tokio::time::sleep(CURSE_PAUSE).await;
-    aloud!(
-        "cursed   {name} asked. 333 took {} milliseconds off their life, as it does at\n\
-         \x20        every door.",
-        CURSE_PAUSE.as_millis()
+    aloud_in!(
+        "serve-answering-cursed",
+        name = name.to_string(),
+        milliseconds = u64::try_from(CURSE_PAUSE.as_millis()).unwrap_or(u64::MAX)
     );
     Ok(())
 }
@@ -160,11 +164,7 @@ where
     // challenge for an epoch to come is a statement about a thing that has not
     // happened.
     if epoch != now {
-        aloud!(
-            "early    somebody came to be asked about epoch {}, and this node is in {}",
-            epoch.0,
-            now.0
-        );
+        aloud_in!("serve-answering-early", asked_about = epoch.0, now = now.0);
         return Ok(());
     }
     let me = node.identity().public_key();
@@ -175,10 +175,61 @@ where
         return Ok(());
     }
     let witnessed = liveness::ask(stream, node.identity(), prover, now).await?;
-    aloud!(
-        "witness  epoch {} answered by {}, who came here to be asked",
-        now.0,
-        witnessed.exchange.answer.prover
+    aloud_in!(
+        "serve-answering-witness",
+        epoch = now.0,
+        prover = witnessed.exchange.answer.prover.to_string()
     );
     node.keep(now, &witnessed.attestation).await
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn in_english_every_moved_line_says_exactly_what_it_said_before() {
+        let pairs = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+            [
+                (
+                    words!(
+                        "serve-answering-asked",
+                        epoch = 89_612_u64,
+                        verifier = "333ab"
+                    ),
+                    "asked    epoch 89612 by 333ab",
+                ),
+                (
+                    words!("serve-answering-empty"),
+                    "empty    somebody asked for the file. this node has nothing to give.",
+                ),
+                (
+                    words!("serve-answering-gave", receiver = "333cd", epoch = 9_u64),
+                    "gave     the file to 333cd in epoch 9",
+                ),
+                (
+                    words!("serve-answering-roll", members = 2_usize),
+                    "roll     2 of us",
+                ),
+                (
+                    words!(
+                        "serve-answering-cursed",
+                        name = "33ef",
+                        milliseconds = 333_u64
+                    ),
+                    "cursed   33ef asked. 333 took 333 milliseconds off their life, as it does at\n\
+                     \x20        every door.",
+                ),
+                (
+                    words!("serve-answering-early", asked_about = 8_u64, now = 9_u64),
+                    "early    somebody came to be asked about epoch 8, and this node is in 9",
+                ),
+                (
+                    words!("serve-answering-witness", epoch = 9_u64, prover = "333ab"),
+                    "witness  epoch 9 answered by 333ab, who came here to be asked",
+                ),
+            ]
+        });
+        for (now, before) in pairs {
+            assert_eq!(now, before);
+        }
+    }
 }

@@ -32,12 +32,16 @@ pub(crate) async fn judge_what_is_ready(node: &Node, now: Epoch) {
         Ok(Some(last)) if last.0 >= ready.0 => return,
         Ok(_) => {}
         Err(e) => {
-            aloud!("failed   reading this node's own record: {e:#}");
+            aloud_in!("hours-judging-failed-reading", why = format!("{e:#}"));
             return;
         }
     }
     if let Err(e) = judge_one(node, ready).await {
-        aloud!("failed   judging epoch {}: {e:#}", ready.0);
+        aloud_in!(
+            "hours-judging-failed",
+            epoch = ready.0,
+            why = format!("{e:#}")
+        );
     }
 }
 
@@ -60,8 +64,15 @@ async fn judge_one(node: &Node, epoch: Epoch) -> anyhow::Result<()> {
     let head = node
         .record(epoch, verdict.attendance, evidence_digest(&frames))
         .await?;
-    aloud!("judged   epoch {}: {}", epoch.0, said(verdict.because));
-    aloud!("record   {}", super::epochs(head.length));
+    aloud_in!(
+        "hours-judging-judged",
+        epoch = epoch.0,
+        verdict = said(verdict.because)
+    );
+    aloud_in!(
+        "hours-judging-record",
+        answered = super::epochs(head.length)
+    );
     Ok(())
 }
 
@@ -90,24 +101,71 @@ fn receipt_in(frames: &[Vec<u8>], me: &[u8; 32]) -> Option<Exchange> {
 /// Three of the five ways an epoch leaves the count are different events with different
 /// meanings, and one sentence for all three would be false in two of them. The
 /// arithmetic does not distinguish them; a person reading this must.
-const fn said(because: Because) -> &'static str {
+fn said(because: Because) -> String {
     match because {
-        Because::Answered => "present. it will not be judged again.",
-        Because::Denounced => {
-            "absent. everyone drawn to ask you has sworn nothing came back. it will\n\
-             \x20        not be judged again."
-        }
-        Because::NoneDrawn => {
-            "outside the count. nobody was drawn to ask you, and an epoch that asked\n\
-             \x20        nothing of you takes nothing from you."
-        }
-        Because::ReceiptWithdrew => {
-            "outside the count. you kept the question and the answer you gave to it,\n\
-             \x20        which withdraws the accusation without earning a presence."
-        }
-        Because::NotAllSpoke => {
-            "outside the count. some of those drawn said nothing at all, and silence\n\
-             \x20        is not agreement."
+        Because::Answered => words!("hours-judging-present"),
+        Because::Denounced => words!("hours-judging-absent"),
+        Because::NoneDrawn => words!("hours-judging-none-drawn"),
+        Because::ReceiptWithdrew => words!("hours-judging-receipt-withdrew"),
+        Because::NotAllSpoke => words!("hours-judging-not-all-spoke"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn in_english_every_moved_line_says_exactly_what_it_said_before() {
+        let judged = |because| {
+            words!(
+                "hours-judging-judged",
+                epoch = 9_u64,
+                verdict = said(because)
+            )
+        };
+        let pairs = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+            [
+                (
+                    words!("hours-judging-failed-reading", why = "disk"),
+                    "failed   reading this node's own record: disk",
+                ),
+                (
+                    words!("hours-judging-failed", epoch = 9_u64, why = "disk"),
+                    "failed   judging epoch 9: disk",
+                ),
+                (
+                    words!("hours-judging-record", answered = "40 epochs answered for"),
+                    "record   40 epochs answered for",
+                ),
+                (
+                    judged(Because::Answered),
+                    "judged   epoch 9: present. it will not be judged again.",
+                ),
+                (
+                    judged(Because::Denounced),
+                    "judged   epoch 9: absent. everyone drawn to ask you has sworn nothing came back. it will\n\
+                     \x20        not be judged again.",
+                ),
+                (
+                    judged(Because::NoneDrawn),
+                    "judged   epoch 9: outside the count. nobody was drawn to ask you, and an epoch that asked\n\
+                     \x20        nothing of you takes nothing from you.",
+                ),
+                (
+                    judged(Because::ReceiptWithdrew),
+                    "judged   epoch 9: outside the count. you kept the question and the answer you gave to it,\n\
+                     \x20        which withdraws the accusation without earning a presence.",
+                ),
+                (
+                    judged(Because::NotAllSpoke),
+                    "judged   epoch 9: outside the count. some of those drawn said nothing at all, and silence\n\
+                     \x20        is not agreement.",
+                ),
+            ]
+        });
+        for (now, before) in pairs {
+            assert_eq!(now, before);
         }
     }
 }

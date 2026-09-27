@@ -49,7 +49,7 @@ pub(super) async fn trade_news(node: &Node, dialer: &Dialer, now: Epoch) {
     let mine = match node.tidings(now).await {
         Ok(mine) => mine,
         Err(e) => {
-            aloud!("failed   gathering what this node could pass on: {e:#}");
+            aloud_in!("hours-asking-failed-gathering", why = format!("{e:#}"));
             return;
         }
     };
@@ -75,16 +75,19 @@ pub(super) async fn trade_news(node: &Node, dialer: &Dialer, now: Epoch) {
         .map(|address| async move {
             match trade_with(node, dialer, &address, now, mine).await {
                 Ok(heard) => crate::commands::report_heard(&heard),
-                Err(e) => aloud!("quiet    {address}: {e:#}"),
+                Err(e) => aloud_in!(
+                    "hours-asking-quiet",
+                    address = &address,
+                    why = format!("{e:#}")
+                ),
             }
         })
         .buffer_unordered(AT_ONCE)
         .collect::<()>();
     if tokio::time::timeout(TRADING_BUDGET, round).await.is_err() {
-        aloud!(
-            "unfinished  the trading did not finish within {} of this epoch, and the\n\
-             \x20           rest of the hours will not wait for it",
-            super::minutes(TRADING_BUDGET)
+        aloud_in!(
+            "hours-asking-unended",
+            time = super::minutes(TRADING_BUDGET)
         );
     }
 }
@@ -99,7 +102,7 @@ pub(crate) async fn trade_at_once(node: &Node, dialer: &Dialer, address: &str) -
     let mine = match node.tidings(now).await {
         Ok(mine) => mine,
         Err(e) => {
-            aloud!("failed   gathering what this node could pass on: {e:#}");
+            aloud_in!("hours-asking-failed-gathering", why = format!("{e:#}"));
             return false;
         }
     };
@@ -109,7 +112,11 @@ pub(crate) async fn trade_at_once(node: &Node, dialer: &Dialer, address: &str) -
             true
         }
         Err(e) => {
-            aloud!("quiet    {address}: {e:#}");
+            aloud_in!(
+                "hours-asking-quiet",
+                address = address,
+                why = format!("{e:#}")
+            );
             false
         }
     }
@@ -124,19 +131,21 @@ async fn trade_with(
     mine: &[Vec<u8>],
 ) -> anyhow::Result<crate::node::Heard> {
     let typed = address;
-    let address: PeerAddress = address.parse().context("reading a peer's address")?;
+    let address: PeerAddress = address
+        .parse()
+        .with_context(|| words!("hours-asking-reading-address"))?;
     let (teller, theirs) = tokio::time::timeout(ROUND_TIMEOUT, async {
         let mut stream = dialer.dial(&address).await?;
         let exchange = n333_net::initiate(&mut stream, node.identity())
             .await
-            .context("exchanging heartbeats")?;
+            .with_context(|| words!("hours-asking-exchanging-heartbeats"))?;
         let theirs = gossip::tell(&mut stream, node.identity(), now, mine)
             .await
-            .context("trading statements")?;
+            .with_context(|| words!("hours-asking-trading"))?;
         anyhow::Ok((exchange.peer.node_id, theirs))
     })
     .await
-    .map_err(|_| within("no answer", ROUND_TIMEOUT))??;
+    .map_err(|_| within(&words!("hours-asking-no-answer"), ROUND_TIMEOUT))??;
     node.answered_at(typed, teller).await;
     let from = crate::node::sources::Source::Peer {
         name: teller.to_string(),
@@ -168,50 +177,50 @@ pub(super) async fn present_myself(node: &Node, dialer: &Dialer, now: Epoch) {
     if verifiers.is_empty() {
         return;
     }
-    aloud!(
-        "going    nobody outside can open a connection to this node, so it goes to the\n\
-         \x20        {} of us drawn to ask it this epoch. The draw falls out of the epoch\n\
-         \x20        and the keys, so this node knows who they are without being told.",
-        verifiers.len()
-    );
+    aloud_in!("hours-asking-going", drawn = verifiers.len());
     for verifier in verifiers {
         let Some(address) = node.address_of(&verifier).await else {
-            aloud!(
-                "unknown  drawn to be asked by one of us that nobody has said the whereabouts of"
-            );
+            aloud_in!("hours-asking-unknown-drawn-by");
             continue;
         };
         if let Err(e) = present_to(node, dialer, &address, now).await {
-            aloud!("unasked  epoch {}: {e:#}", now.0);
+            aloud_in!(
+                "hours-asking-unasked",
+                epoch = now.0,
+                why = format!("{e:#}")
+            );
         }
     }
 }
 
 /// Arrive, say what for, and answer if there is a question waiting.
 async fn present_to(node: &Node, dialer: &Dialer, address: &str, now: Epoch) -> anyhow::Result<()> {
-    let address: PeerAddress = address.parse().context("reading a peer's address")?;
+    let address: PeerAddress = address
+        .parse()
+        .with_context(|| words!("hours-asking-reading-address"))?;
     let mut stream = tokio::time::timeout(ROUND_TIMEOUT, dialer.dial(&address))
         .await
-        .map_err(|_| within(&format!("{address} did not answer"), ROUND_TIMEOUT))??;
+        .map_err(|_| {
+            let what = words!("hours-asking-did-not-answer", address = address.to_string());
+            within(&what, ROUND_TIMEOUT)
+        })??;
     tokio::time::timeout(
         ROUND_TIMEOUT,
         n333_net::initiate(&mut stream, node.identity()),
     )
     .await
     .map_err(|_| {
-        within(
-            &format!("{address} did not finish the heartbeat"),
-            ROUND_TIMEOUT,
-        )
+        let what = words!("hours-asking-did-not-finish", address = address.to_string());
+        within(&what, ROUND_TIMEOUT)
     })?
-    .context("exchanging heartbeats")?;
+    .with_context(|| words!("hours-asking-exchanging-heartbeats"))?;
 
     let frame = Presenting::of(node.identity(), now)
         .seal(node.identity())
-        .context("sealing what this node came to say")?;
+        .with_context(|| words!("hours-asking-sealing-presenting"))?;
     n333_net::frame::write_frame(&mut stream, &frame)
         .await
-        .context("saying what this node came for")?;
+        .with_context(|| words!("hours-asking-saying-what-for"))?;
 
     // A verifier that was not drawn hangs up, and that is this node reading `None`. It
     // is the ordinary outcome and not a failure of anything.
@@ -221,10 +230,8 @@ async fn present_to(node: &Node, dialer: &Dialer, address: &str, now: Epoch) -> 
     )
     .await
     .map_err(|_| {
-        within(
-            &format!("{address} neither asked nor hung up"),
-            ROUND_TIMEOUT,
-        )
+        let what = words!("hours-asking-neither", address = address.to_string());
+        within(&what, ROUND_TIMEOUT)
     })??
     else {
         return Ok(());
@@ -247,23 +254,22 @@ pub(super) async fn ask_those_drawn(node: &Node, dialer: &Dialer, now: Epoch) {
     // Said out loud because from the outside being drawn looks like a chore the client
     // performs, and it is the one moment in an epoch where this node is doing something
     // nobody, including this node, chose.
-    aloud!(
-        "drawn    epoch {} — to ask {} of us. Nobody chose that: the names fall out of\n\
-         \x20        the epoch and the keys, identically on every machine.",
-        now.0,
-        asked.len()
-    );
+    aloud_in!("hours-asking-drawn", epoch = now.0, asked = asked.len());
 
     for peer in asked {
         let Some(address) = node.address_of(&peer).await else {
             // Drawn to ask somebody nobody has said the whereabouts of. Not their
             // fault and not a silence worth publishing: this node simply cannot ask.
-            aloud!("unknown  drawn to ask one of us that nobody has said the whereabouts of");
+            aloud_in!("hours-asking-unknown-drawn-to-ask");
             continue;
         };
         match ask_one(node, dialer, &address, peer, now).await {
             Ok(()) => {}
-            Err(e) => aloud!("unheard  epoch {}: {e:#}", now.0),
+            Err(e) => aloud_in!(
+                "hours-asking-unheard",
+                epoch = now.0,
+                why = format!("{e:#}")
+            ),
         }
     }
 }
@@ -282,35 +288,38 @@ async fn ask_one(
     peer: [u8; 32],
     now: Epoch,
 ) -> anyhow::Result<()> {
-    let address: PeerAddress = address.parse().context("reading a peer's address")?;
+    let address: PeerAddress = address
+        .parse()
+        .with_context(|| words!("hours-asking-reading-address"))?;
     let mut stream = tokio::time::timeout(ROUND_TIMEOUT, dialer.dial(&address))
         .await
-        .map_err(|_| within(&format!("{address} did not answer"), ROUND_TIMEOUT))??;
+        .map_err(|_| {
+            let what = words!("hours-asking-did-not-answer", address = address.to_string());
+            within(&what, ROUND_TIMEOUT)
+        })??;
     tokio::time::timeout(
         ROUND_TIMEOUT,
         n333_net::initiate(&mut stream, node.identity()),
     )
     .await
     .map_err(|_| {
-        within(
-            &format!("{address} did not finish the heartbeat"),
-            ROUND_TIMEOUT,
-        )
+        let what = words!("hours-asking-did-not-finish", address = address.to_string());
+        within(&what, ROUND_TIMEOUT)
     })?
-    .context("exchanging heartbeats")?;
+    .with_context(|| words!("hours-asking-exchanging-heartbeats"))?;
 
     // From here on the peer has been reached, so silence is the peer's silence and not
     // the road's. Everything before this point says nothing about anybody and is
     // reported without a statement being made.
     let question = liveness::put(&mut stream, node.identity(), peer, now)
         .await
-        .context("putting the question")?;
+        .with_context(|| words!("hours-asking-putting"))?;
     match tokio::time::timeout(ROUND_TIMEOUT, question.hear(&mut stream, node.identity())).await {
         Ok(Ok(witnessed)) => {
-            aloud!(
-                "witness  epoch {} answered by {}",
-                now.0,
-                witnessed.exchange.answer.prover
+            aloud_in!(
+                "hours-asking-witness",
+                epoch = now.0,
+                prover = witnessed.exchange.answer.prover.to_string()
             );
             node.keep(now, &witnessed.attestation).await
         }
@@ -330,9 +339,9 @@ async fn ask_one(
                 node,
                 &question,
                 now,
-                &format!(
-                    "nothing within the {} s the window allows",
-                    ROUND_TIMEOUT.as_secs()
+                &words!(
+                    "hours-asking-nothing-within",
+                    seconds = ROUND_TIMEOUT.as_secs()
                 ),
             )
             .await
@@ -349,8 +358,8 @@ async fn unanswered(
 ) -> anyhow::Result<()> {
     let sealed = question
         .unanswered(node.identity())
-        .context("sealing what did not happen")?;
-    aloud!("silence  epoch {}: {why}", now.0);
+        .with_context(|| words!("hours-asking-sealing-silence"))?;
+    aloud_in!("hours-asking-silence", epoch = now.0, why = why);
     node.keep(now, &question.frame).await?;
     node.keep(now, &sealed).await
 }
@@ -360,8 +369,100 @@ async fn unanswered(
 /// The deadline's own words are "deadline has elapsed", which says the same thing again
 /// and not how long.
 fn within(what: &str, deadline: Duration) -> anyhow::Error {
-    anyhow::anyhow!(
-        "{what} within the {} s the window allows",
-        deadline.as_secs()
-    )
+    anyhow::anyhow!(words!(
+        "hours-asking-within",
+        what = what,
+        seconds = deadline.as_secs()
+    ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn in_english_every_moved_line_says_exactly_what_it_said_before() {
+        let pairs = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+            [
+                (
+                    words!("hours-asking-failed-gathering", why = "disk full"),
+                    "failed   gathering what this node could pass on: disk full".to_owned(),
+                ),
+                (
+                    words!("hours-asking-quiet", address = "192.0.2.7:3333", why = "refused"),
+                    "quiet    192.0.2.7:3333: refused".to_owned(),
+                ),
+                (
+                    words!("hours-asking-going", drawn = 2_usize),
+                    "going    nobody outside can open a connection to this node, so it goes to the\n\
+                     \x20        2 of us drawn to ask it this epoch. The draw falls out of the epoch\n\
+                     \x20        and the keys, so this node knows who they are without being told."
+                        .to_owned(),
+                ),
+                (
+                    words!("hours-asking-unknown-drawn-by"),
+                    "unknown  drawn to be asked by one of us that nobody has said the whereabouts of"
+                        .to_owned(),
+                ),
+                (
+                    words!("hours-asking-unasked", epoch = 9_u64, why = "no"),
+                    "unasked  epoch 9: no".to_owned(),
+                ),
+                (
+                    words!("hours-asking-drawn", epoch = 9_u64, asked = 3_usize),
+                    "drawn    epoch 9 — to ask 3 of us. Nobody chose that: the names fall out of\n\
+                     \x20        the epoch and the keys, identically on every machine."
+                        .to_owned(),
+                ),
+                (
+                    words!("hours-asking-unknown-drawn-to-ask"),
+                    "unknown  drawn to ask one of us that nobody has said the whereabouts of"
+                        .to_owned(),
+                ),
+                (
+                    words!("hours-asking-unheard", epoch = 9_u64, why = "no"),
+                    "unheard  epoch 9: no".to_owned(),
+                ),
+                (
+                    words!("hours-asking-witness", epoch = 9_u64, prover = "333ab"),
+                    "witness  epoch 9 answered by 333ab".to_owned(),
+                ),
+                (
+                    words!("hours-asking-silence", epoch = 9_u64, why = "no"),
+                    "silence  epoch 9: no".to_owned(),
+                ),
+                (
+                    words!("hours-asking-nothing-within", seconds = 180_u64),
+                    "nothing within the 180 s the window allows".to_owned(),
+                ),
+                (
+                    within(
+                        &words!("hours-asking-did-not-answer", address = "192.0.2.7:3333"),
+                        ROUND_TIMEOUT,
+                    )
+                    .to_string(),
+                    format!(
+                        "192.0.2.7:3333 did not answer within the {} s the window allows",
+                        ROUND_TIMEOUT.as_secs()
+                    ),
+                ),
+            ]
+        });
+        for (now, before) in pairs {
+            assert_eq!(now, before);
+        }
+    }
+
+    #[test]
+    fn a_trading_that_ran_out_of_time_says_so_in_a_keyword_that_fits_the_column() {
+        // It was `unfinished  `, three columns too wide, with its next line to match.
+        let said = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+            words!("hours-asking-unended", time = "111 minutes")
+        });
+        assert_eq!(
+            said,
+            "unended  the trading did not finish within 111 minutes of this epoch, and the\n\
+             \x20        rest of the hours will not wait for it"
+        );
+    }
 }

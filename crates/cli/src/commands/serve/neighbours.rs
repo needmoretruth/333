@@ -34,7 +34,7 @@ pub(super) async fn greet_the_neighbours(
         }
         for address in neighbour.addresses {
             let address = address.to_string();
-            aloud!("nearby   one of us at {address}");
+            aloud_in!("serve-neighbours-found", address = &address);
             // On a deadline of its own, and a short one. A machine on the same network
             // answers in milliseconds; the several minutes this node is willing to
             // wait on a peer across the world would be spent here on an address that
@@ -54,13 +54,33 @@ pub(super) async fn greet_the_neighbours(
             // person asked for it and two keys signed, and finding a neighbour is not
             // asking.
             if node.subject().await.is_none() {
-                aloud!(
-                    "         `333 join 333:{address}` asks them for the file. Nothing\n\
-                     \x20        here does it for you."
-                );
+                aloud_in!("serve-neighbours-join", address = &address);
             }
             break;
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn in_english_every_moved_line_says_exactly_what_it_said_before() {
+        let pairs = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+            [
+                (
+                    words!("serve-neighbours-found", address = "192.168.1.9:3333"),
+                    "nearby   one of us at 192.168.1.9:3333",
+                ),
+                (
+                    words!("serve-neighbours-join", address = "192.168.1.9:3333"),
+                    "         `333 join 333:192.168.1.9:3333` asks them for the file. Nothing\n\
+                     \x20        here does it for you.",
+                ),
+            ]
+        });
+        for (now, before) in pairs {
+            assert_eq!(now, before);
+        }
+    }
 }

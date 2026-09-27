@@ -31,8 +31,8 @@ pub(super) async fn answer(
 ) -> anyhow::Result<()> {
     let client = dialer.tor().await?;
     let mut host = OnionHost::launch(&client, SERVICE_NICKNAME, ONION_PORT)
-        .context("launching the onion service")?;
-    aloud!("raising  the unseen address. this can take minutes.");
+        .with_context(|| words!("serve-onion-launching"))?;
+    aloud_in!("serve-onion-raising");
 
     // The address is deliberately not shown until here. Handed to a peer before
     // the network holds the descriptor, it produces a connection failure that
@@ -40,20 +40,31 @@ pub(super) async fn answer(
     let waiting = dialer.timeout();
     tokio::time::timeout(waiting, host.wait_until_reachable())
         .await
-        .map_err(|_| anyhow::anyhow!("not reachable after {} s", waiting.as_secs()))?
-        .context("waiting for the service to be reachable")?;
+        .map_err(|_| {
+            anyhow::anyhow!(words!(
+                "serve-onion-not-reachable",
+                seconds = waiting.as_secs()
+            ))
+        })?
+        .with_context(|| words!("serve-onion-waiting"))?;
     let address = PeerAddress::Onion {
         host: host.address()?,
         port: ONION_PORT,
     };
-    aloud!("unseen   {address}");
-    aloud!("invite   {}", Invite::to(address.clone()));
+    aloud_in!("serve-onion-unseen", address = address.to_string());
+    aloud_in!(
+        "serve-onion-invite",
+        invitation = Invite::to(address.clone()).to_string()
+    );
     // Written after the network holds the descriptor, so nobody is ever sent to an
     // address that does not answer yet.
     let _ = found_address.send(Some(address));
 
     loop {
-        let stream = host.accept().await.context("accepting a peer")?;
+        let stream = host
+            .accept()
+            .await
+            .with_context(|| words!("serve-onion-accepting"))?;
         // Through Tor there is no address to show, which is the point of it.
         spawn_exchange(stream, &node, &door, Caller::Unseen);
     }
@@ -69,5 +80,56 @@ pub(super) async fn answer(
     _door: Door,
     _found_address: watch::Sender<Option<PeerAddress>>,
 ) -> anyhow::Result<()> {
-    anyhow::bail!("this client was built without Tor, so it cannot publish an onion address")
+    anyhow::bail!(words!("serve-onion-not-built"))
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn in_english_every_moved_line_says_exactly_what_it_said_before() {
+        let pairs = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+            [
+                (
+                    words!("serve-onion-launching"),
+                    "launching the onion service",
+                ),
+                (
+                    words!("serve-onion-raising"),
+                    "raising  the unseen address. this can take minutes.",
+                ),
+                (
+                    words!("serve-onion-not-reachable", seconds = 180_u64),
+                    "not reachable after 180 s",
+                ),
+                (
+                    words!("serve-onion-waiting"),
+                    "waiting for the service to be reachable",
+                ),
+                (
+                    words!("serve-onion-unseen", address = "abc.onion:3333"),
+                    "unseen   abc.onion:3333",
+                ),
+                (
+                    words!("serve-onion-invite", invitation = "333:abc.onion:3333"),
+                    "invite   333:abc.onion:3333",
+                ),
+                (words!("serve-onion-accepting"), "accepting a peer"),
+            ]
+        });
+        for (now, before) in pairs {
+            assert_eq!(now, before);
+        }
+    }
+
+    #[test]
+    fn a_client_without_tor_says_so_in_lines_a_terminal_can_hold() {
+        // One line nine columns too wide under `failed` before; broken once now.
+        let said = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+            words!("serve-onion-not-built")
+        });
+        assert_eq!(
+            said,
+            "this client was built without Tor, so it cannot publish an onion\naddress"
+        );
+    }
 }

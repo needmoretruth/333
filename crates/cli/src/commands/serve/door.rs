@@ -84,7 +84,7 @@ impl std::fmt::Display for Caller {
         match self {
             Self::At(address) => write!(f, "{address}"),
             #[cfg(feature = "tor")]
-            Self::Unseen => write!(f, "over tor"),
+            Self::Unseen => write!(f, "{}", words!("serve-door-over-tor")),
         }
     }
 }
@@ -174,7 +174,7 @@ where
     S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
     let Some(slot) = door.place_for(caller) else {
-        aloud!("turned away {caller}: this door is full");
+        aloud_in!("serve-door-full", caller = caller.to_string());
         return;
     };
     let node = Arc::clone(node);
@@ -191,9 +191,9 @@ where
         {
             Ok(Ok(())) => {}
             Ok(Err(e)) => aloud!("{}", ended(caller, &e)),
-            Err(_elapsed) => aloud!(
-                "silence  {} s of it, so we let go",
-                EXCHANGE_TIMEOUT.as_secs()
+            Err(_elapsed) => aloud_in!(
+                "serve-door-silence-exchange",
+                seconds = EXCHANGE_TIMEOUT.as_secs()
             ),
         }
     });
@@ -207,9 +207,9 @@ where
     let asked = match tokio::time::timeout(GREETING_TIMEOUT, greeting(stream, node, caller)).await {
         Ok(asked) => asked?,
         Err(_elapsed) => {
-            aloud!(
-                "silence  {} s and not a word said, so the door is free again",
-                GREETING_TIMEOUT.as_secs()
+            aloud_in!(
+                "serve-door-silence-greeting",
+                seconds = GREETING_TIMEOUT.as_secs()
             );
             return Ok(());
         }
@@ -238,7 +238,7 @@ where
         // put this node's own name where a peer's name goes — and that line is the one
         // on the screen that is supposed to mean somebody else turned up.
         Ok(exchange) if exchange.peer.node_id == node.identity().node_id() => {
-            aloud!("knock    this node reached its own front door");
+            aloud_in!("serve-door-knock");
         }
         Ok(exchange) => aloud!("{}", describe(&exchange)),
         Err(e) => {
@@ -255,10 +255,16 @@ where
 /// sending what this node will not take.
 fn unmet(caller: Caller, error: &session::Error) -> String {
     match error {
-        session::Error::Frame(frame::Error::Io(e)) => {
-            format!("broken   {caller} stopped before the heartbeat was done: {e}")
-        }
-        other => format!("refused  {caller}: {other}"),
+        session::Error::Frame(frame::Error::Io(e)) => words!(
+            "serve-door-broken-heartbeat",
+            caller = caller.to_string(),
+            why = e.to_string()
+        ),
+        other => words!(
+            "serve-door-refused",
+            caller = caller.to_string(),
+            why = other.to_string()
+        ),
     }
 }
 
@@ -268,13 +274,14 @@ fn unmet(caller: Caller, error: &session::Error) -> String {
 /// this node's failure and says so. A connection that stopped is nobody's decision. What
 /// is left is this node declining what it was sent.
 fn ended(caller: Caller, error: &anyhow::Error) -> String {
+    let (caller, why) = (caller.to_string(), format!("{error:#}"));
     if crate::failed::is_our_own(error) {
-        return format!("failed   answering {caller}: {error:#}");
+        return words!("serve-door-failed-answering", caller = caller, why = why);
     }
     if error.chain().any(stopped) {
-        return format!("broken   {caller} stopped before the exchange was done: {error:#}");
+        return words!("serve-door-broken-exchange", caller = caller, why = why);
     }
-    format!("refused  {caller}: {error:#}")
+    words!("serve-door-refused", caller = caller, why = why)
 }
 
 /// Whether one cause is a connection that stopped, at whichever layer it surfaced.
@@ -294,6 +301,65 @@ mod tests {
 
     fn caller(address: &str) -> Caller {
         Caller::At(address.parse().expect("an address"))
+    }
+
+    #[test]
+    fn in_english_every_moved_line_says_exactly_what_it_said_before() {
+        let pairs = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+            [
+                (
+                    words!("serve-door-silence-exchange", seconds = 60_u64),
+                    "silence  60 s of it, so we let go",
+                ),
+                (
+                    words!("serve-door-silence-greeting", seconds = 20_u64),
+                    "silence  20 s and not a word said, so the door is free again",
+                ),
+                (
+                    words!("serve-door-knock"),
+                    "knock    this node reached its own front door",
+                ),
+                (
+                    unmet(
+                        caller("10.0.0.1:4000"),
+                        &session::Error::Frame(frame::Error::from(std::io::Error::from(
+                            std::io::ErrorKind::UnexpectedEof,
+                        ))),
+                    ),
+                    "broken   10.0.0.1:4000 stopped before the heartbeat was done: \
+                     unexpected end of file",
+                ),
+                (
+                    words!(
+                        "serve-door-failed-answering",
+                        caller = "10.0.0.1:4000",
+                        why = "no room"
+                    ),
+                    "failed   answering 10.0.0.1:4000: no room",
+                ),
+            ]
+        });
+        for (now, before) in pairs {
+            assert_eq!(now, before);
+        }
+    }
+
+    #[test]
+    fn a_full_door_turns_a_caller_away_in_a_keyword_that_fits_the_column() {
+        // It was `turned away `, two words and a column too wide for every other line.
+        let said = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+            words!("serve-door-full", caller = "10.0.0.1:4000")
+        });
+        assert_eq!(said, "turned   10.0.0.1:4000: this door is full");
+    }
+
+    #[cfg(feature = "tor")]
+    #[test]
+    fn a_caller_over_tor_is_said_as_the_road_it_came_by() {
+        let said = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+            Caller::Unseen.to_string()
+        });
+        assert_eq!(said, "over tor");
     }
 
     #[test]

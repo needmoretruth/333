@@ -42,6 +42,7 @@ use n333_net::PeerAddress;
 
 use crate::dial::Dialer;
 use crate::node::Node;
+use crate::words::Arg;
 
 pub(crate) use asking::trade_at_once;
 use asking::{ask_those_drawn, present_myself, trade_news};
@@ -112,7 +113,7 @@ pub(crate) async fn one_round(
     // empty disk otherwise, and telling them apart is the whole of this node's right
     // to ever say the network ended.
     if let Err(e) = node.keeping(now).await {
-        aloud!("failed   marking this epoch as kept: {e:#}");
+        aloud_in!("hours-failed-marking", why = format!("{e:#}"));
     }
     say_where_i_am(node, address.as_ref(), board, now).await;
     trade_news(node, dialer, now).await;
@@ -129,7 +130,7 @@ pub(crate) async fn one_round(
     // person running this node, so a round that could not write it has lost nothing
     // it needed.
     if let Err(e) = node.write_down_sources(now).await {
-        aloud!("failed   writing down where addresses came from: {e:#}");
+        aloud_in!("hours-failed-sources", why = format!("{e:#}"));
     }
 }
 
@@ -154,12 +155,7 @@ async fn say_where_i_am(
     // leave where somebody on the other side of the world will dial it.
     let worth = address.is_some_and(PeerAddress::worth_telling_a_stranger);
     if mine.is_some() && !worth {
-        aloud!(
-            "meet     not leaving this address at {}. It reaches this node from here\n\
-             \x20        and from nowhere else, and a stranger who dialled it would\n\
-             \x20        reach something of their own.",
-            board.place()
-        );
+        aloud_in!("hours-not-leaving", place = board.place());
     }
     board.visit(node, mine.filter(|_| worth)).await;
 }
@@ -172,16 +168,16 @@ async fn say_where(node: &Node, address: &PeerAddress, now: Epoch) -> Option<Vec
     let statement = Whereabouts::of(node.identity(), address.to_string(), now);
     match statement
         .seal(node.identity())
-        .context("sealing this node's address")
+        .with_context(|| words!("hours-sealing"))
     {
         Ok(frame) => {
             if let Err(e) = node.note_own_address(&frame, now).await {
-                aloud!("failed   keeping this node's own address: {e:#}");
+                aloud_in!("hours-failed-keeping-address", why = format!("{e:#}"));
             }
             Some(frame)
         }
         Err(e) => {
-            aloud!("failed   saying where this node is: {e:#}");
+            aloud_in!("hours-failed-saying-where", why = format!("{e:#}"));
             None
         }
     }
@@ -191,21 +187,14 @@ async fn say_where(node: &Node, address: &PeerAddress, now: Epoch) -> Option<Vec
 async fn forget_the_old(node: &Node, now: Epoch) {
     match node.forget_old(now).await {
         Ok(0) => {}
-        Ok(dropped) => {
-            aloud!("forgot   {dropped} epochs. nothing said about them now could change a verdict.")
-        }
-        Err(e) => aloud!("failed   forgetting old statements: {e:#}"),
+        Ok(dropped) => aloud_in!("hours-forgot", epochs = dropped),
+        Err(e) => aloud_in!("hours-failed-forgetting", why = format!("{e:#}")),
     }
 }
 
 /// A duration in whole minutes, which is the scale a person keeps these hours on.
 pub(super) fn minutes(span: Duration) -> String {
-    let count = span.as_secs() / 60;
-    if count == 1 {
-        "1 minute".to_owned()
-    } else {
-        format!("{count} minutes")
-    }
+    words!("hours-minutes", minutes = span.as_secs() / 60)
 }
 
 /// How long until the next epoch begins, in seconds.
@@ -219,9 +208,17 @@ pub(crate) fn to_the_boundary(now: Epoch) -> u64 {
 pub(crate) fn until(seconds: u64) -> String {
     let (hours, minutes) = (seconds / 3600, (seconds % 3600) / 60);
     if hours == 0 {
-        return format!("{minutes}m {}s", seconds % 60);
+        return words!(
+            "hours-minutes-and-seconds",
+            minutes = minutes,
+            seconds = seconds % 60
+        );
     }
-    format!("{hours}h {minutes:02}m")
+    words!(
+        "hours-hours-and-minutes",
+        hours = hours,
+        minutes = Arg::padded(minutes, 2)
+    )
 }
 
 /// Wait for the next epoch to begin.
@@ -234,9 +231,82 @@ async fn sleep_until_the_next_boundary(now: Epoch) {
 
 /// "1 epoch" or "N epochs", said the way a person would.
 pub(super) fn epochs(count: u64) -> String {
-    if count == 1 {
-        "1 epoch answered for".to_owned()
-    } else {
-        format!("{count} epochs answered for")
+    words!("hours-epochs-answered-for", epochs = count)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use crate::words::count::Base;
+
+    #[test]
+    fn in_english_every_moved_line_says_exactly_what_it_said_before() {
+        let pairs = crate::words::speaking("en", Base::Ten, || {
+            [
+                (
+                    words!("hours-failed-marking", why = "disk full"),
+                    "failed   marking this epoch as kept: disk full".to_owned(),
+                ),
+                (
+                    words!("hours-failed-sources", why = "disk full"),
+                    "failed   writing down where addresses came from: disk full".to_owned(),
+                ),
+                (
+                    words!("hours-not-leaving", place = "the333.dev"),
+                    "meet     not leaving this address at the333.dev. It reaches this node from here\n\
+                     \x20        and from nowhere else, and a stranger who dialled it would\n\
+                     \x20        reach something of their own."
+                        .to_owned(),
+                ),
+                (
+                    words!("hours-sealing"),
+                    "sealing this node's address".to_owned(),
+                ),
+                (
+                    words!("hours-failed-keeping-address", why = "disk full"),
+                    "failed   keeping this node's own address: disk full".to_owned(),
+                ),
+                (
+                    words!("hours-failed-saying-where", why = "no key"),
+                    "failed   saying where this node is: no key".to_owned(),
+                ),
+                (
+                    words!("hours-forgot", epochs = 3_usize),
+                    "forgot   3 epochs. nothing said about them now could change a verdict."
+                        .to_owned(),
+                ),
+                (
+                    words!("hours-failed-forgetting", why = "disk full"),
+                    "failed   forgetting old statements: disk full".to_owned(),
+                ),
+                (minutes(Duration::from_secs(60)), "1 minute".to_owned()),
+                (minutes(Duration::from_secs(6_660)), "111 minutes".to_owned()),
+                (until(185), "3m 5s".to_owned()),
+                (until(11_520), "3h 12m".to_owned()),
+                (until(3_900), "1h 05m".to_owned()),
+                (epochs(1), "1 epoch answered for".to_owned()),
+                (epochs(40), "40 epochs answered for".to_owned()),
+            ]
+        });
+        for (now, before) in pairs {
+            assert_eq!(now, before);
+        }
+    }
+
+    #[test]
+    fn one_epoch_forgotten_is_one_epoch() {
+        let said =
+            crate::words::speaking("en", Base::Ten, || words!("hours-forgot", epochs = 1_usize));
+        assert_eq!(
+            said,
+            "forgot   1 epoch. nothing said about them now could change a verdict."
+        );
+    }
+
+    #[test]
+    fn in_twelve_a_wait_is_counted_in_twelve() {
+        let said = crate::words::speaking("en", Base::TwelveAscii, || until(11_520));
+        assert_eq!(said, "3h 10m");
     }
 }

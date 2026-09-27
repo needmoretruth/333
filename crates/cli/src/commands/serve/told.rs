@@ -21,10 +21,7 @@ pub(super) fn listen(
     _home: &std::path::Path,
     _asks: tokio::sync::mpsc::UnboundedSender<super::carrying::Ask>,
 ) -> Option<std::convert::Infallible> {
-    aloud!(
-        "orders   on this system they reach this vigil through its screen and nowhere\n\
-         \x20        else. A second 333 started beside it is refused."
-    );
+    aloud_in!("serve-told-not-here");
     None
 }
 
@@ -41,6 +38,7 @@ mod unix {
 
     use crate::control;
     use crate::orders::Order;
+    use crate::words::Arg;
 
     use super::super::carrying::Ask;
 
@@ -70,22 +68,16 @@ mod unix {
             return None;
         }
         let listener = UnixListener::bind(&path)
-            .map_err(|e| aloud!("orders   cannot be taken from other terminals: {e}"))
+            .map_err(|e| aloud_in!("serve-told-cannot", why = e.to_string()))
             .ok()?;
         // From here on dropping this removes the socket, including on the way out below.
         let told = Told { path };
         let private = std::fs::set_permissions(&told.path, std::fs::Permissions::from_mode(0o600));
         let (Ok(owner), Ok(())) = (owner, private) else {
-            aloud!(
-                "orders   cannot be taken from other terminals: the socket could not be made private"
-            );
+            aloud_in!("serve-told-cannot", why = words!("serve-told-not-private"));
             return None;
         };
-        aloud!(
-            "orders   from any terminal on this machine, in the screen's words:\n\
-             \x20        `333 say 7`, `333 join <invitation>`, `333 tell 'tor on'`.\n\
-             \x20        This vigil carries them out and answers there."
-        );
+        aloud_in!("serve-told-taking");
         tokio::spawn(take_orders(listener, owner, asks));
         Some(told)
     }
@@ -96,19 +88,14 @@ mod unix {
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => true,
             // Whoever made it is gone: this process holds the lock it would be holding.
             Ok(there) if there.file_type().is_socket() => std::fs::remove_file(path)
-                .map_err(|e| aloud!("orders   an old socket is in the way and stays there: {e}"))
+                .map_err(|e| aloud_in!("serve-told-old-socket", why = e.to_string()))
                 .is_ok(),
             Ok(_) => {
-                aloud!(
-                    "orders   {} is there and is not a socket, so it is left alone, and\n\
-                     \x20        nothing can be handed to this vigil from another terminal until\n\
-                     \x20        it is moved.",
-                    path.display()
-                );
+                aloud_in!("serve-told-not-a-socket", path = path.display().to_string());
                 false
             }
             Err(e) => {
-                aloud!("orders   cannot be taken from other terminals: {e}");
+                aloud_in!("serve-told-cannot", why = e.to_string());
                 false
             }
         }
@@ -122,7 +109,7 @@ mod unix {
                     tokio::spawn(answer(stream, owner, asks.clone()));
                 }
                 Err(e) => {
-                    aloud!("orders   are no longer taken from other terminals: {e}");
+                    aloud_in!("serve-told-no-longer", why = e.to_string());
                     return;
                 }
             }
@@ -141,12 +128,14 @@ mod unix {
             Ok(Ok(0)) | Err(_) | Ok(Err(_)) => return,
             Ok(Ok(_)) => {}
         }
+        // In the vigil's words: nothing of what they asked has been read yet, including
+        // how they read.
         let refusal = if !from_the_owner {
-            Some("refused  only whoever owns this node's directory can tell it anything".to_owned())
+            Some(words!("serve-told-not-the-owner"))
         } else if !line.ends_with('\n') {
-            Some(format!(
-                "unread   that is longer than any order. The longest is {} bytes.",
-                control::LONGEST_ORDER
+            Some(words!(
+                "serve-told-too-long",
+                bytes = Arg::exact(control::LONGEST_ORDER)
             ))
         } else {
             None
@@ -160,21 +149,24 @@ mod unix {
                 (read.order.trim(), words)
             }
             Err(version) => {
-                let why = format!(
-                    "refused  this vigil speaks {} and was asked in {version}. The 333 that asked\n\
-                     \x20        is a different version from the one keeping the vigil; run that one.",
-                    control::VERSION
+                let why = words!(
+                    "serve-told-other-version",
+                    ours = control::VERSION,
+                    theirs = version.to_string()
                 );
                 return end(&mut writing, &why, false).await;
             }
         };
         // Read as whoever typed it counts, since what it names is theirs.
-        let order = match crate::words::spoken::spoken_now(words, || Order::read(text)) {
+        let read = crate::words::spoken::spoken_now(words, || {
+            Order::read(text).map_err(|why| words!("serve-told-unread", why = why.to_string()))
+        });
+        let order = match read {
             Ok(order) => order,
-            Err(why) => return end(&mut writing, &format!("unread   {why}"), false).await,
+            Err(why) => return end(&mut writing, &why, false).await,
         };
         // In the vigil only, the way the screen echoes what was typed into it.
-        aloud!("asked    {text}, from another terminal");
+        aloud_in!("serve-told-asked", order = text);
         let (lines, mut heard) = unbounded_channel();
         let (done, mut finished) = oneshot::channel();
         let ask = Ask {
@@ -184,8 +176,8 @@ mod unix {
             done,
         };
         if asks.send(ask).is_err() {
-            let why = "unheard  nothing is carrying orders out any more";
-            return end(&mut writing, why, false).await;
+            let why = crate::words::spoken::spoken_now(words, || words!("serve-told-unheard"));
+            return end(&mut writing, &why, false).await;
         }
         loop {
             tokio::select! {
@@ -258,6 +250,80 @@ mod unix {
             assert!(listen(&home, asks).is_none());
             assert_eq!(std::fs::read(&socket).expect("reads"), b"somebody's file");
             let _ = std::fs::remove_dir_all(&home);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::words::Arg;
+
+    #[test]
+    fn in_english_every_moved_line_says_exactly_what_it_said_before() {
+        let pairs = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+            [
+                (
+                    words!("serve-told-not-here"),
+                    "orders   on this system they reach this vigil through its screen and nowhere\n\
+                     \x20        else. A second 333 started beside it is refused.",
+                ),
+                (
+                    words!("serve-told-cannot", why = "Permission denied (os error 13)"),
+                    "orders   cannot be taken from other terminals: Permission denied (os error 13)",
+                ),
+                (
+                    words!("serve-told-cannot", why = words!("serve-told-not-private")),
+                    "orders   cannot be taken from other terminals: the socket could not be made private",
+                ),
+                (
+                    words!("serve-told-taking"),
+                    "orders   from any terminal on this machine, in the screen's words:\n\
+                     \x20        `333 say 7`, `333 join <invitation>`, `333 tell 'tor on'`.\n\
+                     \x20        This vigil carries them out and answers there.",
+                ),
+                (
+                    words!("serve-told-old-socket", why = "busy"),
+                    "orders   an old socket is in the way and stays there: busy",
+                ),
+                (
+                    words!("serve-told-not-a-socket", path = "/n/333.sock"),
+                    "orders   /n/333.sock is there and is not a socket, so it is left alone, and\n\
+                     \x20        nothing can be handed to this vigil from another terminal until\n\
+                     \x20        it is moved.",
+                ),
+                (
+                    words!("serve-told-no-longer", why = "busy"),
+                    "orders   are no longer taken from other terminals: busy",
+                ),
+                (
+                    words!("serve-told-not-the-owner"),
+                    "refused  only whoever owns this node's directory can tell it anything",
+                ),
+                (
+                    words!("serve-told-too-long", bytes = Arg::exact(4096)),
+                    "unread   that is longer than any order. The longest is 4096 bytes.",
+                ),
+                (
+                    words!("serve-told-other-version", ours = "333/1", theirs = "333/2"),
+                    "refused  this vigil speaks 333/1 and was asked in 333/2. The 333 that asked\n\
+                     \x20        is a different version from the one keeping the vigil; run that one.",
+                ),
+                (
+                    words!("serve-told-unread", why = "nothing to say"),
+                    "unread   nothing to say",
+                ),
+                (
+                    words!("serve-told-asked", order = "say 7"),
+                    "asked    say 7, from another terminal",
+                ),
+                (
+                    words!("serve-told-unheard"),
+                    "unheard  nothing is carrying orders out any more",
+                ),
+            ]
+        });
+        for (now, before) in pairs {
+            assert_eq!(now, before);
         }
     }
 }

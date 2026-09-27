@@ -141,15 +141,20 @@ impl Board {
         match tokio::task::spawn_blocking(move || place.read()).await {
             Ok(Ok(board)) => Some(board),
             Ok(Err(e)) => {
-                aloud!("meet     {} could not be read: {e}", self.place());
+                aloud_in!(
+                    "hours-meeting-unreadable",
+                    place = self.place(),
+                    why = e.to_string()
+                );
                 None
             }
             // Cut short by this node stopping, which loses nothing worth a line.
             Err(e) if e.is_cancelled() => None,
             Err(e) => {
-                aloud!(
-                    "meet     reading {} failed inside this node: {e}",
-                    self.place()
+                aloud_in!(
+                    "hours-meeting-read-failed-inside",
+                    place = self.place(),
+                    why = e.to_string()
                 );
                 None
             }
@@ -221,35 +226,29 @@ fn what_was_said(
     may_wait: bool,
     to_next_epoch: u64,
 ) -> (String, Option<Duration>) {
-    let next_epoch = format!("at the next epoch, in {}", until(to_next_epoch));
+    let next_epoch = words!(
+        "hours-meeting-at-the-next-epoch",
+        wait = until(to_next_epoch)
+    );
     let e = match outcome {
-        Said::Answered(Ok(())) => {
-            return (
-                format!("meet     left this node's address at {place}"),
-                None,
-            );
-        }
-        Said::Stopped(None) => {
-            return (
-                format!("meet     this node stopped before {place} answered"),
-                None,
-            );
-        }
+        Said::Answered(Ok(())) => return (words!("hours-meeting-left", place = place), None),
+        Said::Stopped(None) => return (words!("hours-meeting-stopped", place = place), None),
         Said::Stopped(Some(why)) => {
-            return (
-                format!(
-                    "meet     leaving this node's address at {place} failed inside this node: {why}"
-                ),
-                None,
+            let line = words!(
+                "hours-meeting-leaving-failed-inside",
+                place = place,
+                why = why
             );
+            return (line, None);
         }
         Said::Answered(Err(e)) => e,
     };
+    // A line of its own, which the layout indents like every other further line.
     let holding = match held {
         Some(Held::From(epoch)) => {
-            format!("\n\x20        It still holds this node's address from epoch {epoch}.")
+            format!("\n{}", words!("hours-meeting-holds-from", epoch = epoch))
         }
-        Some(Held::Nothing) => "\n\x20        It holds nothing from this node.".to_owned(),
+        Some(Held::Nothing) => format!("\n{}", words!("hours-meeting-holds-nothing")),
         None => String::new(),
     };
     match e {
@@ -257,38 +256,50 @@ fn what_was_said(
             let wait = again_in.filter(|_| may_wait);
             let when = wait.map_or_else(
                 || next_epoch.clone(),
-                |wait| format!("in {}", seconds(wait.as_secs())),
+                |wait| words!("hours-meeting-in", wait = seconds(wait.as_secs())),
             );
-            (
-                format!(
-                    "meet     {place} takes one statement a minute from each internet address,\n\
-                     \x20        and had one from this address less than a minute ago.{holding}\n\
-                     \x20        This node leaves its address again {when}."
-                ),
-                wait,
-            )
+            let line = words!(
+                "hours-meeting-not-yet",
+                place = place,
+                holding = holding,
+                when = when
+            );
+            (line, wait)
         }
         meeting::Error::FullForToday { again_in, .. } => {
-            let midnight = again_in.map_or_else(String::new, |wait| {
-                format!(", in {}", until(wait.as_secs()))
-            });
-            (
-                format!(
-                    "meet     {place} has taken all the statements it takes in a day and takes\n\
-                     \x20        more after midnight UTC{midnight}. It can still be read.{holding}\n\
-                     \x20        This node leaves its address again {next_epoch}."
+            let line = match again_in {
+                Some(wait) => words!(
+                    "hours-meeting-full-until",
+                    place = place,
+                    midnight = until(wait.as_secs()),
+                    holding = holding,
+                    next_epoch = next_epoch
                 ),
-                None,
-            )
+                None => words!(
+                    "hours-meeting-full",
+                    place = place,
+                    holding = holding,
+                    next_epoch = next_epoch
+                ),
+            };
+            (line, None)
         }
         meeting::Error::Unreachable(_)
         | meeting::Error::BrokeOff(_)
         | meeting::Error::NotAnAddress => (
-            format!("meet     this node's address did not reach {place}: {e}"),
+            words!(
+                "hours-meeting-did-not-reach",
+                place = place,
+                why = e.to_string()
+            ),
             None,
         ),
         meeting::Error::Refused { .. } | meeting::Error::TooLong { .. } => (
-            format!("meet     {place} did not take this node's address: {e}"),
+            words!(
+                "hours-meeting-not-taken",
+                place = place,
+                why = e.to_string()
+            ),
             None,
         ),
     }
@@ -297,8 +308,7 @@ fn what_was_said(
 /// A wait of under a minute in seconds, and anything longer the way the screen says it.
 fn seconds(count: u64) -> String {
     match count {
-        1 => "1 second".to_owned(),
-        0..60 => format!("{count} seconds"),
+        0..60 => words!("hours-meeting-seconds", seconds = count),
         _ => until(count),
     }
 }
@@ -310,12 +320,9 @@ fn seconds(count: u64) -> String {
 /// that teaches a person to stop reading.
 fn say_what_was_there(place: &str, saying: usize, fresh: usize) {
     match (saying, fresh) {
-        (0, _) => aloud!("meet     nobody is saying where they are at {place}"),
+        (0, _) => aloud_in!("hours-meeting-nobody", place = place),
         (_, 0) => {}
-        (_, fresh) => aloud!(
-            "meet     {fresh} newer {} at {place}",
-            if fresh == 1 { "address" } else { "addresses" }
-        ),
+        (_, fresh) => aloud_in!("hours-meeting-newer", fresh = fresh, place = place),
     }
 }
 
@@ -330,6 +337,74 @@ mod tests {
             again_in: again_in.map(Duration::from_secs),
             said: "Once an epoch is enough. Nothing here changes faster.".to_owned(),
         }))
+    }
+
+    #[test]
+    fn in_english_every_moved_line_says_exactly_what_it_said_before() {
+        let full = |again_in| {
+            Said::Answered(Err(meeting::Error::FullForToday {
+                again_in,
+                said: "Enough for today.".to_owned(),
+            }))
+        };
+        let pairs = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+            [
+                (
+                    words!("hours-meeting-unreadable", place = PLACE, why = "down"),
+                    "meet     the333.dev could not be read: down".to_owned(),
+                ),
+                (
+                    words!("hours-meeting-read-failed-inside", place = PLACE, why = "panic"),
+                    "meet     reading the333.dev failed inside this node: panic".to_owned(),
+                ),
+                (
+                    what_was_said(PLACE, &Said::Answered(Ok(())), None, true, 60).0,
+                    "meet     left this node's address at the333.dev".to_owned(),
+                ),
+                (
+                    what_was_said(PLACE, &Said::Stopped(None), None, true, 60).0,
+                    "meet     this node stopped before the333.dev answered".to_owned(),
+                ),
+                (
+                    what_was_said(PLACE, &Said::Stopped(Some("panic".into())), None, true, 60).0,
+                    "meet     leaving this node's address at the333.dev failed inside this node: panic"
+                        .to_owned(),
+                ),
+                (
+                    what_was_said(PLACE, &full(None), Some(Held::Nothing), true, 11_520).0,
+                    "meet     the333.dev has taken all the statements it takes in a day and takes\n\
+                     \x20        more after midnight UTC. It can still be read.\n\
+                     \x20        It holds nothing from this node.\n\
+                     \x20        This node leaves its address again at the next epoch, in 3h 12m."
+                        .to_owned(),
+                ),
+                (
+                    what_was_said(PLACE, &full(Some(Duration::from_secs(3_900))), None, true, 185).0,
+                    "meet     the333.dev has taken all the statements it takes in a day and takes\n\
+                     \x20        more after midnight UTC, in 1h 05m. It can still be read.\n\
+                     \x20        This node leaves its address again at the next epoch, in 3m 5s."
+                        .to_owned(),
+                ),
+                (seconds(1), "1 second".to_owned()),
+                (seconds(59), "59 seconds".to_owned()),
+                (seconds(185), "3m 5s".to_owned()),
+                (
+                    words!("hours-meeting-nobody", place = PLACE),
+                    "meet     nobody is saying where they are at the333.dev".to_owned(),
+                ),
+                (
+                    words!("hours-meeting-newer", fresh = 1_usize, place = PLACE),
+                    "meet     1 newer address at the333.dev".to_owned(),
+                ),
+                (
+                    words!("hours-meeting-newer", fresh = 4_usize, place = PLACE),
+                    "meet     4 newer addresses at the333.dev".to_owned(),
+                ),
+            ]
+        });
+        for (now, before) in pairs {
+            assert_eq!(now, before);
+        }
     }
 
     #[test]
