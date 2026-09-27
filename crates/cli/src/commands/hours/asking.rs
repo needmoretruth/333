@@ -123,19 +123,25 @@ async fn trade_with(
     now: Epoch,
     mine: &[Vec<u8>],
 ) -> anyhow::Result<crate::node::Heard> {
+    let typed = address;
     let address: PeerAddress = address.parse().context("reading a peer's address")?;
-    let theirs = tokio::time::timeout(ROUND_TIMEOUT, async {
+    let (teller, theirs) = tokio::time::timeout(ROUND_TIMEOUT, async {
         let mut stream = dialer.dial(&address).await?;
-        n333_net::initiate(&mut stream, node.identity())
+        let exchange = n333_net::initiate(&mut stream, node.identity())
             .await
             .context("exchanging heartbeats")?;
-        gossip::tell(&mut stream, node.identity(), now, mine)
+        let theirs = gossip::tell(&mut stream, node.identity(), now, mine)
             .await
-            .context("trading statements")
+            .context("trading statements")?;
+        anyhow::Ok((exchange.peer.node_id, theirs))
     })
     .await
     .with_context(|| format!("no answer from {address} within the window"))??;
-    node.hear(&theirs, now).await
+    node.answered_at(typed, teller).await;
+    let from = crate::node::sources::Source::Peer {
+        name: teller.to_string(),
+    };
+    node.hear(&theirs, now, &from).await
 }
 
 /// Ask everybody this node was drawn to ask this epoch.

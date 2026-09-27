@@ -20,6 +20,8 @@
 
 use std::fmt;
 
+use crate::commands::status::Show;
+
 /// Something a person has asked this node to do, in the screen or from another
 /// terminal.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -44,8 +46,9 @@ pub(crate) enum Order {
     Bridge(String),
     /// Name the program that speaks an obfuscated bridge.
     Helper(String),
-    /// Say what this node is holding, in the log rather than on the dials.
-    Status,
+    /// Say what this node is holding, in the log rather than on the dials, or to the
+    /// terminal that asked, in the way it asked for.
+    Status(Show),
     /// Leave the screen. The node stops with it.
     Leave,
 }
@@ -108,7 +111,14 @@ impl Order {
             "bridge" => Ok(Self::Bridge(rest.to_owned())),
             "helper" if rest.is_empty() => Err(missing("a program name or path")),
             "helper" => Ok(Self::Helper(rest.to_owned())),
-            "status" => Ok(Self::Status),
+            // Every word `333 status` takes, and nothing else: a word read as nothing
+            // would answer something other than what was asked.
+            "status" => match rest.to_ascii_lowercase().as_str() {
+                "" => Ok(Self::Status(Show::Everything)),
+                "--sources" | "sources" => Ok(Self::Status(Show::Sources)),
+                "--json" | "json" => Ok(Self::Status(Show::Json)),
+                _ => Err(missing("nothing, --sources or --json")),
+            },
             "quit" | "exit" => Ok(Self::Leave),
             other => Err(NotAnOrder::Unknown(other.to_owned())),
         }
@@ -130,7 +140,21 @@ mod tests {
             Ok(Order::Join("333:somewhere:3333".into()))
         );
         assert_eq!(Order::read("say 42"), Ok(Order::Say("42".into())));
-        assert_eq!(Order::read("status"), Ok(Order::Status));
+        assert_eq!(Order::read("status"), Ok(Order::Status(Show::Everything)));
+    }
+
+    #[test]
+    fn status_takes_the_flags_the_command_takes_and_nothing_else() {
+        // What another terminal sends for `333 status --json`, and must be read as it.
+        assert_eq!(Order::read("status --json"), Ok(Order::Status(Show::Json)));
+        assert_eq!(
+            Order::read("status --sources"),
+            Ok(Order::Status(Show::Sources))
+        );
+        assert_eq!(
+            Order::read("status --everything"),
+            Err(NotAnOrder::Wants("nothing, --sources or --json"))
+        );
     }
 
     #[test]

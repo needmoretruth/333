@@ -180,7 +180,17 @@ pub(crate) enum Command {
     },
     /// Show what this node has seen: how many of us are answering, where this node
     /// stands over the window, and how much of the silence is left if it has begun.
-    Status,
+    Status {
+        /// List every address this node holds: whose it is, where it was first heard
+        /// of and when, and where it was heard of last. The addresses are printed;
+        /// this is your own node's disk and nobody else's.
+        #[arg(long)]
+        sources: bool,
+        /// Say what this node observed as JSON, for a program to read. No address,
+        /// onion address or port of any kind is in it.
+        #[arg(long, conflicts_with = "sources")]
+        json: bool,
+    },
     /// Ask a node that has the file to hand it over. Write the file yourself and you
     /// hold a file: you are one of us from the moment somebody gives it to
     /// you and you both sign for it.
@@ -265,7 +275,10 @@ impl Command {
             Self::Bootstrap { anyway: true, .. } => Wanted::Order("bootstrap anyway".to_owned()),
             Self::Bootstrap { anyway: false, .. } => Wanted::Order("bootstrap".to_owned()),
             Self::Say { index } => Wanted::Order(format!("say {index}")),
-            Self::Status => Wanted::Order("status".to_owned()),
+            Self::Status { sources, json } => {
+                let show = commands::status::Show::of(*sources, *json);
+                Wanted::Page(format!("status {}", show.word()))
+            }
             Self::Join { address } => Wanted::Order(format!("join {address}")),
             Self::Ping { address } => Wanted::Order(format!("ping {address}")),
             Self::Tell { order } => Wanted::Order(order.join(" ")),

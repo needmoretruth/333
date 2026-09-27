@@ -50,6 +50,9 @@ pub(crate) async fn ask(
     timeout: Duration,
     address: &n333_net::PeerAddress,
 ) -> anyhow::Result<()> {
+    // Kept whether or not anybody answers: it is an address this node was given, and
+    // the vigil goes on knocking there once it runs.
+    node.given_by_hand(&address.to_string(), None).await?;
     aloud!("knocking {address}");
 
     let mut stream = match dialer.dial(address).await {
@@ -70,6 +73,8 @@ pub(crate) async fn ask(
             .await
             .context("exchanging heartbeats")?;
         aloud!("{}", describe(&exchange));
+        node.answered_at(&address.to_string(), exchange.peer.node_id)
+            .await;
         n333_net::handover::ask(&mut stream, node.identity(), Epoch::now())
             .await
             .context("asking for the file")
@@ -93,7 +98,11 @@ pub(crate) async fn ask(
     let mut passed = taken.tidings;
     passed.push(taken.handover.gave);
     passed.push(taken.handover.received);
-    let heard = node.hear(&passed, Epoch::now()).await?;
+    let from = crate::node::sources::Source::Peer {
+        name: taken.handover.transfer.giver().to_string(),
+    };
+    let heard = node.hear(&passed, Epoch::now(), &from).await?;
+    node.write_down_sources(Epoch::now()).await?;
     crate::commands::report_heard(&heard);
     aloud!("roll     {} of us", node.roll().await.len());
     aloud!(

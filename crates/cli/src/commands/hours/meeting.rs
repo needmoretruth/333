@@ -106,11 +106,15 @@ impl Board {
             }
         };
         let mut fresh = 0_usize;
+        let from = crate::node::sources::Source::MeetingPoint {
+            place: self.place().to_owned(),
+        };
         for statement in &board {
             // Only addresses. The board is one thing and gossip is another, and a
             // meeting point that could hand out admissions would be a meeting point
             // whose operator could decide who this node hears about being admitted.
-            if node.note_address(statement).await.unwrap_or(false) {
+            let noted = node.note_address(statement, &from, n333_core::Epoch::now());
+            if noted.await.unwrap_or(false) {
                 fresh = fresh.saturating_add(1);
             }
         }

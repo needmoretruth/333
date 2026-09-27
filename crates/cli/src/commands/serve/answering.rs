@@ -32,7 +32,10 @@ where
     crate::commands::report_left_behind(&mine);
     let theirs =
         gossip::listen(stream, node.identity(), Epoch::now(), header, &mine.frames).await?;
-    let heard = node.hear(&theirs, Epoch::now()).await?;
+    let from = crate::node::sources::Source::Peer {
+        name: header.message.teller.to_string(),
+    };
+    let heard = node.hear(&theirs, Epoch::now(), &from).await?;
     crate::commands::report_heard(&heard);
     Ok(())
 }

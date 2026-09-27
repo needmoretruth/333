@@ -103,6 +103,11 @@ tar = { version = "0.4.46", default-features = false }
 # a name began or a node was packed. Already in the tree through arti; nothing new
 # to build or check.
 humantime = "2.4.0"
+# What this node writes for its owner and for programs its owner runs: the record of
+# where each address it holds came from, and `status --json`. Already linked into
+# every build that carries Tor, through arti's directory manager, so it costs those
+# builds nothing; the build with no features pays for it, and pays tens of kilobytes.
+serde_json = "1"
 
 # --- finding each other on one network -----------------------------------------
 # mDNS is how two nodes in the same house meet without anybody typing an invitation.

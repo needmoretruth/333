@@ -11,6 +11,7 @@
 //! 4. Ask the nodes it was drawn to ask.
 //! 5. Judge the epoch that is now old enough to judge, and write the verdict down.
 //! 6. Forget the statements that can no longer change anything.
+//! 7. Write down where every address it holds came from.
 //!
 //! The two that find people come before asking because they are what supplies the
 //! addresses asking needs. A node that has just started knows where exactly one member
@@ -124,6 +125,12 @@ pub(crate) async fn one_round(
     }
     judge_what_is_ready(node, now).await;
     forget_the_old(node, now).await;
+    // Last, so that everything this round heard of is in it. Nothing reads it but the
+    // person running this node, so a round that could not write it has lost nothing
+    // it needed.
+    if let Err(e) = node.write_down_sources(now).await {
+        aloud!("failed   writing down where addresses came from: {e:#}");
+    }
 }
 
 /// Write down where this node can be reached, and go and look where others said to.
@@ -168,7 +175,7 @@ async fn say_where(node: &Node, address: &PeerAddress, now: Epoch) -> Option<Vec
         .context("sealing this node's address")
     {
         Ok(frame) => {
-            if let Err(e) = node.note_address(&frame).await {
+            if let Err(e) = node.note_own_address(&frame, now).await {
                 aloud!("failed   keeping this node's own address: {e:#}");
             }
             Some(frame)

@@ -98,11 +98,16 @@ pub(crate) async fn run(common: &Common, order: Order) -> anyhow::Result<()> {
 ///
 /// Every command but the ones that keep or install the vigil begins with this, so that
 /// a person who stopped being counted three days ago hears it the next time they
-/// type anything at all.
-pub(crate) fn say_if_not_kept(root: &Path) {
+/// type anything at all. `aside` puts it on standard error instead, for a command whose
+/// standard output is read by a program.
+pub(crate) fn say_if_not_kept(root: &Path, aside: bool) {
     let installed = receipt::keeps(root);
     if let Some(line) = awake::not_kept(awake::read(root), installed, unix_now_seconds()) {
-        let _ = say(format_args!("{line}"));
+        let _ = if aside {
+            writeln!(std::io::stderr().lock(), "{line}")
+        } else {
+            say(format_args!("{line}"))
+        };
     }
 }
 

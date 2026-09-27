@@ -15,6 +15,9 @@ use crate::commands::Common;
 pub(crate) enum Wanted {
     /// Something a vigil carries out, in the screen's own words.
     Order(String),
+    /// Something a vigil answers with a page that is the whole of what this prints,
+    /// so nothing is added after it: `status --json` is read by programs.
+    Page(String),
     /// This node's name, which can be read beside a vigil without writing anything.
     Name,
     /// A vigil of its own. There is one per directory.
@@ -45,6 +48,17 @@ pub(crate) async fn run(
             }
             Some(false) => {
                 println!(
+                    "failed   the vigil kept in this directory{} did not do that.",
+                    pid(holder)
+                );
+                Ok(ExitCode::FAILURE)
+            }
+            None => Ok(busy(&who)),
+        },
+        Wanted::Page(order) => match crate::control::hand_over(home, &order).await? {
+            Some(true) => Ok(ExitCode::SUCCESS),
+            Some(false) => {
+                eprintln!(
                     "failed   the vigil kept in this directory{} did not do that.",
                     pid(holder)
                 );

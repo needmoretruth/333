@@ -17,10 +17,13 @@
 //! the alternative is discovering it is broken at the moment it has to be answered
 //! from, which is the moment it cannot be repaired.
 
+mod addresses;
+pub(crate) use addresses::say_what_the_sources_held;
 mod admissions;
 mod people;
 pub(crate) use people::Tidings;
 mod record;
+pub(crate) mod sources;
 mod words;
 
 use std::path::Path;
@@ -94,8 +97,9 @@ pub(crate) struct Node {
     ///
     /// Somewhere to knock and nothing else, which is why they are here and not in the
     /// directory: the directory holds statements nodes signed about where they are,
-    /// and these are rumours from a broadcast. They are not written down and they do
-    /// not survive a restart. Whoever answers proves who they are by holding a key,
+    /// and these are rumours from a broadcast. They are not knocked on after a restart;
+    /// the record of where addresses came from notes that they were heard, for the
+    /// person reading `status`, and nothing more. Whoever answers proves who they are by holding a key,
     /// and then says where they are in a statement of their own — and that one is
     /// kept.
     found: Mutex<std::collections::BTreeSet<String>>,
@@ -135,6 +139,9 @@ struct State {
     directory: Directory,
     /// The statements that directory was built from, append-only.
     whereabouts: Log,
+    /// Where every address came from, what this node signed, and any statement under
+    /// its key that it did not.
+    sources: sources::Sources,
 }
 
 /// What opening a node found, for the operator to see once.
@@ -160,6 +167,10 @@ pub(crate) struct Opened {
     pub(crate) read: Read,
     /// How many statements other nodes signed about this one are held.
     pub(crate) witnessed: usize,
+    /// What reading the record of where addresses came from found.
+    pub(crate) sources: sources::Loaded,
+    /// How many statements under this node's key, within the window, it did not make.
+    pub(crate) copies: usize,
 }
 
 impl Node {
@@ -193,6 +204,7 @@ impl Node {
         let (directory, _) =
             Directory::from_frames(&whereabouts.read_all().context("reading them")?);
 
+        let (sources, loaded) = sources::load(home, n333_core::Epoch::now());
         let subject = read_the_file(home);
         let opened = Opened {
             origin,
@@ -205,6 +217,8 @@ impl Node {
             keeping,
             read,
             witnessed: witnessed.len(),
+            sources: loaded,
+            copies: sources.sightings().len(),
         };
         Ok((
             Self {
@@ -220,6 +234,7 @@ impl Node {
                     witnessed,
                     directory,
                     whereabouts,
+                    sources,
                     passed_on: [0; people::KINDS],
                 }),
             },

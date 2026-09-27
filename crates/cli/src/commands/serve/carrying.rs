@@ -115,7 +115,7 @@ impl Carrier {
             Order::Join(address) => Box::pin(async move { self.join(&address).await }),
             Order::Bootstrap { anyway } => Box::pin(async move { self.bootstrap(anyway).await }),
             Order::Say(which) => Box::pin(async move { self.say(&which).await }),
-            Order::Status => Box::pin(async move { self.status().await }),
+            Order::Status(show) => Box::pin(async move { self.status(show).await }),
             Order::TorOn => Box::pin(async move { self.tor_on().await }),
             Order::TorOff => Box::pin(async move { self.tor_off() }),
             Order::Bridge(line) => Box::pin(async move { self.bridge(line) }),
@@ -129,16 +129,30 @@ impl Carrier {
         let Some(address) = readable(address) else {
             return false;
         };
+        // Into the running node as well as onto the disk, so that the next round
+        // knocks there rather than the one after the vigil next reads the disk.
+        let typed = address.to_string();
+        if let Err(e) = self.node.given_by_hand(&typed, None).await {
+            aloud!("failed   writing down the address: {e:#}");
+        }
         let knocked = crate::commands::ping::knock(
             self.node.identity(),
             &self.dialer,
             self.common.timeout,
             &address,
         );
-        knocked
-            .await
-            .map_err(|e| aloud!("unheard  {address}: {e:#}"))
-            .is_ok()
+        match knocked.await {
+            Ok(answered) => {
+                if let Err(e) = self.node.given_by_hand(&typed, Some(answered)).await {
+                    aloud!("failed   writing down who answered: {e:#}");
+                }
+                true
+            }
+            Err(e) => {
+                aloud!("unheard  {address}: {e:#}");
+                false
+            }
+        }
     }
 
     /// Ask whoever is there to hand the file over.
@@ -186,7 +200,7 @@ impl Carrier {
     /// show the rest. To another terminal, the whole of what `333 status` prints,
     /// because a terminal has no dials, and it goes to that terminal and not into the
     /// vigil, where it would be a page of text in the middle of the log.
-    async fn status(&self) -> bool {
+    async fn status(&self, show: crate::commands::status::Show) -> bool {
         let Some(asker) = crate::aloud::the_asker() else {
             let roll = self.node.roll().await.len();
             let has = if self.node.subject().await.is_some() {
@@ -199,7 +213,7 @@ impl Carrier {
         };
         let mut page = Vec::new();
         let now = n333_core::Epoch::now();
-        let written = crate::commands::status::whole(&mut page, &self.node, now).await;
+        let written = crate::commands::status::whole(&mut page, &self.node, now, show).await;
         let _ = asker.send(String::from_utf8_lossy(&page).trim_end().to_owned());
         written
             .map_err(|e| aloud!("unread   what this node holds: {e:#}"))

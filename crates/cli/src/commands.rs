@@ -243,6 +243,7 @@ pub(crate) fn report_opening(opened: &crate::node::Opened) {
     if opened.addresses != 0 {
         aloud!("known    where {} of us said to look", opened.addresses);
     }
+    crate::node::say_what_the_sources_held(opened);
     if opened.has_the_file {
         aloud!("holding  the file, and able to pass it on");
     }

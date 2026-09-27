@@ -8,12 +8,13 @@
 use std::time::Duration;
 
 use anyhow::Context as _;
-use n333_core::Identity;
+use n333_core::{Identity, NodeId};
 use n333_net::{PeerAddress, initiate};
 
 use crate::commands::{Common, describe};
 use crate::dial::Dialer;
 use crate::identity_file;
+use crate::node::sources;
 
 /// Exchange one heartbeat with the node at `address`.
 ///
@@ -25,19 +26,27 @@ pub(crate) async fn run(common: &Common, address: &PeerAddress) -> anyhow::Resul
         identity_file::load_or_create(&common.mistrust(), common.paths.root())?;
     aloud!("name     {}", identity.node_id());
     crate::named::report(origin, common.paths.root());
-    knock(
+    // Written down before the knock, and again with a name once somebody answers: it
+    // is an address this node was given, and the vigil goes on knocking there.
+    let home = common.paths.root();
+    let typed = address.to_string();
+    sources::typed(home, &typed, None).context("writing down the address")?;
+    let answered = knock(
         &identity,
         &Dialer::new(common.clone()),
         common.timeout,
         address,
     )
-    .await
+    .await?;
+    sources::typed(home, &typed, Some(answered)).context("writing down who answered")
 }
 
 /// Exchange one heartbeat, as a node that is already running.
 ///
 /// Shared with the vigil, which has the key and a dialler of its own already and must
 /// not start a second of either.
+///
+/// The name that answered, for the caller to write down where it keeps addresses.
 ///
 /// # Errors
 /// Fails if the peer cannot be reached or the answer does not check out.
@@ -46,7 +55,7 @@ pub(crate) async fn knock(
     dialer: &Dialer,
     timeout: Duration,
     address: &PeerAddress,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<NodeId> {
     aloud!("knocking {address}");
 
     let mut stream = dialer.dial(address).await?;
@@ -56,5 +65,5 @@ pub(crate) async fn knock(
         .context("exchanging heartbeats")?;
 
     aloud!("{}", describe(&exchange));
-    Ok(())
+    Ok(exchange.peer.node_id)
 }

@@ -39,6 +39,8 @@ pub(super) struct Watch {
     pub(super) said: Said,
     /// Whether anybody is here, and what is left if nobody is.
     pub(super) vigil: Vigil,
+    /// Statements under this node's key that it did not make.
+    pub(super) copies: Vec<crate::node::sources::Sighting>,
 }
 
 /// Where this node stands, which is three different sentences.
@@ -115,6 +117,7 @@ impl Watch {
             standing: stands(node, now).await?,
             said,
             vigil: node.watched(now).await?,
+            copies: node.copies().await,
         })
     }
 }

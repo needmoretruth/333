@@ -13,8 +13,13 @@ use super::titled;
 use crate::screen::watch::{Said, Watch, Where};
 
 /// The left column: the count, then this node, then what was said.
+///
+/// Above all of it, when there is one, another copy of this node's name: it is the
+/// one thing on this screen that the person has to act on and that nothing else
+/// will act on for them.
 pub(super) fn this_node<'a>(watch: &'a Watch, area: Rect) -> Paragraph<'a> {
-    let mut lines = vec![
+    let mut lines = another_copy(watch);
+    lines.extend([
         counted("ANSWERING", watch.answering, true),
         counted("silent", watch.roll.saturating_sub(watch.answering), false),
         Line::from(Span::styled("─────────", Style::new().fg(Color::DarkGray))),
@@ -26,11 +31,30 @@ pub(super) fn this_node<'a>(watch: &'a Watch, area: Rect) -> Paragraph<'a> {
             "YOU",
             Style::new().add_modifier(Modifier::BOLD),
         )),
-    ];
+    ]);
     lines.extend(standing(&watch.standing));
     lines.push(Line::raw(""));
     lines.extend(said(&watch.said, area.height));
     Paragraph::new(lines).block(titled("this node"))
+}
+
+/// What this screen says while another copy of this name is out there.
+fn another_copy(watch: &Watch) -> Vec<Line<'static>> {
+    let Some(latest) = watch.copies.iter().max_by_key(|copy| copy.said_in) else {
+        return Vec::new();
+    };
+    let loud = Style::new().fg(Color::Red).add_modifier(Modifier::BOLD);
+    let red = Style::new().fg(Color::Red);
+    vec![
+        Line::styled("ANOTHER COPY OF THIS NAME", loud),
+        Line::styled("says it is at", red),
+        Line::styled(latest.address.clone(), red),
+        Line::styled(format!("in epoch {}.", latest.said_in), red),
+        Line::styled("this node never said so.", red),
+        Line::styled("stop one of them.", loud),
+        Line::styled("`333 status` says more.", Style::new().fg(Color::DarkGray)),
+        Line::raw(""),
+    ]
 }
 
 /// One number with its name, in a column.
@@ -161,4 +185,59 @@ fn said(said: &Said, height: u16) -> Vec<Line<'static>> {
         ));
     }
     lines
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::node::sources::{Heard, Sighting, Source};
+    use crate::screen::watch::Said;
+
+    fn watching(copies: Vec<Sighting>) -> Watch {
+        Watch {
+            name: "333".into(),
+            epoch: n333_core::Epoch(9),
+            has_the_file: false,
+            answering: 0,
+            roll: 0,
+            addresses: 0,
+            witnessed: 0,
+            standing: Where::OnNobodysRoll,
+            said: Said {
+                rows: Vec::new(),
+                spoken: 0,
+                observed: 0,
+                mine: None,
+            },
+            vigil: n333_core::extinction::Vigil::new(),
+            copies,
+        }
+    }
+
+    fn text(lines: &[Line<'_>]) -> String {
+        lines
+            .iter()
+            .map(ToString::to_string)
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+
+    #[test]
+    fn another_copy_of_this_name_is_the_first_thing_in_the_column() {
+        let copy = Sighting {
+            address: "192.0.2.9:3333".into(),
+            said_in: 8,
+            heard: Heard {
+                from: Source::ThisNetwork,
+                epoch: 9,
+            },
+        };
+        let said = text(&another_copy(&watching(vec![copy])));
+        assert!(said.starts_with("ANOTHER COPY OF THIS NAME"), "{said}");
+        assert!(said.contains("192.0.2.9:3333") && said.contains("epoch 8"));
+        assert!(
+            another_copy(&watching(Vec::new())).is_empty(),
+            "and nothing when there is none"
+        );
+    }
 }

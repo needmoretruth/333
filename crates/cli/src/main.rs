@@ -100,7 +100,8 @@ async fn main() -> anyhow::Result<ExitCode> {
             }
     );
     if !keeps_or_installs && !control::answering(common.paths.root()).await {
-        commands::service::say_if_not_kept(common.paths.root());
+        let read_by_a_program = matches!(cli.command, Command::Status { json: true, .. });
+        commands::service::say_if_not_kept(common.paths.root(), read_by_a_program);
     }
 
     // Before anything is attempted, because everything that follows is stamped with an
@@ -162,7 +163,9 @@ async fn main() -> anyhow::Result<ExitCode> {
             commands::bootstrap::run(&common, &meet, anyway).await
         }
         Command::Say { index } => commands::say::run(&common, index).await,
-        Command::Status => commands::status::run(&common).await,
+        Command::Status { sources, json } => {
+            commands::status::run(&common, commands::status::Show::of(sources, json)).await
+        }
         Command::Join { address } => commands::join::run(&common, &address).await,
         Command::Ping { address } => commands::ping::run(&common, &address).await,
         Command::Pack { file, undo } => commands::pack::run(&common, file.as_deref(), undo),

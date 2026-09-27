@@ -2770,6 +2770,8 @@ dependencies = [
  "n333-net",
  "n333-store",
  "ratatui",
+ "serde",
+ "serde_json",
  "tar",
  "tokio",
  "tracing",

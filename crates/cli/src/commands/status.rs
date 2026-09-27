@@ -16,6 +16,8 @@
 //! that it is waiting. A node that was switched off for a year and came back saying
 //! everyone was dead would be the single most destructive thing this client could do.
 
+mod json;
+mod known;
 mod yourself;
 
 use std::collections::BTreeSet;
@@ -30,11 +32,46 @@ use n333_core::{Epoch, NodeId, epoch};
 use crate::commands::Common;
 use crate::node::Node;
 
+/// Which of the three ways of saying it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Show {
+    /// Everything, in words.
+    Everything,
+    /// Every address held and where each came from.
+    Sources,
+    /// What this node observed, for a program, with no address in it.
+    Json,
+}
+
+impl Show {
+    /// The way asked for by `--sources` and `--json`, which clap keeps apart.
+    #[must_use]
+    pub(crate) const fn of(sources: bool, json: bool) -> Self {
+        if json {
+            Self::Json
+        } else if sources {
+            Self::Sources
+        } else {
+            Self::Everything
+        }
+    }
+
+    /// The word that asks for it after `status`, in the screen and over the socket.
+    #[must_use]
+    pub(crate) const fn word(self) -> &'static str {
+        match self {
+            Self::Everything => "",
+            Self::Sources => "--sources",
+            Self::Json => "--json",
+        }
+    }
+}
+
 /// Show where this node stands.
 ///
 /// # Errors
 /// Fails if the node's directory cannot be opened or its own record does not verify.
-pub(crate) async fn run(common: &Common) -> anyhow::Result<()> {
+pub(crate) async fn run(common: &Common, show: Show) -> anyhow::Result<()> {
     // Written through one locked handle rather than with `println!`, so that a reader
     // that walks away — `333 status | head` — ends this quietly instead of panicking
     // inside the print macro, where nothing can catch it.
@@ -42,15 +79,43 @@ pub(crate) async fn run(common: &Common) -> anyhow::Result<()> {
     let out = &mut stdout;
     let (node, opened) = Node::open(&common.mistrust(), common.paths.root(), common.keeping)?;
     let now = Epoch::now();
+    if show == Show::Json {
+        // Nothing but the JSON on standard output, so that it can be piped straight
+        // into whatever reads it.
+        return json::write(out, &node, now).await;
+    }
 
     writeln!(out, "name     {}", node.identity().node_id())?;
     writeln!(out, "epoch    {}", now.0)?;
     crate::commands::report_opening(&opened);
     writeln!(out)?;
-    report(out, &node, now).await
+    rest(out, &node, now, show).await
+}
+
+/// Everything after the name and the epoch, in the way asked for.
+///
+/// # Errors
+/// Fails if what is held cannot be read or written out.
+async fn rest(
+    out: &mut impl std::io::Write,
+    node: &Node,
+    now: Epoch,
+    show: Show,
+) -> anyhow::Result<()> {
+    known::copies(out, node).await?;
+    if show == Show::Sources {
+        known::counts(out, node).await?;
+        writeln!(out)?;
+        return known::sources(out, node).await;
+    }
+    report(out, node, now).await
 }
 
 /// All of it, the name and the epoch first, for a node that is already open.
+///
+/// Shared with the vigil, which answers `333 status` from another terminal with this
+/// rather than letting that terminal open files it is writing, so the same flags say
+/// the same things whether or not a vigil is running.
 ///
 /// # Errors
 /// Fails if what is held cannot be read or written out.
@@ -58,31 +123,30 @@ pub(crate) async fn whole(
     out: &mut impl std::io::Write,
     node: &Node,
     now: Epoch,
+    show: Show,
 ) -> anyhow::Result<()> {
+    if show == Show::Json {
+        return json::write(out, node, now).await;
+    }
     writeln!(out, "name     {}", node.identity().node_id())?;
     writeln!(out, "epoch    {}", now.0)?;
     writeln!(out)?;
-    report(out, node, now).await
+    rest(out, node, now, show).await
 }
 
-/// Everything after the name and the epoch, for a node that is already open.
-///
-/// Shared with the vigil, which answers `333 status` from another terminal with this
-/// rather than letting that terminal open files it is writing.
+/// Everything after the name, the epoch and any other copy of this node.
 ///
 /// # Errors
 /// Fails if what is held cannot be read.
-pub(crate) async fn report(
-    out: &mut impl std::io::Write,
-    node: &Node,
-    now: Epoch,
-) -> anyhow::Result<()> {
+async fn report(out: &mut impl std::io::Write, node: &Node, now: Epoch) -> anyhow::Result<()> {
     let answering = node.answering(now).await?;
     the_count(out, node, &answering, now).await?;
     writeln!(out)?;
     yourself::this_node(out, node, now).await?;
     writeln!(out)?;
     the_hands(out, node).await?;
+    writeln!(out)?;
+    known::counts(out, node).await?;
     writeln!(out)?;
     what_was_said(out, node, &answering, now).await?;
     writeln!(out)?;

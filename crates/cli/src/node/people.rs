@@ -13,6 +13,7 @@ use n333_core::transfer::{self, Half};
 use n333_core::whereabouts::{self};
 use n333_core::{Epoch, utterance};
 
+use super::sources::Source;
 use super::{Heard, Node};
 
 impl Node {
@@ -129,16 +130,23 @@ impl Node {
     /// File what a peer passed on, each statement by what it opens as.
     ///
     /// Nothing is trusted about who handed these over, which is why there is no check
-    /// on that. A statement either opens under its own signature or it does not.
+    /// on that. A statement either opens under its own signature or it does not. Who
+    /// it was is written down only as where the addresses came from, for this node's
+    /// owner to read.
     ///
     /// # Errors
     /// Fails if a log cannot be written.
-    pub(crate) async fn hear(&self, told: &[Vec<u8>], now: Epoch) -> anyhow::Result<Heard> {
+    pub(crate) async fn hear(
+        &self,
+        told: &[Vec<u8>],
+        now: Epoch,
+        from: &Source,
+    ) -> anyhow::Result<Heard> {
         let mut heard = Heard::default();
         let mut admissions = Vec::new();
         for frame in told {
-            if whereabouts::open(frame).is_ok() {
-                if self.note_address(frame).await? {
+            if let Ok(signed) = whereabouts::open(frame) {
+                if self.note_signed(signed, frame, from, now).await? {
                     heard.addresses += 1;
                 }
             } else if transfer::open(frame, Half::Gave).is_ok()
@@ -170,69 +178,6 @@ impl Node {
         Ok(heard)
     }
 
-    /// Keep a node's statement about where it is, if it is newer than what is held.
-    ///
-    /// # Errors
-    /// Fails if the file cannot be written.
-    pub(crate) async fn note_address(&self, frame: &[u8]) -> anyhow::Result<bool> {
-        let signed = whereabouts::open(frame).context("reading an address")?;
-        let mut state = self.state.lock().await;
-        if !state.directory.note(signed, frame.to_vec()) {
-            return Ok(false);
-        }
-        state
-            .whereabouts
-            .append(frame)
-            .context("keeping an address")?;
-        Ok(true)
-    }
-
-    /// Where a node last said it could be found.
-    pub(crate) async fn address_of(&self, node: &[u8; 32]) -> Option<String> {
-        self.state
-            .lock()
-            .await
-            .directory
-            .address_of(node)
-            .map(ToOwned::to_owned)
-    }
-
-    /// Everywhere this node could knock: what nodes signed, and what it overheard.
-    ///
-    /// The two are not distinguished here on purpose. An address is somewhere to
-    /// knock; whoever answers proves who they are by holding a key, and an address
-    /// that came from a broadcast on this network is worth exactly as much and no
-    /// more than one that came from an invitation.
-    pub(crate) async fn where_others_are(&self) -> Vec<String> {
-        let me = self.identity.public_key();
-        let mut everywhere: BTreeSet<String> = self
-            .state
-            .lock()
-            .await
-            .directory
-            .entries()
-            .filter(|(key, _)| **key != me)
-            .map(|(_, address)| address.to_owned())
-            .collect();
-        everywhere.extend(self.found.lock().await.iter().cloned());
-        everywhere.into_iter().collect()
-    }
-
-    /// Keep an address overheard on this network, and say whether it is new.
-    ///
-    /// The cap is what stops a machine on the same network from filling this node's
-    /// memory by announcing a new address every second. Past it, the ones already
-    /// here are kept: a node that has heard of 64 neighbours has enough to be going
-    /// on with, and the ones it already trades with tell it about the rest.
-    pub(crate) async fn found(&self, address: String) -> bool {
-        const ENOUGH_NEIGHBOURS: usize = 64;
-        let mut found = self.found.lock().await;
-        if found.len() >= ENOUGH_NEIGHBOURS && !found.contains(&address) {
-            return false;
-        }
-        found.insert(address)
-    }
-
     /// The hands this node's copy came through, this node's own first.
     ///
     /// Walked over admissions already on disk: each member's record names who handed
@@ -256,6 +201,12 @@ impl Node {
             key = member.sponsor;
         }
         hands
+    }
+
+    /// Everybody on the roll, with the epoch each was handed the file.
+    pub(crate) async fn members(&self) -> Vec<Member> {
+        let state = self.state.lock().await;
+        state.admissions.roll().members().cloned().collect()
     }
 
     /// The epoch somebody handed this node the file, if anybody has.
