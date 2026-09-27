@@ -22,6 +22,8 @@
 //!   `by_hand`, `this_network`, `meeting_point`, `from_peers`, `peers` (how many
 //!   different nodes), `unrecorded`.
 //! - `other_copies` — statements under this node's key it did not make, in the window.
+//! - `unseen` — whether it holds the file, has kept a record for a few epochs among
+//!   others, and nobody has signed anything about it: what `serve` says as `unseen`.
 //!
 //! WHAT IS NEVER IN IT. No address, onion address or port, of this node or anybody
 //! else. The output of a command is the kind of thing people paste into a chat to ask
@@ -55,6 +57,7 @@ struct Observed {
     diversity: Diversity,
     provenance: Counts,
     other_copies: usize,
+    unseen: bool,
 }
 
 /// This node's own record over the window.
@@ -150,6 +153,7 @@ pub(super) async fn write(
         diversity: spread(&node.held().await),
         provenance: node.known().await,
         other_copies: node.copies().await.len(),
+        unseen: crate::commands::unseen_now(node).await,
     };
     serde_json::to_writer_pretty(&mut *out, &observed)?;
     writeln!(out)?;

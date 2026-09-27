@@ -8,8 +8,8 @@
 //!
 //! WHAT GOES is everything that makes this node this node and cannot be had again:
 //! the seed, when the name began, its own record, the admissions, what others signed
-//! about it, where others said they are, the window's statements, `333.txt` if it
-//! holds it, and arti's keystore, which is where the key to its onion address is, so
+//! about it, where others said they are and where it heard of each of them, the
+//! window's statements, `333.txt` if it holds it, and arti's keystore, which is where the key to its onion address is, so
 //! that the unseen address moves with it. WHAT STAYS is what describes the directory
 //! rather than the node (`here`, `packed`) and what arti rebuilds on its own: the
 //! directory cache, which costs one slow start, and the rest of arti's state — guard
@@ -49,13 +49,14 @@ const HEADING: &str = "333 node";
 const NODE: &str = "node/";
 
 /// Files carried from the top of the node's directory, where there is one.
-const FILES: [&str; 7] = [
+const FILES: [&str; 8] = [
     crate::identity_file::SEED_FILE,
     crate::began::BEGAN_FILE,
     CHAIN_FILE,
     ADMISSIONS_FILE,
     WITNESSED_FILE,
     WHEREABOUTS_FILE,
+    crate::node::sources::SOURCES_FILE,
     n333_core::subject::FILENAME,
 ];
 
@@ -384,6 +385,15 @@ mod tests {
         );
         assert_eq!(node_path("node/tor/cache/x"), None, "arti rebuilds it");
         assert_eq!(node_path("node/statements"), None);
+    }
+
+    #[test]
+    fn where_addresses_were_heard_of_travels_and_the_running_vigils_files_do_not() {
+        assert_eq!(node_path("node/sources.json"), Some("sources.json"));
+        // The lock, the socket and the awake stamp are the vigil kept here, not the node.
+        for kept_here in ["node/lock", "node/control.sock", "node/awake"] {
+            assert_eq!(node_path(kept_here), None, "{kept_here}");
+        }
     }
 
     #[test]

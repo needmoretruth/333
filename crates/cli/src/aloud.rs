@@ -49,8 +49,19 @@ pub(crate) fn say(line: std::fmt::Arguments<'_>) {
         Some(screen) => {
             let _ = screen.send(line);
         }
-        None => println!("{line}"),
+        None => aloud_to(&mut std::io::stdout().lock(), &line),
     }
+}
+
+/// Write one line where there is no screen, and drop it if nobody reads there.
+///
+/// `333 serve --plain | head` closes the vigil's standard output after ten lines, and a
+/// vigil is not a reader's to end: it goes on answering, and what it says goes nowhere.
+/// `println!` would panic at the next line, inside whichever task said it. Any other
+/// failure to write is dropped for the same reason, because there is nowhere left to
+/// say it.
+fn aloud_to(out: &mut impl std::io::Write, line: &str) {
+    let _ = writeln!(out, "{line}");
 }
 
 /// Carry out `work` so that everything it says also reaches `asker`.
@@ -110,5 +121,29 @@ impl tracing_subscriber::fmt::MakeWriter<'_> for Voice {
 
     fn make_writer(&self) -> Self::Writer {
         *self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Standard output after its reader has gone.
+    struct Closed;
+
+    impl std::io::Write for Closed {
+        fn write(&mut self, _: &[u8]) -> std::io::Result<usize> {
+            Err(std::io::ErrorKind::BrokenPipe.into())
+        }
+
+        fn flush(&mut self) -> std::io::Result<()> {
+            Err(std::io::ErrorKind::BrokenPipe.into())
+        }
+    }
+
+    #[test]
+    fn a_line_nobody_reads_is_dropped_and_the_vigil_goes_on() {
+        aloud_to(&mut Closed, "answered 333abc");
+        aloud_to(&mut Closed, "and the next one");
     }
 }

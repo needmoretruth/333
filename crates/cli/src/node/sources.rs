@@ -23,7 +23,7 @@ use n333_core::Epoch;
 use n333_core::presence::WINDOW_EPOCHS;
 use serde::{Deserialize, Serialize};
 
-pub(crate) use file::{Loaded, load, save, typed};
+pub(crate) use file::{FILE as SOURCES_FILE, Loaded, load, save, typed};
 
 /// How an address reached this node.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

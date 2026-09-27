@@ -132,9 +132,34 @@ pub(crate) fn heard(line: &str) -> Heard<'_> {
 /// # Errors
 /// Fails if the vigil stops answering before it has said whether the order was done,
 /// or if what it said cannot be printed.
-#[cfg(unix)]
 pub(crate) async fn hand_over(home: &Path, order: &str) -> anyhow::Result<Option<bool>> {
     use std::io::Write as _;
+    exchange(home, order, |text| writeln!(std::io::stdout(), "{text}")).await
+}
+
+/// Hand `order` to the vigil keeping `home`, and keep what it says instead of printing
+/// it: whether it was done, and every line it said.
+///
+/// # Errors
+/// Fails if the vigil stops answering before it has said whether the order was done.
+pub(crate) async fn ask(home: &Path, order: &str) -> anyhow::Result<Option<(bool, String)>> {
+    let mut kept = String::new();
+    let done = exchange(home, order, |text| {
+        kept.push_str(text);
+        kept.push('\n');
+        Ok(())
+    })
+    .await?;
+    Ok(done.map(|done| (done, kept)))
+}
+
+/// One order in, every line of the reply to `each`, and how it ended.
+#[cfg(unix)]
+async fn exchange(
+    home: &Path,
+    order: &str,
+    mut each: impl FnMut(&str) -> std::io::Result<()>,
+) -> anyhow::Result<Option<bool>> {
     use tokio::io::{AsyncBufReadExt as _, AsyncWriteExt as _, BufReader};
 
     let Ok(stream) = tokio::net::UnixStream::connect(home.join(SOCKET_FILE)).await else {
@@ -145,7 +170,7 @@ pub(crate) async fn hand_over(home: &Path, order: &str) -> anyhow::Result<Option
     let mut lines = BufReader::new(reading).lines();
     while let Some(line) = lines.next_line().await? {
         match heard(&line) {
-            Heard::Said(text) => writeln!(std::io::stdout(), "{text}")?,
+            Heard::Said(text) => each(text)?,
             Heard::Ended(done) => return Ok(Some(done)),
             Heard::Unknown => {}
         }
@@ -154,11 +179,12 @@ pub(crate) async fn hand_over(home: &Path, order: &str) -> anyhow::Result<Option
 }
 
 /// Nothing can be handed over on this system yet; see the module's last paragraph.
-///
-/// # Errors
-/// Never.
 #[cfg(not(unix))]
-pub(crate) async fn hand_over(_home: &Path, _order: &str) -> anyhow::Result<Option<bool>> {
+async fn exchange(
+    _home: &Path,
+    _order: &str,
+    _each: impl FnMut(&str) -> std::io::Result<()>,
+) -> anyhow::Result<Option<bool>> {
     Ok(None)
 }
 

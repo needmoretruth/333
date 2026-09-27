@@ -10,6 +10,8 @@
 //! Silent when all is well. When it is not, the line goes to standard output, which is
 //! the service's log, and to the desktop if this system has a way to put it there.
 
+use std::path::Path;
+
 use n333_core::epoch::unix_now_seconds;
 
 use crate::claim::{self, Taken};
@@ -46,13 +48,27 @@ pub(crate) async fn run(common: &Common) -> anyhow::Result<()> {
 /// holds its directory.
 ///
 /// Opening a node repairs its records, which is only safe for the one process that
-/// holds the directory. When that is somebody else — the vigil itself, as a rule —
-/// nothing here is opened and nothing is said: the vigil says `unseen` itself.
+/// holds the directory. When that is the vigil, as it is whenever the service is
+/// keeping it, the vigil is asked through its socket instead, and answers from the node
+/// it has open. When it is some other command, nothing is opened or said this hour.
 async fn unseen(common: &Common) -> anyhow::Result<bool> {
     let root = common.paths.root();
     let Taken::Ours(_claim) = claim::take(&common.mistrust(), root)? else {
-        return Ok(false);
+        return Ok(the_vigil_says_unseen(root).await.unwrap_or(false));
     };
     let (_, opened) = Node::open(&common.mistrust(), root, common.keeping)?;
     Ok(crate::commands::unseen(&opened))
+}
+
+/// Ask the vigil keeping `root` for `status --json`, and read `unseen` out of it.
+///
+/// `None` when no vigil answers, it did not do it, or what came back is not the page.
+async fn the_vigil_says_unseen(root: &Path) -> Option<bool> {
+    let (true, page) = crate::control::ask(root, "status --json").await.ok()?? else {
+        return None;
+    };
+    serde_json::from_str::<serde_json::Value>(&page)
+        .ok()?
+        .get("unseen")?
+        .as_bool()
 }

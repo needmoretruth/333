@@ -192,3 +192,69 @@ fn telling_a_directory_nobody_is_keeping_is_refused() {
     );
     let _ = std::fs::remove_dir_all(&home);
 }
+
+#[test]
+fn status_takes_its_flags_beside_a_vigil_and_pack_is_refused_there() {
+    let vigil = keep(&scratch("beside"));
+
+    let (read, out) = client(&vigil.home, &["status", "--json"]);
+    assert!(read, "{out}");
+    // Nothing after the page: a program reads all of standard output as the JSON.
+    assert!(out.trim_start().starts_with('{'), "{out}");
+    assert!(out.trim_end().ends_with('}'), "{out}");
+    assert!(out.contains("\"format\": 1"), "{out}");
+    assert!(out.contains("\"unseen\": false"), "{out}");
+
+    let (read, out) = client(&vigil.home, &["status", "--sources"]);
+    assert!(read, "{out}");
+    assert!(
+        !out.contains("ANSWERING"),
+        "the whole status, not the sources: {out}"
+    );
+
+    let file = std::env::temp_dir().join(format!("n333-told-packed-{}.333", std::process::id()));
+    let (packed, out) = client(&vigil.home, &["pack", file.to_str().expect("a path")]);
+    assert!(!packed, "{out}");
+    assert!(out.contains("is keeping the vigil here"), "{out}");
+    assert!(!file.exists(), "nothing was written");
+    assert!(
+        !vigil.home.join("packed").exists(),
+        "the directory was not marked"
+    );
+}
+
+#[test]
+fn a_vigil_whose_output_nobody_reads_goes_on_answering() {
+    let home = scratch("unread");
+    let mut child = Command::new(CLIENT)
+        .arg("--data-dir")
+        .arg(&home)
+        .args(["serve", "--plain", "--no-meet", "--no-mdns", "--no-router"])
+        .args(["--bind", "127.0.0.1:0"])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .expect("starts");
+    let mut said = BufReader::new(child.stdout.take().expect("piped"));
+    let mut line = String::new();
+    while !line.starts_with("orders   from any terminal") {
+        line.clear();
+        assert!(said.read_line(&mut line).expect("reads") > 0, "ended");
+    }
+    // The reader walks away, as `333 serve --plain | head` does.
+    drop(said);
+    let (_, never) = channel();
+    let vigil = Vigil {
+        child,
+        port: 0,
+        home,
+        _said: never,
+    };
+
+    // Each of these makes the vigil say a line into the closed pipe first.
+    for _ in 0..2 {
+        let (told, out) = client(&vigil.home, &["tell", "tor", "off"]);
+        assert!(told, "{out}");
+        assert!(out.contains("no unseen address up"), "{out}");
+    }
+}

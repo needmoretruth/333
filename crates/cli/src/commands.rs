@@ -16,8 +16,11 @@ pub(crate) mod serve;
 pub(crate) mod service;
 pub(crate) mod status;
 pub(crate) mod unpack;
+mod unseen;
 
 use std::time::Duration;
+
+pub(crate) use unseen::{unseen, unseen_now};
 
 use n333_net::Exchange;
 
@@ -166,26 +169,6 @@ pub(crate) async fn bootstrap(common: &Common) -> anyhow::Result<n333_net::tor::
     // The deadline's own words are "deadline has elapsed", which says it twice.
     .map_err(|_| anyhow::anyhow!("no Tor connection after {} s", common.timeout.as_secs()))?
     .context("starting the Tor client")
-}
-
-/// How many epochs of silence mean something is wrong rather than nothing has happened.
-///
-/// Three. Every member is asked by three verifiers every epoch, so a reachable node has
-/// something signed about it within one. Three is long enough that a quiet start, a
-/// restart, or an epoch where the people who drew this node were themselves asleep does
-/// not raise it.
-const EPOCHS_BEFORE_SILENCE_MEANS_SOMETHING: u64 = 3;
-
-/// Whether this node is on the roll and has never had anything signed about it.
-///
-/// Only after a few epochs, and only when there is somebody who could have asked.
-/// One function, because `serve` says it when it starts and the hourly check says it
-/// when nobody is reading what `serve` said, and the two must not disagree.
-pub(crate) const fn unseen(opened: &crate::node::Opened) -> bool {
-    opened.has_the_file
-        && opened.witnessed == 0
-        && opened.chain_length >= EPOCHS_BEFORE_SILENCE_MEANS_SOMETHING
-        && opened.members >= 2
 }
 
 /// What opening a node found, said once at the start.

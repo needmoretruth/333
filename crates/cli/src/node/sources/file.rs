@@ -23,8 +23,9 @@ use serde::{Deserialize, Serialize};
 
 use super::Sources;
 
-/// The file, inside the node's directory.
-const FILE: &str = "sources.json";
+/// The file, inside the node's directory. It travels in `333 pack`: where an address
+/// was heard of is part of what the node knows, not of where it is kept.
+pub(crate) const FILE: &str = "sources.json";
 
 /// Which shape of record this is. Written into the file so that a later client can
 /// tell a record it must convert from one it can read.
