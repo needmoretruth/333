@@ -38,6 +38,7 @@ mod orders;
 mod paths;
 #[cfg(feature = "screen")]
 mod screen;
+mod version;
 
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -57,6 +58,7 @@ use paths::NodePaths;
 #[command(
     name = "333",
     version,
+    long_version = version::long(),
     about = "One node of 333. It keeps the hours, answers when asked, and passes the file on."
 )]
 struct Cli {
