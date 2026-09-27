@@ -17,6 +17,8 @@ pub(crate) mod answering;
 mod carrying;
 mod door;
 mod invitation;
+#[cfg(test)]
+mod learning;
 mod neighbours;
 mod onion;
 mod reach;
