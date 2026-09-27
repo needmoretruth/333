@@ -13,6 +13,7 @@
 //! drawn from its own disk, and the machine beside it is showing something else.
 
 mod bottom;
+mod keys;
 mod left;
 mod right;
 
@@ -68,8 +69,11 @@ pub(super) fn everything(frame: &mut Frame<'_>, watch: &Watch, log: &[String], s
     }
     let [silence, keys] =
         Layout::vertical([Constraint::Length(1), Constraint::Length(1)]).areas(bottom);
-    frame.render_widget(the_silence(watch, wide), silence);
-    frame.render_widget(the_keys(watch, saying, wide), keys);
+    frame.render_widget(the_silence(watch, silence.width), silence);
+    frame.render_widget(the_keys(watch, saying, keys.width), keys);
+    if matches!(saying, Saying::Keys) {
+        keys::every_key(frame, frame.area());
+    }
 }
 
 /// The line the client says at the start when it counts in twelve, which the screen
@@ -223,8 +227,8 @@ mod tests {
         );
         assert_eq!(
             watching[19],
-            " q  leave the vigil    s  say one of the 333    :  everything else   \
-             this node has not been given the file"
+            " q  leave the vigil    s  say one of the 333    :  everything else    ?  \
+             all the keys   this node has not been given the file"
         );
         assert_eq!(
             rows(Saying::Which("4".into()))[19],
@@ -251,6 +255,42 @@ mod tests {
         );
         let ten = crate::words::speaking("en", Base::Ten, || drawn(100, 20, &Saying::Nothing));
         assert!(!ten.concat().contains("twelve"));
+    }
+
+    #[test]
+    fn the_keys_are_the_last_thing_the_bottom_line_gives_up() {
+        let at = |width| {
+            crate::words::speaking("en", Base::Ten, || drawn(width, 20, &Saying::Nothing))[19]
+                .clone()
+        };
+        assert!(at(130).ends_with("given the file"), "{}", at(130));
+        assert_eq!(
+            at(100),
+            " q  leave the vigil    s  say one of the 333    :  everything else    ?  all the keys"
+        );
+        assert_eq!(at(48), " q  leave   s  say   :  more   ?  keys");
+        assert_eq!(at(20), " q   s   :   ?");
+    }
+
+    #[test]
+    fn question_mark_shows_every_key_and_every_order_word() {
+        let shown =
+            crate::words::speaking("en", Base::Ten, || drawn(48, 20, &Saying::Keys)).join("\n");
+        for typed in [
+            "q  esc",
+            "ping ADDRESS",
+            "join INVITATION",
+            "bootstrap",
+            "say N",
+            "tor on",
+            "bridge LINE",
+            "helper PROGRAM",
+            "status",
+            "quit",
+            "any key closes this",
+        ] {
+            assert!(shown.contains(typed), "{typed} is missing from\n{shown}");
+        }
     }
 
     #[test]

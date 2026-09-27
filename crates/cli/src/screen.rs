@@ -53,6 +53,8 @@ pub(super) enum Saying {
     Which(String),
     /// Typing anything the terminal can be told, in the terminal's own words.
     Typing(String),
+    /// Reading every key and every order word, until any key is pressed.
+    Keys,
 }
 
 /// Is there a terminal here that wants a screen?
@@ -168,8 +170,18 @@ async fn pressed(
                 *saying = Saying::Typing(String::new());
                 Pressed::Carry
             }
+            KeyCode::Char('?') => {
+                *saying = Saying::Keys;
+                Pressed::Carry
+            }
             _ => Pressed::Carry,
         },
+        // Any key at all: a list that wants one particular key to close it is one more
+        // thing to learn before the list is any use.
+        Saying::Keys => {
+            *saying = Saying::Nothing;
+            Pressed::Carry
+        }
         Saying::Typing(typed) => match key {
             KeyCode::Esc => {
                 *saying = Saying::Nothing;

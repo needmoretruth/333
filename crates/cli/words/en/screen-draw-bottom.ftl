@@ -31,3 +31,5 @@ screen-draw-bottom-more-wide = everything else
 screen-draw-bottom-more = more
 screen-draw-bottom-has-the-file = the file is here
 screen-draw-bottom-not-given = this node has not been given the file
+screen-draw-bottom-keys-wide = all the keys
+screen-draw-bottom-keys = keys

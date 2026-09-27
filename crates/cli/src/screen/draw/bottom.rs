@@ -10,13 +10,18 @@ use n333_core::epoch;
 use n333_core::extinction::{Remaining, Verdict};
 use n333_core::signal::SIGNAL_COUNT;
 
+use unicode_width::UnicodeWidthStr as _;
+
 use super::MARK;
 use crate::screen::Saying;
 use crate::screen::watch::Watch;
 use crate::words::Arg;
 
 /// Whether anybody is here, and what is left if nobody is.
-pub(super) fn the_silence<'a>(watch: &'a Watch, wide: bool) -> Paragraph<'a> {
+pub(super) fn the_silence<'a>(watch: &'a Watch, width: u16) -> Paragraph<'a> {
+    // The long form of each sentence when all of it fits, since a sentence cut off at
+    // the edge says less than the short form does.
+    let wide = usize::from(width) >= 3 + wide_verdict(watch).width();
     let (said, mark, style) = match watch.vigil.verdict() {
         Verdict::NothingToSay => (
             if wide {
@@ -82,10 +87,26 @@ pub(super) fn the_silence<'a>(watch: &'a Watch, wide: bool) -> Paragraph<'a> {
 const ORDER_WORDS: &str =
     "ping · join · bootstrap · say · tor on · tor off · bridge · status · quit";
 
+/// How wide the long form of the verdict is, to know whether it fits.
+fn wide_verdict(watch: &Watch) -> String {
+    match watch.vigil.verdict() {
+        Verdict::NothingToSay => words!("screen-draw-bottom-never-answered-wide"),
+        Verdict::Alive => words!("screen-draw-bottom-alive-wide"),
+        Verdict::Waiting { silent, needed } => words!(
+            "screen-draw-bottom-waiting-wide",
+            silent = silent,
+            needed = needed
+        ),
+        Verdict::Ended { .. } => String::new(),
+    }
+    .replace('\n', " ")
+}
+
 /// What the keys do, or what is being typed.
-pub(super) fn the_keys<'a>(watch: &'a Watch, saying: &'a Saying, wide: bool) -> Paragraph<'a> {
+pub(super) fn the_keys<'a>(watch: &'a Watch, saying: &'a Saying, width: u16) -> Paragraph<'a> {
     let bold = Style::new().add_modifier(Modifier::BOLD);
     let grey = Style::new().fg(Color::DarkGray);
+    let wide = width >= super::TOO_NARROW;
     if let Saying::Typing(typed) = saying {
         let mut asked = vec![
             Span::styled(" : ", bold),
@@ -115,40 +136,62 @@ pub(super) fn the_keys<'a>(watch: &'a Watch, saying: &'a Saying, wide: bool) -> 
         }
         return Paragraph::new(Line::from(asked));
     }
-    let key = Style::new().add_modifier(Modifier::REVERSED);
-    let (leave, say, more) = if wide {
-        (
-            format!(" {}   ", words!("screen-draw-bottom-leave-wide")),
-            format!(
-                " {}   ",
-                words!("screen-draw-bottom-say-wide", signals = SIGNAL_COUNT)
-            ),
-            format!(" {}   ", words!("screen-draw-bottom-more-wide")),
-        )
+    Paragraph::new(what_the_keys_do(watch, usize::from(width)))
+}
+
+/// The four keys, with as much said about each as fits, so that the keys themselves are
+/// the last thing to go and never the first: labels in full, then labels short, then
+/// the keys alone.
+fn what_the_keys_do(watch: &Watch, width: usize) -> Line<'static> {
+    let file = if watch.has_the_file {
+        words!("screen-draw-bottom-has-the-file")
     } else {
-        (
-            format!(" {}  ", words!("screen-draw-bottom-leave")),
-            format!(" {}  ", words!("screen-draw-bottom-say")),
-            format!(" {}   ", words!("screen-draw-bottom-more")),
-        )
+        words!("screen-draw-bottom-not-given")
     };
-    let mut keys = vec![
-        Span::styled(" q ", key),
-        Span::raw(leave),
-        Span::styled(" s ", key),
-        Span::raw(say),
-        Span::styled(" : ", key),
-        Span::raw(more),
+    let full = [
+        words!("screen-draw-bottom-leave-wide"),
+        words!("screen-draw-bottom-say-wide", signals = SIGNAL_COUNT),
+        words!("screen-draw-bottom-more-wide"),
+        words!("screen-draw-bottom-keys-wide"),
     ];
-    if wide {
-        keys.push(Span::styled(
-            if watch.has_the_file {
-                words!("screen-draw-bottom-has-the-file")
-            } else {
-                words!("screen-draw-bottom-not-given")
-            },
-            grey,
-        ));
+    let short = [
+        words!("screen-draw-bottom-leave"),
+        words!("screen-draw-bottom-say"),
+        words!("screen-draw-bottom-more"),
+        words!("screen-draw-bottom-keys"),
+    ];
+    let bare = [String::new(), String::new(), String::new(), String::new()];
+    let tried = [
+        (&full, Some(file), "   "),
+        (&full, None, "   "),
+        (&short, None, "  "),
+        (&bare, None, ""),
+    ];
+    let mut chosen = Vec::new();
+    for (labels, note, gap) in tried {
+        chosen = keys_line(labels, note, gap);
+        let covered: usize = chosen.iter().map(|span| span.content.width()).sum();
+        if covered <= width {
+            break;
+        }
     }
-    Paragraph::new(Line::from(keys))
+    Line::from(chosen)
+}
+
+/// The keys with these labels, and a note after them if there is one.
+fn keys_line(labels: &[String; 4], note: Option<String>, gap: &str) -> Vec<Span<'static>> {
+    let key = Style::new().add_modifier(Modifier::REVERSED);
+    let mut spans = Vec::new();
+    for (pressed, label) in ["q", "s", ":", "?"].into_iter().zip(labels) {
+        spans.push(Span::styled(format!(" {pressed} "), key));
+        spans.push(Span::raw(if label.is_empty() {
+            " ".to_owned()
+        } else {
+            format!(" {label}{gap}")
+        }));
+    }
+    if let Some(note) = note {
+        spans.push(Span::styled(note, Style::new().fg(Color::DarkGray)));
+    }
+    spans
 }

@@ -28,3 +28,5 @@ screen-draw-bottom-more-wide = 그 밖의 모든 것
 screen-draw-bottom-more = 더
 screen-draw-bottom-has-the-file = 파일이 여기 있습니다
 screen-draw-bottom-not-given = 이 노드는 아직 파일을 받지 못했습니다
+screen-draw-bottom-keys-wide = 모든 키
+screen-draw-bottom-keys = 키
