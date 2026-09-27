@@ -12,3 +12,8 @@ screen-refused = { $why }
     .keyword = 거부
 
 screen-at = { $hours }:{ $minutes }:{ $seconds }
+
+screen-key-unreadable = 키 하나를 읽지 못했습니다: { $why }. 다음 키는 읽힐 수 있습니다.
+    .keyword = 키보드
+screen-keyboard-gone = 키보드를 읽을 수 없어서({ $why }) 화면을 닫았고, 철야도 함께
+    끝났습니다. `333 serve --plain`은 키보드 없이 철야를 지킵니다.

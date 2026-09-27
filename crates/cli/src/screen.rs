@@ -131,7 +131,20 @@ async fn draw_until_they_leave(
                 None => break,
             },
             key = keys.recv() => {
-                let Some(key) = key else { break };
+                let key = match key {
+                    Some(Typed::Key(key)) => key,
+                    Some(Typed::Unreadable(why)) => {
+                        remember(&mut log, &words!("screen-key-unreadable", why = why));
+                        continue;
+                    }
+                    // Said after the terminal is given back, where it can still be read:
+                    // a line in the pane would be gone with the pane.
+                    Some(Typed::Gone(why)) => {
+                        reading.store(false, Ordering::Relaxed);
+                        anyhow::bail!(words!("screen-keyboard-gone", why = why));
+                    }
+                    None => break,
+                };
                 if key.kind != KeyEventKind::Release {
                     match pressed(node, &mut saying, orders, key.code, key.modifiers).await {
                         Pressed::Carry => {}
@@ -325,26 +338,54 @@ fn remember(log: &mut Vec<String>, said: &str) {
     }
 }
 
+/// What the keyboard gave, or why it gave nothing.
+enum Typed {
+    /// A key.
+    Key(event::KeyEvent),
+    /// One key could not be read. The next may be.
+    Unreadable(String),
+    /// The keyboard cannot be read any more.
+    Gone(String),
+}
+
+/// How many keys in a row may fail to be read before the keyboard is taken to be gone.
+///
+/// Three: once is a key, twice may be chance, and a reader that went on past that
+/// would fill the pane with the same line as fast as it could fail.
+const UNREADABLE_IN_A_ROW: usize = 3;
+
 /// Read the keyboard on a thread of its own, because reading it blocks.
 ///
 /// The flag is how it is stopped: a thread left polling a terminal after this program
-/// has finished with it eats the keystrokes meant for whatever runs next.
-fn read_keys() -> (UnboundedReceiver<event::KeyEvent>, Arc<AtomicBool>) {
+/// has finished with it eats the keystrokes meant for whatever runs next. A key that
+/// could not be read is said rather than skipped, so that a keyboard which has stopped
+/// working is not mistaken for a person who has stopped typing.
+fn read_keys() -> (UnboundedReceiver<Typed>, Arc<AtomicBool>) {
     let (sender, receiver) = unbounded_channel();
     let reading = Arc::new(AtomicBool::new(true));
     let stop = Arc::clone(&reading);
     std::thread::spawn(move || {
+        let mut failed = 0;
         while stop.load(Ordering::Relaxed) {
-            match event::poll(KEY_POLL) {
-                Ok(true) => {
-                    if let Ok(Event::Key(key)) = event::read()
-                        && sender.send(key).is_err()
-                    {
-                        return;
+            let typed = match event::poll(KEY_POLL) {
+                Ok(true) => match event::read() {
+                    Ok(Event::Key(key)) => Typed::Key(key),
+                    Ok(_) => continue,
+                    Err(e) if failed + 1 < UNREADABLE_IN_A_ROW => {
+                        failed += 1;
+                        Typed::Unreadable(e.to_string())
                     }
-                }
-                Ok(false) => {}
-                Err(_) => return,
+                    Err(e) => Typed::Gone(e.to_string()),
+                },
+                Ok(false) => continue,
+                Err(e) => Typed::Gone(e.to_string()),
+            };
+            if matches!(typed, Typed::Key(_)) {
+                failed = 0;
+            }
+            let gone = matches!(typed, Typed::Gone(_));
+            if sender.send(typed).is_err() || gone {
+                return;
             }
         }
     });
@@ -380,6 +421,15 @@ mod tests {
                         )
                     ),
                     "refused  there are 333 of them, numbered 0 to 332. \"400\" is not one.",
+                ),
+                (
+                    words!("screen-key-unreadable", why = "no terminal"),
+                    "keyboard a key could not be read: no terminal. The keys after it may be.",
+                ),
+                (
+                    words!("screen-keyboard-gone", why = "no terminal"),
+                    "the keyboard could not be read (no terminal), so the screen has closed and\n\
+                     the vigil with it. `333 serve --plain` keeps a vigil with no keyboard.",
                 ),
                 (
                     words!(
