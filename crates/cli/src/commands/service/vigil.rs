@@ -15,6 +15,7 @@ use clap::Parser as _;
 
 use crate::commands::Common;
 use crate::paths::NodePaths;
+use crate::words::count::Base;
 
 /// The seconds `--timeout` means when nobody gave it.
 const DEFAULT_TIMEOUT: u64 = 300;
@@ -87,8 +88,8 @@ pub(crate) fn write(cli: crate::Cli, exe: PathBuf) -> anyhow::Result<Vigil> {
         keep_everything,
         bridges,
         bridge_helper,
-        language: _,
-        count_in: _,
+        language,
+        count_in,
         command,
     } = cli;
     let crate::Command::Serve {
@@ -114,6 +115,7 @@ pub(crate) fn write(cli: crate::Cli, exe: PathBuf) -> anyhow::Result<Vigil> {
     if trust {
         shared.push("--dangerously-trust-directory-permissions".to_owned());
     }
+    shared.extend(spoken(language, count_in));
     let mut check = shared.clone();
     check.extend(["service", "check"].map(str::to_owned));
 
@@ -164,6 +166,26 @@ pub(crate) fn write(cli: crate::Cli, exe: PathBuf) -> anyhow::Result<Vigil> {
         serve,
         check,
     })
+}
+
+/// The language and the base the service speaks in: the ones given after `install`,
+/// or else the ones this run speaks in, however it came to them.
+///
+/// Written out as flags, because a service manager starts the vigil without the
+/// installing shell's environment or locale, and it would otherwise speak English in
+/// ten to a person who reads neither. Nothing is written for English, or for ten.
+fn spoken(language: Option<String>, count_in: Option<Base>) -> Vec<String> {
+    let now = crate::words::current();
+    let language = language.unwrap_or_else(|| now.tag().to_owned());
+    let base = count_in.unwrap_or_else(|| now.base());
+    let mut flags = Vec::new();
+    if !language.eq_ignore_ascii_case(crate::words::catalog::ENGLISH) {
+        flags.extend(["--language".to_owned(), language]);
+    }
+    if base != Base::Ten {
+        flags.extend(["--count-in".to_owned(), base.name().to_owned()]);
+    }
+    flags
 }
 
 #[cfg(test)]
@@ -239,6 +261,42 @@ mod tests {
         argv.extend(first.serve.iter().cloned());
         let again = write(crate::Cli::try_parse_from(argv).unwrap(), first.exe.clone()).unwrap();
         assert_eq!(again, first);
+    }
+
+    #[test]
+    fn a_service_speaks_the_language_and_the_base_it_was_installed_in() {
+        // What this run speaks, by the flag, the variable or the locale, is written out:
+        // the service manager starts the vigil with none of them.
+        let installed =
+            crate::words::speaking("ko", Base::Twelve, || vigil(&common("/srv/node", &[]), &[]));
+        let shared = [
+            "--data-dir",
+            "/srv/node",
+            "--language",
+            "ko",
+            "--count-in",
+            "twelve",
+        ];
+        assert_eq!(installed.serve[..6], shared);
+        assert_eq!(installed.check[..6], shared);
+        // Given after `install`, those win over what this run speaks.
+        let given = crate::words::speaking("ko", Base::Twelve, || {
+            vigil(
+                &common("/srv/node", &[]),
+                &["--language", "en", "--count-in", "twelve-ascii"],
+            )
+        });
+        assert_eq!(
+            given.serve[..4],
+            ["--data-dir", "/srv/node", "--count-in", "twelve-ascii"]
+        );
+    }
+
+    #[test]
+    fn a_service_in_english_and_ten_carries_neither() {
+        let plain =
+            crate::words::speaking("en", Base::Ten, || vigil(&common("/srv/node", &[]), &[]));
+        assert_eq!(plain.serve, ["--data-dir", "/srv/node", "serve", "--plain"]);
     }
 
     #[test]

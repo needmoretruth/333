@@ -46,6 +46,17 @@ impl Base {
         }
     }
 
+    /// The name [`Base::named`] reads back as this base, for a command line written
+    /// out to be run elsewhere: a service's, or an order handed to a vigil.
+    #[must_use]
+    pub(crate) const fn name(self) -> &'static str {
+        match self {
+            Self::Ten => "ten",
+            Self::Twelve => "twelve",
+            Self::TwelveAscii => "twelve-ascii",
+        }
+    }
+
     /// Twelve with the digits this terminal can show.
     #[must_use]
     pub(crate) fn shown(self, utf8: bool) -> Self {
@@ -234,6 +245,13 @@ mod tests {
         assert_eq!(read_in(Base::Ten, "X"), None, "X is not a digit in ten");
         assert_eq!(read_in(Base::Twelve, ""), None, "nothing typed is not zero");
         assert_eq!(read_in(Base::Ten, "99999999999999999999999"), None);
+    }
+
+    #[test]
+    fn every_base_reads_back_from_its_own_name() {
+        for base in [Base::Ten, Base::Twelve, Base::TwelveAscii] {
+            assert_eq!(Base::named(base.name()), Ok(base));
+        }
     }
 
     #[test]
