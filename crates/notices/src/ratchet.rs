@@ -58,12 +58,24 @@ const EXCEPTIONS: [&str; 1] = ["LLVM-exception"];
 /// choice among several.
 ///
 /// The code rules refuse these outright: GPL and AGPL reach into what is built beside
-/// them, and SSPL and BUSL are not open source licences at all. Nothing in the tree
-/// offers one even as an alternative today, so the first package that does is worth a
-/// person reading, whatever else it also offers. Matched by the start of the SPDX
+/// them, and SSPL and BUSL are not open source licences at all. A package that offers
+/// one even as an alternative is worth a person reading, whatever else it also offers;
+/// the ones that were read are [`TAKEN_BESIDE`]. Matched by the start of the SPDX
 /// identifier, which is how every version of each is named; `LGPL-` does not start
 /// with `GPL-`.
 const REFUSED: [&str; 4] = ["GPL-", "AGPL-", "SSPL-", "BUSL-"];
+
+/// Packages that offer a refused kind beside a carried licence, and are taken under the
+/// carried one.
+///
+/// Each is named with the exact expression it was read with, so a version that changes
+/// its terms stops the check again, and the same offer from any other package still
+/// stops it. The expression must still be satisfiable from [`CARRIED`] alone.
+///
+/// `self_cell` is what Fluent keeps a parsed catalog in, a value that borrows from
+/// itself; it arrived with the language catalogs. It is taken under Apache-2.0, and
+/// the GPL beside it is never the licence anything here is used under.
+const TAKEN_BESIDE: [(&str, &str); 1] = [("self_cell", "Apache-2.0 OR GPL-2.0-only")];
 
 /// Why one package stopped the check.
 #[derive(Debug, PartialEq, Eq)]
@@ -94,27 +106,40 @@ pub(crate) fn check(shipped: &[Shipped]) -> Vec<Stopped> {
     shipped
         .iter()
         .filter_map(|package| {
-            judge(package.licence.as_deref()).err().map(|why| Stopped {
-                package: package.label(),
-                declared: package.expression(),
-                why,
-            })
+            let beside = package.licence.as_deref().is_some_and(|expression| {
+                TAKEN_BESIDE.contains(&(package.name.as_str(), expression))
+            });
+            judge_as(package.licence.as_deref(), beside)
+                .err()
+                .map(|why| Stopped {
+                    package: package.label(),
+                    declared: package.expression(),
+                    why,
+                })
         })
         .collect()
 }
 
 /// Whether one declared expression may be taken using only what is carried.
+#[cfg(test)]
 fn judge(expression: Option<&str>) -> Result<(), Refusal> {
+    judge_as(expression, false)
+}
+
+/// [`judge`], passing over a refused kind when this package was decided to be taken
+/// beside it (see [`TAKEN_BESIDE`]).
+fn judge_as(expression: Option<&str>, taken_beside: bool) -> Result<(), Refusal> {
     let text = expression.ok_or(Refusal::Undeclared)?;
     let parsed = Expression::parse_mode(text, ParseMode::LAX)
         .map_err(|why| Refusal::Unreadable(why.to_string()))?;
-    if let Some(refused) = parsed.requirements().find_map(|found| {
+    let refused = parsed.requirements().find_map(|found| {
         let id = found.req.license.id()?;
         REFUSED
             .iter()
             .any(|kind| id.name.starts_with(kind))
             .then(|| id.name.to_owned())
-    }) {
+    });
+    if let Some(refused) = refused.filter(|_| !taken_beside) {
         return Err(Refusal::Refused(refused));
     }
     parsed.evaluate_with_failures(carried).map_err(|failed| {
@@ -279,6 +304,15 @@ mod tests {
                 "{expression}"
             );
         }
+    }
+
+    #[test]
+    fn a_package_decided_on_passes_with_the_terms_it_was_decided_on_and_no_others() {
+        let decided = |name: &str, expression: &str| check(&[package(name, Some(expression))]);
+        assert!(decided("self_cell", "Apache-2.0 OR GPL-2.0-only").is_empty());
+        assert_eq!(decided("self_cell", "GPL-2.0-only").len(), 1);
+        assert_eq!(decided("self_cell", "Apache-2.0 OR GPL-3.0-only").len(), 1);
+        assert_eq!(decided("other", "Apache-2.0 OR GPL-2.0-only").len(), 1);
     }
 
     #[test]
