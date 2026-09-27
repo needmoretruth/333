@@ -42,6 +42,34 @@ jobs:
       - name: The third-party notices still match the dependencies
         run: cargo run -p n333-notices --locked -- --check
 
+  # Files are built for macOS and Windows on every release, and without these two jobs
+  # nothing compiles that code, let alone tests it, until somebody pushes a tag. Same
+  # compiler as above. macOS brings its own TLS and SQLite; Windows brings neither, so
+  # it is built the way the README says to build it there, with both compiled in.
+  macos:
+    name: macOS, clippy and tests
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: rustup toolchain install 1.96.0 --profile minimal --component clippy --no-self-update
+      - run: rustup default 1.96.0
+      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - run: cargo test --workspace --locked
+
+  windows:
+    name: Windows, clippy and tests
+    runs-on: windows-latest
+    steps:
+      # Checked out byte for byte, as on the other two. Git on these machines turns line
+      # endings into CRLF by default, and a test that pins a file's bytes would then be
+      # testing git's configuration.
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@v5
+      - run: rustup toolchain install 1.96.0 --profile minimal --component clippy --no-self-update
+      - run: rustup default 1.96.0
+      - run: cargo clippy --workspace --all-targets --locked --features bundled -- -D warnings
+      - run: cargo test --workspace --locked --features bundled
+
   # The Developer Certificate of Origin, checked rather than asked for. Only on proposals:
   # the history before this workflow existed is unsigned and rewriting it would be worse
   # than leaving it visible.
