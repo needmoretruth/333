@@ -9,6 +9,11 @@
 # what separates them is the screen. Tor wants a TLS and an SQLite, and where the
 # system has neither, or where this is a cross build and the ones it has are for the
 # wrong architecture, `--features bundled` compiles both into the binary instead.
+#
+# Every file is started on the machine that built it before it is attached, and what
+# it printed is written into the summary of that build, so that "it builds" is never
+# the only thing anybody knows about it. Every file attached carries a provenance
+# attestation from this workflow, and the last job lists the SHA-256 of all of them.
 name: release
 
 on:
@@ -23,20 +28,49 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@v5
+      # What a person reads before they download anything. It says how to check the
+      # file they took, because a file nobody can check is a file they are asked to
+      # trust, and it asks for the one report nobody thinks to send.
       - name: Open the release the builds will attach themselves to
-        run: >
-          gh release create "$GITHUB_REF_NAME" --verify-tag --title "$GITHUB_REF_NAME"
-          --notes "Download the one that matches your machine, make it executable, and run \`333 id\`.
-          Standard has the screen and carries Tor. Light is the smallest thing that still keeps the
-          vigil, for a machine that is struggling or a system nothing else has been built for.
-          What each command does, and how to build it yourself instead, is in the README."
         env:
           GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          cat > notes.md <<'NOTES'
+          Download the one that matches your machine, make it executable, and run `333 id`. Standard has the screen and carries Tor. Light is the smallest thing that still keeps the vigil, for a machine that is struggling or a system nothing else has been built for. What each command does, and how to build it yourself instead, is in the README.
+
+          **Checking the file you took.** Download `SHA256SUMS` into the same directory and run
+
+          ```sh
+          sha256sum -c SHA256SUMS --ignore-missing
+          ```
+
+          It says `OK` beside your file if it is, byte for byte, the file attached here. On a Mac `shasum -a 256 <file>` prints the number, and on Windows `certutil -hashfile <file> SHA256` does; it should be the one on that file's line. With the GitHub command line installed,
+
+          ```sh
+          gh attestation verify <file> --repo needmoretruth/333
+          ```
+
+          says more: that this repository's release workflow built that file, and from which commit. Neither says the code does what it should. That is what the source is for.
+
+          Each file was started on the machine that built it before it was attached: asked its version, given a name, and, where that machine could run it natively, made to keep a vigil on 127.0.0.1 and answer a knock. What it printed is in the summary of each build:
+          NOTES
+          printf '%s\n' "$RUN_URL" >> notes.md
+          cat >> notes.md <<'NOTES'
+
+          A report is the only way anybody learns that one of these files works on a machine like yours. If you keep a vigil on one, say what happened, including that it worked: https://github.com/needmoretruth/333/issues/new?template=kept-a-vigil.yml
+          NOTES
+          gh release create "$GITHUB_REF_NAME" --verify-tag --title "$GITHUB_REF_NAME" --notes-file notes.md
       # The binaries below are statically linked and carry other people's packages,
       # whose licences ask that their notices travel with the copies. This is the only
       # place a person who downloaded a binary and never saw the repository can find them.
+      - uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: THIRD-PARTY.md
       - name: Attach the third-party notices
         run: gh release upload "$GITHUB_REF_NAME" THIRD-PARTY.md --clobber
         env:
@@ -46,9 +80,15 @@ jobs:
     needs: announce
     permissions:
       contents: write
+      id-token: write
+      attestations: write
     strategy:
       fail-fast: false
       matrix:
+        # `runs` is how the file is started once it is built: `native` on the machine
+        # itself, `rosetta` for an Intel Mac file on an Apple silicon machine, and
+        # `qemu-<arch>` for an ARM file, emulated one program at a time against the
+        # C library the cross compiler brought (`sysroot`).
         include:
           - name: Standard, Linux on x86-64
             os: ubuntu-latest
@@ -57,6 +97,7 @@ jobs:
             packages: "pkg-config libssl-dev libsqlite3-dev"
             binary: "333"
             asset: 333-x86_64-linux
+            runs: native
           - name: Light, Linux on x86-64
             os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
@@ -64,34 +105,43 @@ jobs:
             packages: pkg-config libssl-dev libsqlite3-dev
             binary: "333"
             asset: 333-light-x86_64-linux
+            runs: native
           - name: Standard, Linux on 64-bit ARM
             os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
             features: --features bundled
-            packages: "gcc-aarch64-linux-gnu"
+            packages: "gcc-aarch64-linux-gnu qemu-user"
             binary: "333"
             asset: 333-aarch64-linux
+            runs: qemu-aarch64
+            sysroot: /usr/aarch64-linux-gnu
           - name: Light, Linux on 64-bit ARM
             os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
             features: --no-default-features --features bundled
-            packages: "gcc-aarch64-linux-gnu"
+            packages: "gcc-aarch64-linux-gnu qemu-user"
             binary: "333"
             asset: 333-light-aarch64-linux
+            runs: qemu-aarch64
+            sysroot: /usr/aarch64-linux-gnu
           - name: Standard, Linux on ARMv6, which is a Raspberry Pi Zero
             os: ubuntu-latest
             target: arm-unknown-linux-gnueabihf
             features: --features bundled
-            packages: "gcc-arm-linux-gnueabihf"
+            packages: "gcc-arm-linux-gnueabihf qemu-user"
             binary: "333"
             asset: 333-armv6-linux
+            runs: qemu-arm
+            sysroot: /usr/arm-linux-gnueabihf
           - name: Light, Linux on ARMv6, which is a Raspberry Pi Zero
             os: ubuntu-latest
             target: arm-unknown-linux-gnueabihf
             features: --no-default-features --features bundled
-            packages: "gcc-arm-linux-gnueabihf"
+            packages: "gcc-arm-linux-gnueabihf qemu-user"
             binary: "333"
             asset: 333-light-armv6-linux
+            runs: qemu-arm
+            sysroot: /usr/arm-linux-gnueabihf
           - name: Standard, macOS on Apple silicon
             os: macos-latest
             target: aarch64-apple-darwin
@@ -99,6 +149,7 @@ jobs:
             packages: ""
             binary: "333"
             asset: 333-aarch64-macos
+            runs: native
           - name: Light, macOS on Apple silicon
             os: macos-latest
             target: aarch64-apple-darwin
@@ -106,6 +157,7 @@ jobs:
             packages: ""
             binary: "333"
             asset: 333-light-aarch64-macos
+            runs: native
           - name: Standard, macOS on Intel
             os: macos-latest
             target: x86_64-apple-darwin
@@ -113,6 +165,7 @@ jobs:
             packages: ""
             binary: "333"
             asset: 333-x86_64-macos
+            runs: rosetta
           - name: Light, macOS on Intel
             os: macos-latest
             target: x86_64-apple-darwin
@@ -120,6 +173,7 @@ jobs:
             packages: ""
             binary: "333"
             asset: 333-light-x86_64-macos
+            runs: rosetta
           - name: Standard, Windows on x86-64
             os: windows-latest
             target: x86_64-pc-windows-msvc
@@ -127,6 +181,7 @@ jobs:
             packages: ""
             binary: "333.exe"
             asset: 333-x86_64-windows.exe
+            runs: native
           - name: Light, Windows on x86-64
             os: windows-latest
             target: x86_64-pc-windows-msvc
@@ -134,6 +189,7 @@ jobs:
             packages: ""
             binary: "333.exe"
             asset: 333-light-x86_64-windows.exe
+            runs: native
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     steps:
@@ -153,7 +209,163 @@ jobs:
           AR_arm_unknown_linux_gnueabihf: arm-linux-gnueabihf-ar
       - shell: bash
         run: cp target/${{ matrix.target }}/release/${{ matrix.binary }} ${{ matrix.asset }}
+      # Before it is attached, not after: a file that cannot say its own version on the
+      # machine that built it is not attached at all. Everything run, and everything it
+      # printed, goes into the summary of this build, which the release notes link to.
+      #
+      # Nothing here reaches past this machine. The vigil listens on 127.0.0.1 and is
+      # told not to use the meeting point, not to announce itself, and not to ask a
+      # router for anything.
+      - name: Run it on the machine that built it
+        shell: bash
+        timeout-minutes: 15
+        env:
+          NAME: ${{ matrix.name }}
+          ASSET: ${{ matrix.asset }}
+          RUNS: ${{ matrix.runs }}
+          SYSROOT: ${{ matrix.sysroot }}
+        run: |
+          set -euo pipefail
+          ran="$(mktemp)"
+          start=()
+          native=yes
+          case "$RUNS" in
+            native) ;;
+            rosetta)
+              if ! arch -x86_64 /usr/bin/true 2>/dev/null; then
+                {
+                  echo "### $NAME: \`$ASSET\`"
+                  echo
+                  echo "Not run: this machine cannot run x86-64 code, so nothing here has started this file."
+                } >> "$GITHUB_STEP_SUMMARY"
+                exit 0
+              fi
+              start=(arch -x86_64)
+              ;;
+            qemu-*)
+              emulator="$(command -v "$RUNS" || command -v "$RUNS-static")"
+              start=("$emulator" -L "$SYSROOT")
+              native=no
+              ;;
+          esac
+          # Every command goes into the record exactly as typed, then what it printed.
+          say() {
+            {
+              printf '$ 333 %s\n' "$*"
+              ${start[@]+"${start[@]}"} "./$ASSET" "$@" 2>&1
+              printf '\n'
+            } >> "$ran"
+          }
+          record() {
+            {
+              echo "### $NAME: \`$ASSET\`"
+              echo
+              case "$RUNS" in
+                native) echo "Run natively on \`$RUNNER_OS\` \`$RUNNER_ARCH\`, the machine that built it." ;;
+                rosetta) echo "Run under Rosetta on \`$RUNNER_OS\` \`$RUNNER_ARCH\`, the machine that built it." ;;
+                *) echo "Run under \`$RUNS\` user emulation on \`$RUNNER_OS\` \`$RUNNER_ARCH\`, against the C library in \`$SYSROOT\`. That shows the file starts on an ARM Linux; it does not show it starts on a particular board." ;;
+              esac
+              echo
+              echo '```'
+              cat "$ran"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          }
+          trap record EXIT
+
+          home="$(mktemp -d)"
+          chmod 700 "$home"
+          say --version
+          say --data-dir "$home" id
+
+          if [ "$RUNS" = qemu-arm ]; then
+            # The Pi Zero is ARMv6. Whether everything linked into this file stays within
+            # ARMv6 is written in its build attributes, and this is what they say.
+            {
+              printf '$ arm-linux-gnueabihf-readelf -A %s\n' "$ASSET"
+              arm-linux-gnueabihf-readelf -A "$ASSET" | grep -E 'Tag_CPU_arch|Tag_FP_arch|Tag_THUMB_ISA_use' || true
+              printf '\n'
+            } >> "$ran"
+          fi
+          [ "$native" = yes ] || exit 0
+
+          # A vigil on this machine, knocked on once from a second directory. Whatever
+          # happens, what the vigil said goes into the record after everything else, and
+          # it is not left running.
+          vigil="$(mktemp -d)"
+          chmod 700 "$vigil"
+          log="$(mktemp)"
+          ${start[@]+"${start[@]}"} "./$ASSET" --data-dir "$vigil" serve --plain --no-meet --no-mdns --no-upnp --bind 127.0.0.1:33333 > "$log" 2>&1 &
+          pid=$!
+          served() {
+            kill "$pid" 2>/dev/null || true
+            {
+              printf '$ 333 --data-dir %s serve --plain --no-meet --no-mdns --no-upnp --bind 127.0.0.1:33333\n' "$vigil"
+              cat "$log"
+            } >> "$ran"
+            record
+          }
+          trap served EXIT
+          for _ in $(seq 120); do
+            grep -q 'answer   127.0.0.1:33333' "$log" && break
+            kill -0 "$pid" 2>/dev/null || break
+            sleep 0.5
+          done
+          grep -q 'answer   127.0.0.1:33333' "$log"
+          say --data-dir "$home" --timeout 30 ping 333:127.0.0.1:33333
+          grep -q 'witness  ' "$ran"
+          if [ "$RUNNER_OS" = Windows ]; then
+            # Windows has no Ctrl-C to send to one process from outside it.
+            kill "$pid" 2>/dev/null || taskkill //F //PID "$(cat "/proc/$pid/winpid")"
+            wait "$pid" || true
+          else
+            # What a person at the terminal does, and the vigil has to end cleanly on it.
+            kill -INT "$pid"
+            wait "$pid"
+          fi
+      - uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: ${{ matrix.asset }}
       - shell: bash
         run: gh release upload "$GITHUB_REF_NAME" "${{ matrix.asset }}" --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  # One list of every file the release carries, made from what is actually attached
+  # rather than from what was meant to be. Run even if one of the builds failed, so that
+  # the files that did make it can still be checked.
+  sums:
+    name: The SHA-256 of every file attached
+    needs: build
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - name: Take every file attached to the release
+        run: gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --dir attached
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: List their SHA-256
+        run: |
+          set -euo pipefail
+          # Left over from an earlier run of this job for the same tag, and not a file
+          # that can list itself.
+          rm -f attached/SHA256SUMS
+          (cd attached && sha256sum -- *) > SHA256SUMS
+          {
+            echo '### SHA256SUMS'
+            echo
+            echo '```'
+            cat SHA256SUMS
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: SHA256SUMS
+      - name: Attach the list
+        run: gh release upload "$GITHUB_REF_NAME" SHA256SUMS --repo "$GITHUB_REPOSITORY" --clobber
         env:
           GH_TOKEN: ${{ github.token }}
