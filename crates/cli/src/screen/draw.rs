@@ -32,7 +32,7 @@ use crate::words::Arg;
 
 use bottom::{the_keys, the_silence};
 
-use left::this_node;
+use left::{at_a_glance, this_node};
 use right::vigil;
 
 /// How wide the left column is, when there is room for one.
@@ -53,16 +53,23 @@ pub(super) fn everything(frame: &mut Frame<'_>, watch: &Watch, log: &[String], s
     ])
     .areas(frame.area());
 
-    let wide = frame.area().width >= TOO_NARROW;
-    frame.render_widget(header(watch, wide), top);
+    frame.render_widget(header(watch, usize::from(top.width)), top);
     if let Some(twelve) = twelve {
         frame.render_widget(Paragraph::new(format!(" {twelve}")), counting);
     }
     if middle.width < TOO_NARROW {
-        // Too narrow for two columns. The vigil is what is left, because a person on a
-        // small terminal is watching for something to happen, and the rest of it is a
-        // command away.
-        frame.render_widget(vigil(log, middle), middle);
+        // Too narrow for two columns. The count and this node's standing, in a line
+        // each, then the vigil in what is left: a person on a small terminal is
+        // watching for something to happen, and the rest of it is a command away.
+        let glance = at_a_glance(watch, usize::from(middle.width).saturating_sub(2));
+        let rows = u16::try_from(glance.len()).unwrap_or(0);
+        let [glanced, lines] =
+            Layout::vertical([Constraint::Length(rows), Constraint::Min(0)]).areas(middle);
+        frame.render_widget(
+            Paragraph::new(glance).block(Block::new().padding(Padding::horizontal(1))),
+            glanced,
+        );
+        frame.render_widget(vigil(log, lines), lines);
     } else {
         let [left, right] =
             Layout::horizontal([Constraint::Length(APART), Constraint::Min(0)]).areas(middle);
@@ -97,27 +104,47 @@ fn counting_in_twelve() -> Option<String> {
 }
 
 /// The one line that is always true: who this is, when it is, and how long is left.
-fn header<'a>(watch: &'a Watch, wide: bool) -> Paragraph<'a> {
+///
+/// Given up from its least needed part when the terminal is narrow: the name first,
+/// which the vigil's lines and `333 id` both say, then the long way of saying how much
+/// is left. The epoch and the time left are what a person looks up to see.
+fn header(watch: &Watch, width: usize) -> Paragraph<'static> {
     let left = remaining(to_the_boundary(watch.epoch));
-    let left = if wide {
-        words!("screen-draw-to-the-boundary", left = left)
-    } else {
-        words!("screen-draw-time-left", left = left)
-    };
-    Paragraph::new(Line::from(vec![
-        Span::styled(" 333 ", Style::new().add_modifier(Modifier::REVERSED)),
-        Span::raw("  "),
-        Span::styled(
-            crate::commands::shorten(&watch.name),
-            Style::new().add_modifier(Modifier::BOLD),
-        ),
+    let long = words!("screen-draw-to-the-boundary", left = left.as_str());
+    let short = words!("screen-draw-time-left", left = left.as_str());
+    let name = crate::commands::shorten(&watch.name);
+    let mut chosen = Vec::new();
+    for (name, left) in [(Some(&name), &long), (None, &long), (None, &short)] {
+        chosen = header_line(watch, name, left);
+        if chosen
+            .iter()
+            .map(|span| span.content.width())
+            .sum::<usize>()
+            <= width
+        {
+            break;
+        }
+    }
+    Paragraph::new(Line::from(chosen))
+}
+
+/// The header's parts, with or without the name.
+fn header_line(watch: &Watch, name: Option<&String>, left: &str) -> Vec<Span<'static>> {
+    let bold = Style::new().add_modifier(Modifier::BOLD);
+    let mut spans = vec![Span::styled(
+        " 333 ",
+        Style::new().add_modifier(Modifier::REVERSED),
+    )];
+    if let Some(name) = name {
+        spans.push(Span::raw("  "));
+        spans.push(Span::styled(name.clone(), bold));
+    }
+    spans.extend([
         Span::raw(format!("   {} ", words!("screen-draw-epoch"))),
-        Span::styled(
-            words!("screen-draw-number", number = watch.epoch.0),
-            Style::new().add_modifier(Modifier::BOLD),
-        ),
+        Span::styled(words!("screen-draw-number", number = watch.epoch.0), bold),
         Span::raw(format!("   {left}")),
-    ]))
+    ]);
+    spans
 }
 
 /// How long is left of this epoch, the way a person waiting would say it, in the base
@@ -327,6 +354,62 @@ mod tests {
             rows[19]
         );
         assert!(rows[19].width() <= 48);
+    }
+
+    #[test]
+    fn every_size_a_terminal_can_be_dragged_to_draws_without_stopping() {
+        let copy = crate::node::sources::Sighting {
+            address: "192.0.2.9:3333".into(),
+            said_in: 8,
+            heard: crate::node::sources::Heard {
+                from: crate::node::sources::Source::ThisNetwork,
+                epoch: 9,
+            },
+        };
+        let watch = Watch::quiet(vec![copy]);
+        let states = || {
+            [
+                Saying::Nothing,
+                Saying::Keys,
+                Saying::Which(typed("2", Some("there are 333 of them"))),
+                Saying::Typing(typed("tor sideways", Some("that wants on or off after it"))),
+            ]
+        };
+        let log = ["12:00:00  witness  이 노드에 대해 서명된 것이 없습니다".to_owned()];
+        for (tag, base) in [("en", Base::Ten), ("ko", Base::Twelve)] {
+            crate::words::speaking(tag, base, || {
+                for width in [0, 1, 2, 5, 12, 30, 47, 48, 61, 62, 63, 100, 200, 400] {
+                    for height in [0, 1, 2, 3, 4, 7, 12, 20, 50] {
+                        for saying in states() {
+                            let mut terminal =
+                                Terminal::new(TestBackend::new(width, height)).unwrap();
+                            terminal
+                                .draw(|frame| everything(frame, &watch, &log, &saying))
+                                .unwrap();
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    #[test]
+    fn a_narrow_terminal_still_shows_the_count_and_the_standing_before_the_lines() {
+        let mut watch = Watch::quiet(Vec::new());
+        (watch.answering, watch.roll) = (3, 5);
+        watch.name = format!("333{}c", "ab".repeat(30));
+        watch.epoch = n333_core::Epoch::now();
+        let rows = crate::words::speaking("en", Base::Ten, || {
+            drawn_of(&watch, 48, 20, &Saying::Nothing)
+        });
+        // The name gives way to the epoch and the time left.
+        assert!(!rows[0].contains("333abab"), "{}", rows[0]);
+        let epoch = format!("epoch {} ", watch.epoch.0);
+        assert!(rows[0].contains(&epoch), "{}", rows[0]);
+        assert!(rows[0].ends_with("to the boundary"), "{}", rows[0]);
+        assert_eq!(rows[1], " ANSWERING 3   silent 2   roll 5");
+        assert_eq!(rows[2], " on nobody's roll.");
+        assert!(rows[3].contains("the vigil"), "{}", rows[3]);
     }
 
     #[test]

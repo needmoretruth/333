@@ -44,8 +44,44 @@ pub(super) fn this_node<'a>(watch: &'a Watch, area: Rect) -> Paragraph<'a> {
     ]);
     lines.extend(standing(&watch.standing, width));
     lines.push(Line::raw(""));
-    lines.extend(said(&watch.said, area.height, width));
+    let rows = usize::from(area.height).saturating_sub(2 + lines.len());
+    lines.extend(said(&watch.said, rows, width));
     Paragraph::new(lines).block(titled(words!("screen-draw-left-title")))
+}
+
+/// What a terminal too narrow for the column still shows above the vigil, in the
+/// column's own order: the count, another copy of this name if there is one, and the
+/// first line of where this node stands.
+pub(super) fn at_a_glance(watch: &Watch, width: usize) -> Vec<Line<'static>> {
+    let bold = Style::new().add_modifier(Modifier::BOLD);
+    let silent = watch.roll.saturating_sub(watch.answering);
+    let mut lines = vec![Line::from(vec![
+        Span::styled(
+            format!(
+                "{} {}",
+                words!("screen-draw-left-answering"),
+                words!("screen-draw-left-number", number = watch.answering)
+            ),
+            bold,
+        ),
+        Span::raw(format!(
+            "   {} {}   {} {}",
+            words!("screen-draw-left-silent"),
+            words!("screen-draw-left-number", number = silent),
+            words!("screen-draw-left-roll"),
+            words!("screen-draw-left-number", number = watch.roll)
+        )),
+    ])];
+    if !watch.copies.is_empty() {
+        lines.extend(marked(
+            &words!("screen-draw-left-another-copy"),
+            width,
+            Color::Red,
+            bold,
+        ));
+    }
+    lines.extend(standing(&watch.standing, width).into_iter().take(1));
+    lines
 }
 
 /// What this screen says while another copy of this name is out there.
@@ -189,9 +225,13 @@ fn counted_standing(standing: &Standing, silent_on: u64, width: usize) -> Vec<Li
     lines
 }
 
-/// The shape of what everybody said this epoch, as much of it as there is room for.
-fn said(said: &Said, height: u16, width: usize) -> Vec<Line<'static>> {
+/// The shape of what everybody said this epoch, in the rows left for it.
+///
+/// Nothing at all when not even a heading and one row fit: the vigil and `333 status`
+/// both say it, and a heading over nothing would read as nothing having been said.
+fn said(said: &Said, rows: usize, width: usize) -> Vec<Line<'static>> {
     let bold = Style::new().add_modifier(Modifier::BOLD);
+    let grey = Style::new().fg(Color::DarkGray);
     if said.spoken == 0 {
         let mut lines = vec![Line::from(Span::styled(
             words!("screen-draw-left-said"),
@@ -200,9 +240,13 @@ fn said(said: &Said, height: u16, width: usize) -> Vec<Line<'static>> {
         lines.extend(broken(
             &words!("screen-draw-left-nothing-said", signals = SIGNAL_COUNT),
             width,
-            Style::new().fg(Color::DarkGray),
+            grey,
         ));
-        return lines;
+        return if lines.len() <= rows {
+            lines
+        } else {
+            Vec::new()
+        };
     }
     let mut lines = vec![Line::from(vec![
         Span::styled(padded(&words!("screen-draw-left-said"), 6), bold),
@@ -215,23 +259,29 @@ fn said(said: &Said, height: u16, width: usize) -> Vec<Line<'static>> {
     // However many rows are left on this column, and a line saying what did not fit.
     // Cutting the tail off in silence would make a distribution look like the whole of
     // one, which is the one thing this screen must never do.
-    let room = usize::from(height).saturating_sub(lines.len() + 14).max(1);
-    for row in said.rows.iter().take(room) {
-        lines.push(said_row(*row));
+    let room = rows.saturating_sub(lines.len() + usize::from(said.mine.is_some()));
+    let shown = if said.rows.len() <= room {
+        said.rows.len()
+    } else {
+        room.saturating_sub(1)
+    };
+    if room < 2 && said.rows.len() > room {
+        return Vec::new();
     }
-    if said.rows.len() > room {
+    lines.extend(said.rows.iter().take(shown).map(|row| said_row(*row)));
+    if said.rows.len() > shown {
         lines.push(Line::styled(
             format!(
                 " {}",
-                words!("screen-draw-left-more-said", rows = said.rows.len() - room)
+                words!("screen-draw-left-more-said", rows = said.rows.len() - shown)
             ),
-            Style::new().fg(Color::DarkGray),
+            grey,
         ));
     }
     if let Some(mine) = said.mine {
         lines.push(Line::styled(
             format!(" {}", words!("screen-draw-left-you-said", index = mine)),
-            Style::new().fg(Color::DarkGray),
+            grey,
         ));
     }
     lines
@@ -339,14 +389,18 @@ mod tests {
             "SAID\nnothing yet. 333 things\ncan be said."
         );
         let some = Said {
-            rows: vec![(42, 2, Some(666), true), (7, 1, Some(333), false)],
+            rows: vec![
+                (42, 2, Some(666), true),
+                (7, 1, Some(333), false),
+                (8, 1, Some(333), false),
+            ],
             spoken: 3,
             observed: 9,
             mine: Some(42),
         };
         assert_eq!(
-            english(&|| said(&some, 16, 30)),
-            "SAID  3 of 9 spoke\n #42     2  66.6%  a third\n and 1 more said\n you said #42"
+            english(&|| said(&some, 4, 30)),
+            "SAID  3 of 9 spoke\n #42     2  66.6%  a third\n and 2 more said\n you said #42"
         );
     }
 
