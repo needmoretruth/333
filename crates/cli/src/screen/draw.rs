@@ -41,8 +41,10 @@ const TOO_NARROW: u16 = 62;
 
 /// Draw everything.
 pub(super) fn everything(frame: &mut Frame<'_>, watch: &Watch, log: &[String], saying: &Saying) {
-    let [top, middle, bottom] = Layout::vertical([
+    let twelve = counting_in_twelve();
+    let [top, counting, middle, bottom] = Layout::vertical([
         Constraint::Length(1),
+        Constraint::Length(u16::from(twelve.is_some())),
         Constraint::Min(3),
         Constraint::Length(2),
     ])
@@ -50,6 +52,9 @@ pub(super) fn everything(frame: &mut Frame<'_>, watch: &Watch, log: &[String], s
 
     let wide = frame.area().width >= TOO_NARROW;
     frame.render_widget(header(watch, wide), top);
+    if let Some(twelve) = twelve {
+        frame.render_widget(Paragraph::new(format!(" {twelve}")), counting);
+    }
     if middle.width < TOO_NARROW {
         // Too narrow for two columns. The vigil is what is left, because a person on a
         // small terminal is watching for something to happen, and the rest of it is a
@@ -65,6 +70,19 @@ pub(super) fn everything(frame: &mut Frame<'_>, watch: &Watch, log: &[String], s
         Layout::vertical([Constraint::Length(1), Constraint::Length(1)]).areas(bottom);
     frame.render_widget(the_silence(watch, wide), silence);
     frame.render_widget(the_keys(watch, saying, wide), keys);
+}
+
+/// The line the client says at the start when it counts in twelve, which the screen
+/// covers up as soon as it is drawn. Said again here, once, where it is seen without
+/// looking for it: every number below it is in twelve, and read in ten each of them
+/// is wrong.
+fn counting_in_twelve() -> Option<String> {
+    let (ten, eleven) = crate::words::current().base().past_nine()?;
+    Some(words!(
+        "words-counting-in-twelve",
+        ten = ten.to_string(),
+        eleven = eleven.to_string()
+    ))
 }
 
 /// The one line that is always true: who this is, when it is, and how long is left.
@@ -142,10 +160,14 @@ mod tests {
 
     /// Every row of the screen drawn at this size, as text, without trailing spaces.
     fn drawn(width: u16, height: u16, saying: &Saying) -> Vec<String> {
-        let watch = Watch::quiet(Vec::new());
+        drawn_of(&Watch::quiet(Vec::new()), width, height, saying)
+    }
+
+    /// The same, of a node given here.
+    fn drawn_of(watch: &Watch, width: u16, height: u16, saying: &Saying) -> Vec<String> {
         let mut terminal = Terminal::new(TestBackend::new(width, height)).unwrap();
         terminal
-            .draw(|frame| everything(frame, &watch, &[], saying))
+            .draw(|frame| everything(frame, watch, &[], saying))
             .unwrap();
         let buffer = terminal.backend().buffer();
         (0..height)
@@ -183,6 +205,23 @@ mod tests {
             rows(Saying::Typing("pi".into()))[19],
             " : pi\u{258f}   ping · join · bootstrap · say · tor on · tor off · bridge · status · quit"
         );
+    }
+
+    #[test]
+    fn counting_in_twelve_is_said_under_the_header_and_in_ten_nothing_is() {
+        let twelve =
+            crate::words::speaking("en", Base::Twelve, || drawn(100, 20, &Saying::Nothing));
+        assert_eq!(
+            twelve[1],
+            " counting in twelve. \u{218A} is ten, \u{218B} is eleven, and 10 is twelve."
+        );
+        assert!(
+            twelve[0].contains("epoch 9 "),
+            "nine is nine: {}",
+            twelve[0]
+        );
+        let ten = crate::words::speaking("en", Base::Ten, || drawn(100, 20, &Saying::Nothing));
+        assert!(!ten.concat().contains("twelve"));
     }
 
     #[test]
