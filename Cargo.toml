@@ -92,6 +92,17 @@ fs-mistrust = "=0.15.1"
 # directories is what puts the node's home in the conventional place on each system
 # instead of assuming the XDG variables exist. It is data only: no unsafe, no C.
 directories = "6"
+# tar is the one-file form a node takes while it is moved to another machine: a
+# format every system can already list and unpack, so a person can see what they
+# are carrying without this client. Pure Rust. `xattr`, its one default feature, is
+# off: a node's files have none worth carrying. What it depends on, filetime and
+# libc, is already in the tree through arti. With the three commands that use it,
+# the release binary grew by about 150 kB (18.99 MB to 19.14 MB on x86-64 Linux).
+tar = { version = "0.4.46", default-features = false }
+# Writes a moment as UTC ISO 8601 to the second, which is how the client says when
+# a name began or a node was packed. Already in the tree through arti; nothing new
+# to build or check.
+humantime = "2.4.0"
 
 # --- finding each other on one network -----------------------------------------
 # mDNS is how two nodes in the same house meet without anybody typing an invitation.

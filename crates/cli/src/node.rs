@@ -40,16 +40,16 @@ use tokio::sync::Mutex;
 use crate::identity_file::{self, Origin};
 
 /// The file holding this node's own record chain.
-const CHAIN_FILE: &str = "chain.log";
+pub(crate) const CHAIN_FILE: &str = "chain.log";
 
 /// The file holding the admissions this node knows about.
-const ADMISSIONS_FILE: &str = "admissions.log";
+pub(crate) const ADMISSIONS_FILE: &str = "admissions.log";
 
 /// The file holding what others signed about this node, kept past the window.
-const WITNESSED_FILE: &str = "witnessed.log";
+pub(crate) const WITNESSED_FILE: &str = "witnessed.log";
 
 /// The directory holding one file per epoch of statements.
-const WINDOW_DIR: &str = "statements";
+pub(crate) const WINDOW_DIR: &str = "statements";
 
 /// How much of the past a node holds on to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -77,7 +77,7 @@ impl Keeping {
 }
 
 /// The file holding what nodes have said about where they are.
-const WHEREABOUTS_FILE: &str = "whereabouts.log";
+pub(crate) const WHEREABOUTS_FILE: &str = "whereabouts.log";
 
 /// One node.
 pub(crate) struct Node {
@@ -138,10 +138,12 @@ struct State {
 }
 
 /// What opening a node found, for the operator to see once.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub(crate) struct Opened {
     /// How this node came to have a name.
     pub(crate) origin: Origin,
+    /// Where it lives, so that a name made on this run can be told where to keep it.
+    pub(crate) home: std::path::PathBuf,
     /// How long its own record is.
     pub(crate) chain_length: u64,
     /// How many bytes of an unfinished record were dropped from the chain.
@@ -194,6 +196,7 @@ impl Node {
         let subject = read_the_file(home);
         let opened = Opened {
             origin,
+            home: home.to_path_buf(),
             chain_length: head.length,
             chain_truncated: chain_opened.truncated,
             members: admissions.roll().len(),

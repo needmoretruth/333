@@ -28,11 +28,15 @@
 // First, so that everything below it can say something out loud.
 #[macro_use]
 mod aloud;
+mod archive;
+mod began;
 mod claim;
 mod commands;
 mod control;
 mod dial;
+mod dwelling;
 mod identity_file;
+mod named;
 mod node;
 mod orders;
 mod paths;
@@ -111,6 +115,13 @@ async fn main() -> anyhow::Result<ExitCode> {
         return quietly_if_walked_away(done.map(|()| ExitCode::SUCCESS));
     }
 
+    // Unpacking takes the directory itself: it may not exist yet, and it has to be
+    // empty when the node is renamed into it, which a lock file inside it would not be.
+    if let Command::Unpack { file } = &cli.command {
+        let done = commands::unpack::run(&common, file).await;
+        return quietly_if_walked_away(done);
+    }
+
     // Before anything in the directory is read, and held until this process exits.
     let _claim = match claim::take(&common.mistrust(), common.paths.root())? {
         Taken::Ours(claim) => claim,
@@ -154,9 +165,11 @@ async fn main() -> anyhow::Result<ExitCode> {
         Command::Status => commands::status::run(&common).await,
         Command::Join { address } => commands::join::run(&common, &address).await,
         Command::Ping { address } => commands::ping::run(&common, &address).await,
+        Command::Pack { file, undo } => commands::pack::run(&common, file.as_deref(), undo),
+        Command::Moved => commands::moved::run(&common),
         Command::Tell { .. } => return Ok(commands::elsewhere::nobody_to_tell()),
         // Dispatched above, before the directory is taken.
-        Command::Service { .. } => Ok(()),
+        Command::Service { .. } | Command::Unpack { .. } => Ok(()),
     };
     quietly_if_walked_away(done.map(|()| ExitCode::SUCCESS))
 }

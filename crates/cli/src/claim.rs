@@ -25,7 +25,7 @@ use anyhow::Context as _;
 use fs_mistrust::Mistrust;
 
 /// The file the lock is taken on, inside the node's directory.
-const LOCK_FILE: &str = "lock";
+pub(crate) const LOCK_FILE: &str = "lock";
 
 /// This process holds the directory. Dropping it lets go.
 #[derive(Debug)]

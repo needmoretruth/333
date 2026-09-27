@@ -5,6 +5,10 @@
 //! as a unit, and means two nodes on one machine are two directories rather than a
 //! configuration puzzle.
 //!
+//! Moving one is `333 pack` at one end and `333 unpack` at the other, rather than a
+//! copy: a copy leaves the name in two places. What goes and what stays is in
+//! [`crate::archive`]; how a copy is noticed is in [`crate::dwelling`].
+//!
 //! The default location is the conventional one for each system, worked out by the
 //! `directories` crate rather than assumed here:
 //!
@@ -92,6 +96,19 @@ mod tests {
         assert!(paths.tor().state_dir.starts_with("/tmp/example"));
         assert!(paths.tor().cache_dir.starts_with("/tmp/example"));
         assert_ne!(paths.tor().state_dir, paths.tor().cache_dir);
+    }
+
+    #[cfg(feature = "tor")]
+    #[test]
+    fn the_keystore_a_pack_carries_is_the_one_arti_keeps_the_onion_key_in() {
+        // arti puts its keystore at `<state_dir>/keystore`. If the state directory
+        // moved and this did not, a packed node would arrive without its address.
+        let root = PathBuf::from("/tmp/example");
+        let paths = NodePaths::at(root.clone());
+        let carried = crate::archive::KEYSTORE
+            .split('/')
+            .fold(root, |path, part| path.join(part));
+        assert_eq!(paths.tor().state_dir.join("keystore"), carried);
     }
 
     #[test]

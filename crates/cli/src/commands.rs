@@ -8,11 +8,14 @@ pub(crate) mod elsewhere;
 pub(crate) mod hours;
 pub(crate) mod id;
 pub(crate) mod join;
+pub(crate) mod moved;
+pub(crate) mod pack;
 pub(crate) mod ping;
 pub(crate) mod say;
 pub(crate) mod serve;
 pub(crate) mod service;
 pub(crate) mod status;
+pub(crate) mod unpack;
 
 use std::time::Duration;
 
@@ -190,9 +193,7 @@ pub(crate) const fn unseen(opened: &crate::node::Opened) -> bool {
 /// and no members, and saying "0 members" every start would train the operator to
 /// ignore the line that matters when it is not zero.
 pub(crate) fn report_opening(opened: &crate::node::Opened) {
-    if let crate::identity_file::Origin::Created { not_called } = opened.origin {
-        aloud!("{}", crate::commands::naming(not_called));
-    }
+    crate::named::report(opened.origin, &opened.home);
     if opened.chain_truncated != 0 {
         aloud!(
             "torn     {} bytes of an unfinished entry were dropped from the record",

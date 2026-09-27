@@ -197,6 +197,40 @@ pub(crate) enum Command {
         #[arg(value_parser = n333_net::invite::address_or_invite)]
         address: PeerAddress,
     },
+    /// Write this node into one file, to carry it to another machine.
+    ///
+    /// Everything it is goes: its name, its record, what others signed about it, the
+    /// file if it holds it, and the key to its onion address. Afterwards this
+    /// directory refuses to act as it, because one name in two places is a node
+    /// contradicting itself. The file is not encrypted: whoever holds it is this node,
+    /// so carry it, unpack it, and delete it.
+    Pack {
+        /// The file to write. It must not exist yet.
+        #[arg(value_name = "FILE", required_unless_present = "undo")]
+        file: Option<PathBuf>,
+
+        /// Take back a packing here, for a move that was abandoned.
+        ///
+        /// Only if the file was never unpacked anywhere: if it was, this makes two.
+        #[arg(long, conflicts_with = "file")]
+        undo: bool,
+    },
+    /// Put a packed node into this machine's node directory.
+    ///
+    /// Refused where a node already lives, and it says what that node holds. Nothing
+    /// is written until the file has been read through and its key and record check
+    /// out.
+    Unpack {
+        /// The file `333 pack` wrote.
+        #[arg(value_name = "FILE")]
+        file: PathBuf,
+    },
+    /// Say that this node's directory was moved or renamed, not copied.
+    ///
+    /// A node that finds itself somewhere other than where it was says so on every
+    /// run until this is typed, because a copy with the original still running is one
+    /// name in two places, and from inside the directory the two look the same.
+    Moved,
     /// Tell the vigil running in this directory something, in its screen's words.
     ///
     /// `tor on`, `tor off`, `bridge <line>`, `helper <program>`, and every other word
@@ -235,6 +269,16 @@ impl Command {
             Self::Join { address } => Wanted::Order(format!("join {address}")),
             Self::Ping { address } => Wanted::Order(format!("ping {address}")),
             Self::Tell { order } => Wanted::Order(order.join(" ")),
+            Self::Pack { .. } => Wanted::Kept(
+                "a node is packed only while nothing is keeping it. Nothing was\n\
+                 \x20        written. Stop the vigil, then pack it.",
+            ),
+            Self::Moved => Wanted::Kept(
+                "where a node lives is said while nothing is keeping it. Stop the\n\
+                 \x20        vigil, then run this again.",
+            ),
+            // Never asked: `unpack` takes the directory itself, and refuses on its own.
+            Self::Unpack { .. } => Wanted::Kept(commands::unpack::KEPT),
             // Never asked: `service` is dispatched before the directory is taken, because
             // it asks the service manager and reads the awake stamp and nothing else.
             Self::Service { .. } => Wanted::Kept("it asks the service manager, not the vigil."),

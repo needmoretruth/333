@@ -21,9 +21,10 @@ use crate::identity_file;
 /// Fails if the identity cannot be read, the peer cannot be reached, or the answer
 /// does not check out.
 pub(crate) async fn run(common: &Common, address: &PeerAddress) -> anyhow::Result<()> {
-    let (identity, _origin) =
+    let (identity, origin) =
         identity_file::load_or_create(&common.mistrust(), common.paths.root())?;
     aloud!("name     {}", identity.node_id());
+    crate::named::report(origin, common.paths.root());
     knock(
         &identity,
         &Dialer::new(common.clone()),

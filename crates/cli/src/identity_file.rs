@@ -36,7 +36,7 @@ use n333_core::enrollment::{self, CURSE_PAUSE, Refusal};
 use n333_core::identity::Identity;
 
 /// The name of the seed file inside the node's directory.
-const SEED_FILE: &str = "identity.key";
+pub(crate) const SEED_FILE: &str = "identity.key";
 
 /// How this node's identity came to be, for the caller to report.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -52,21 +52,30 @@ pub(crate) enum Origin {
 
 /// Read this node's identity from `home`, searching for one and writing it if absent.
 ///
+/// Every command that acts as this node comes through here, which is why the two
+/// checks on where it lives are here too: a node packed for moving is refused, and a
+/// node that opens somewhere other than where it was is told so (see
+/// [`crate::dwelling`] for why one is a refusal and the other is not).
+///
 /// # Errors
-/// Fails if `home` or any directory above it is reachable by other users, if the file
-/// exists but is unreadable or the wrong size, or if the identity in it is not
-/// eligible to take part.
+/// Fails if `home` or any directory above it is reachable by other users, if the node
+/// in it was packed for moving, if the file exists but is unreadable or the wrong
+/// size, or if the identity in it is not eligible to take part.
 pub(crate) fn load_or_create(
     mistrust: &Mistrust,
     home: &Path,
 ) -> anyhow::Result<(Identity, Origin)> {
-    let home = mistrust
-        .verifier()
-        .make_secure_dir(home)
-        .with_context(|| private_directory_advice(home))?;
+    let home = secure(mistrust, home)?;
+    crate::dwelling::refuse_if_packed(home.as_path())?;
 
     match home.read(SEED_FILE) {
-        Ok(bytes) => Ok((from_seed_bytes(&bytes)?, Origin::Loaded)),
+        Ok(bytes) => {
+            let identity = from_seed_bytes(&bytes)?;
+            if let Some(elsewhere) = crate::dwelling::check_here(&home)? {
+                aloud!("{elsewhere}");
+            }
+            Ok((identity, Origin::Loaded))
+        }
         Err(fs_mistrust::Error::NotFound(_)) => create(&home),
         Err(e) => Err(anyhow::Error::new(e).context(private_file_advice(&home))),
     }
@@ -93,8 +102,28 @@ pub(crate) fn load(mistrust: &Mistrust, home: &Path) -> anyhow::Result<Option<Id
     }
 }
 
+/// Make sure `home` exists and only its owner can enter it, and every directory above.
+///
+/// # Errors
+/// Fails, saying how to fix it, if it or any directory above it is reachable by others.
+pub(crate) fn secure(mistrust: &Mistrust, home: &Path) -> anyhow::Result<CheckedDir> {
+    mistrust
+        .verifier()
+        .make_secure_dir(home)
+        .with_context(|| private_directory_advice(home))
+}
+
+/// Whether a name has been made in `home`, without making one or checking anything.
+#[must_use]
+pub(crate) fn holds_a_name(home: &Path) -> bool {
+    home.join(SEED_FILE).exists()
+}
+
 /// Interpret the bytes of the seed file.
-fn from_seed_bytes(bytes: &[u8]) -> anyhow::Result<Identity> {
+///
+/// # Errors
+/// Fails if they are not a seed, or the name they make is not one 333 answers to.
+pub(crate) fn from_seed_bytes(bytes: &[u8]) -> anyhow::Result<Identity> {
     let seed: [u8; 32] = bytes.try_into().map_err(|_| {
         anyhow::anyhow!(
             "identity file holds {} bytes; a seed is exactly 32",
@@ -150,6 +179,13 @@ fn create(home: &CheckedDir) -> anyhow::Result<(Identity, Origin)> {
     // Without this the seed can still be in the page cache when the machine loses
     // power, and the node comes back with an address nobody can reach.
     file.sync_all()?;
+    crate::began::record(
+        home,
+        std::time::SystemTime::now(),
+        crate::began::invoked_as().as_deref(),
+    )?;
+    let here = crate::dwelling::canonical(home.as_path())?;
+    crate::dwelling::record_here(home, crate::dwelling::How::Made, &here)?;
     // `mine` counts the key it returns, and that one was called. Subtracting is safe
     // because it always returns at least one.
     Ok((
@@ -306,6 +342,78 @@ mod tests {
         assert_eq!(origin, Origin::Loaded);
         assert_eq!(first.node_id(), second.node_id());
         let _ = std::fs::set_permissions(&home, std::fs::Permissions::from_mode(0o700));
+        let _ = std::fs::remove_dir_all(&home);
+    }
+
+    #[test]
+    fn a_made_name_writes_down_when_it_began_and_where() {
+        let home = scratch("began");
+        let _ = load_or_create(&strict(), &home).expect("creates");
+        assert!(crate::began::read(&home).is_some(), "no date was kept");
+        let checked = secure(&strict(), &home).expect("is private");
+        assert_eq!(crate::dwelling::check_here(&checked).expect("checks"), None);
+        let _ = std::fs::remove_dir_all(&home);
+    }
+
+    #[test]
+    fn a_node_packed_for_moving_is_refused_until_the_packing_is_undone() {
+        let home = scratch("packed");
+        let _ = load_or_create(&strict(), &home).expect("creates");
+        let checked = secure(&strict(), &home).expect("is private");
+        let into = Path::new("/somewhere/else/node.333");
+        crate::dwelling::mark_packed(&checked, std::time::SystemTime::now(), into).expect("marks");
+
+        let refused = load_or_create(&strict(), &home)
+            .expect_err("refuses")
+            .to_string();
+        assert!(refused.contains("packed for moving at"), "{refused}");
+        assert!(refused.contains("/somewhere/else/node.333"), "{refused}");
+        assert!(refused.contains("name in two places"), "{refused}");
+        assert!(refused.contains("pack --undo"), "{refused}");
+
+        crate::dwelling::unmark_packed(&checked).expect("undoes");
+        let _ = load_or_create(&strict(), &home).expect("lives here again");
+        let _ = std::fs::remove_dir_all(&home);
+    }
+
+    #[test]
+    fn a_node_that_opens_somewhere_new_is_told_so_and_not_refused() {
+        // A rename and a copy look the same from inside, so this is a warning.
+        let was = scratch("was-here");
+        let now = scratch("now-here");
+        let (first, _) = load_or_create(&strict(), &was).expect("creates");
+        std::fs::rename(&was, &now).expect("moves the folder");
+
+        let (second, origin) = load_or_create(&strict(), &now).expect("is not refused");
+        assert_eq!(origin, Origin::Loaded);
+        assert_eq!(first.node_id(), second.node_id());
+        let checked = secure(&strict(), &now).expect("is private");
+        let said = crate::dwelling::check_here(&checked)
+            .expect("checks")
+            .expect("says something");
+        assert!(said.contains("made at"), "{said}");
+        assert!(said.contains("n333-identity-test-was-here"), "{said}");
+        assert!(said.contains("n333-identity-test-now-here"), "{said}");
+        assert!(
+            said.contains(" moved"),
+            "names the command that settles it: {said}"
+        );
+
+        let here = crate::dwelling::canonical(&now).expect("resolves");
+        crate::dwelling::record_here(&checked, crate::dwelling::How::Moved, &here)
+            .expect("settles");
+        assert_eq!(crate::dwelling::check_here(&checked).expect("checks"), None);
+        let _ = std::fs::remove_dir_all(&now);
+    }
+
+    #[test]
+    fn a_node_older_than_the_record_is_given_one_and_told_nothing() {
+        let home = scratch("older");
+        let _ = load_or_create(&strict(), &home).expect("creates");
+        std::fs::remove_file(home.join(crate::dwelling::HERE_FILE)).expect("forgets");
+        let checked = secure(&strict(), &home).expect("is private");
+        assert_eq!(crate::dwelling::check_here(&checked).expect("checks"), None);
+        assert!(home.join(crate::dwelling::HERE_FILE).exists());
         let _ = std::fs::remove_dir_all(&home);
     }
 }
