@@ -92,6 +92,11 @@ impl Node {
             }));
         }
         let offsets = state.passed_on;
+        let lengths = [
+            state.directory.len(),
+            about_epochs.len(),
+            state.admissions.frames().len(),
+        ];
         let (tidings, taken) = share_the_room(
             [
                 state.directory.frames().collect(),
@@ -109,8 +114,14 @@ impl Node {
         // instead — which is what this did — means a node holding more than fits sends
         // almost the same run for ever, and a genuinely new admission waits behind
         // every old one, once per round, for as many rounds as there are records.
-        for (offset, took) in state.passed_on.iter_mut().zip(taken) {
-            *offset = offset.wrapping_add(took as u64);
+        for (kind, ((offset, took), held)) in state
+            .passed_on
+            .iter_mut()
+            .zip(taken)
+            .zip(lengths)
+            .enumerate()
+        {
+            *offset = onward(*offset, took, held, kind);
         }
         Ok(tidings)
     }
@@ -283,6 +294,32 @@ pub(crate) struct Tidings {
 /// How many kinds of statement travel in one run.
 pub(crate) const KINDS: usize = 3;
 
+/// Where a kind's next run begins, after one that took `took` of the `held` it had.
+///
+/// On from where it stopped, so that one pass over everything takes as few runs as
+/// fit it. And at the end of every pass, somewhere else: the same number of runs
+/// every round — one for the peers this node dials, one for each that dials it —
+/// would otherwise bring a pass back to where it began, and whoever takes the first
+/// run of every round would be handed the same slice of what this node holds for as
+/// long as it held it.
+///
+/// Scattered by a hash of where the pass ended rather than drawn from chance: nothing
+/// here needs to be unpredictable, only not periodic, and a rule that gives the same
+/// answer twice is a rule a test can hold to.
+fn onward(offset: u64, took: usize, held: usize, kind: usize) -> u64 {
+    use std::hash::{Hash as _, Hasher as _};
+    let next = offset.wrapping_add(took as u64);
+    let Some(held) = std::num::NonZeroU64::new(held as u64) else {
+        return next;
+    };
+    if next / held == offset / held {
+        return next;
+    }
+    let mut scatter = std::hash::DefaultHasher::new();
+    (next, kind).hash(&mut scatter);
+    next.wrapping_add(scatter.finish() % held)
+}
+
 /// Fit several kinds of statement into one run without letting any kind starve.
 ///
 /// Each kind gets an equal share; a kind that does not use its share gives it back to
@@ -392,5 +429,47 @@ mod tests {
         assert_eq!(took[1], few.len(), "the small kind is sent whole");
         assert_eq!(run.frames.len(), room);
         assert_eq!(took[0], room - few.len(), "and gives the rest back");
+    }
+
+    #[tokio::test]
+    async fn the_peer_that_asks_first_every_round_still_hears_everything() {
+        // Twice what fits, and two runs put together every round: one for the peers this
+        // node dials, one for the peer that dials it. A rotation that only ever moves on
+        // by what it sent comes back to the same place every round, and whoever takes
+        // the first run hears the same half of the addresses for ever.
+        let home =
+            std::env::temp_dir().join(format!("n333-people-test-first-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&home);
+        std::fs::create_dir_all(&home).expect("creates dir");
+        let room = n333_net::frame::MAX_BATCH_FRAMES;
+        let mut log = Vec::new();
+        for seed in 0..room * 2 {
+            let mut bytes = [0_u8; 32];
+            bytes[..8].copy_from_slice(&(seed as u64).to_be_bytes());
+            let someone = n333_core::Identity::from_seed(&bytes);
+            let frame =
+                whereabouts::Whereabouts::of(&someone, format!("n{seed}.example:3333"), Epoch(1))
+                    .seal(&someone)
+                    .expect("seals");
+            log.extend(u32::try_from(frame.len()).expect("small").to_be_bytes());
+            log.extend(frame);
+        }
+        std::fs::write(home.join("whereabouts.log"), log).expect("writes");
+        let mistrust = fs_mistrust::Mistrust::new_dangerously_trust_everyone();
+        let (node, opened) =
+            Node::open(&mistrust, &home, super::super::Keeping::TheWindow).expect("opens");
+        assert_eq!(opened.addresses, room * 2);
+
+        let mut heard_first = BTreeSet::new();
+        for _ in 0..12 {
+            heard_first.extend(node.tidings(Epoch(2)).await.expect("gathers").frames);
+            let _second = node.tidings(Epoch(2)).await.expect("gathers");
+        }
+        assert_eq!(
+            heard_first.len(),
+            room * 2,
+            "every address reaches the peer that happens to ask first"
+        );
+        let _ = std::fs::remove_dir_all(&home);
     }
 }
