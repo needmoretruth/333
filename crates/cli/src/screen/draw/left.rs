@@ -10,7 +10,7 @@ use n333_core::presence::{Standing, WINDOW_EPOCHS};
 use n333_core::signal::SIGNAL_COUNT;
 
 use super::right::fold;
-use super::{ahead, padded, titled};
+use super::{ahead, marked, padded, titled};
 use crate::screen::watch::{Said, Watch, Where};
 
 /// The left column: the count, then this node, then what was said.
@@ -53,18 +53,21 @@ fn another_copy(watch: &Watch, width: usize) -> Vec<Line<'static>> {
     let Some(latest) = watch.copies.iter().max_by_key(|copy| copy.said_in) else {
         return Vec::new();
     };
-    let loud = Style::new().fg(Color::Red).add_modifier(Modifier::BOLD);
-    let red = Style::new().fg(Color::Red);
-    let mut lines = Vec::new();
+    let loud = Style::new().add_modifier(Modifier::BOLD);
+    let mut lines = marked(
+        &words!("screen-draw-left-another-copy"),
+        width,
+        Color::Red,
+        loud,
+    );
     for (said, style) in [
-        (words!("screen-draw-left-another-copy"), loud),
-        (words!("screen-draw-left-says-it-is-at"), red),
-        (latest.address.clone(), red),
+        (words!("screen-draw-left-says-it-is-at"), Style::new()),
+        (latest.address.clone(), Style::new()),
         (
             words!("screen-draw-left-in-epoch", epoch = latest.said_in),
-            red,
+            Style::new(),
         ),
-        (words!("screen-draw-left-never-said-so"), red),
+        (words!("screen-draw-left-never-said-so"), Style::new()),
         (words!("screen-draw-left-stop-one"), loud),
         (
             words!("screen-draw-left-status-says-more"),
@@ -166,10 +169,11 @@ fn counted_standing(standing: &Standing, silent_on: u64, width: usize) -> Vec<Li
             Style::new().fg(Color::DarkGray),
         ));
     } else {
-        lines.extend(broken(
+        lines.extend(marked(
             &words!("screen-draw-left-not-counted"),
             width,
-            Style::new().fg(Color::Red),
+            Color::Red,
+            Style::new(),
         ));
     }
     if silent_on != 0 {
@@ -291,7 +295,7 @@ mod tests {
         let watch = watching(vec![copy]);
         assert_eq!(
             english(&|| another_copy(&watch, 30)),
-            "ANOTHER COPY OF THIS NAME\nsays it is at\n192.0.2.9:3333\nin epoch 8.\n\
+            "\u{25cf} ANOTHER COPY OF THIS NAME\nsays it is at\n192.0.2.9:3333\nin epoch 8.\n\
              this node never said so.\nstop one of them.\n`333 status` says more.\n"
         );
         assert_eq!(
@@ -318,7 +322,7 @@ mod tests {
         };
         assert_eq!(
             english(&|| counted_standing(&short, 33, 30)),
-            "present in 100 of 300 — 33.3%\nnot counted. two of every\n\
+            "present in 100 of 300 — 33.3%\n\u{25cf} not counted. two of every\n  \
              three is all that is asked\nsilent on 33 of 333"
         );
         let enough = Standing {
@@ -357,7 +361,10 @@ mod tests {
             },
         };
         let said = text(&another_copy(&watching(vec![copy]), 30));
-        assert!(said.starts_with("ANOTHER COPY OF THIS NAME"), "{said}");
+        assert!(
+            said.starts_with("\u{25cf} ANOTHER COPY OF THIS NAME"),
+            "{said}"
+        );
         assert!(said.contains("192.0.2.9:3333") && said.contains("epoch 8"));
         assert!(
             another_copy(&watching(Vec::new()), 30).is_empty(),

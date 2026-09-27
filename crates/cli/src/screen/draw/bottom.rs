@@ -10,19 +10,21 @@ use n333_core::epoch;
 use n333_core::extinction::{Remaining, Verdict};
 use n333_core::signal::SIGNAL_COUNT;
 
+use super::MARK;
 use crate::screen::Saying;
 use crate::screen::watch::Watch;
 use crate::words::Arg;
 
 /// Whether anybody is here, and what is left if nobody is.
 pub(super) fn the_silence<'a>(watch: &'a Watch, wide: bool) -> Paragraph<'a> {
-    let (said, style) = match watch.vigil.verdict() {
+    let (said, mark, style) = match watch.vigil.verdict() {
         Verdict::NothingToSay => (
             if wide {
                 words!("screen-draw-bottom-never-answered-wide")
             } else {
                 words!("screen-draw-bottom-never-answered")
             },
+            None,
             Style::new().fg(Color::DarkGray),
         ),
         Verdict::Alive => (
@@ -31,6 +33,7 @@ pub(super) fn the_silence<'a>(watch: &'a Watch, wide: bool) -> Paragraph<'a> {
             } else {
                 words!("screen-draw-bottom-alive")
             },
+            Some(Color::Green),
             Style::new().fg(Color::DarkGray),
         ),
         Verdict::Waiting { silent, needed } => (
@@ -47,7 +50,8 @@ pub(super) fn the_silence<'a>(watch: &'a Watch, wide: bool) -> Paragraph<'a> {
                     needed = needed
                 )
             },
-            Style::new().fg(Color::Yellow),
+            Some(Color::Yellow),
+            Style::new(),
         ),
         Verdict::Ended { since } => (
             match watch.vigil.remaining_at(epoch::unix_now_seconds()) {
@@ -59,12 +63,19 @@ pub(super) fn the_silence<'a>(watch: &'a Watch, wide: bool) -> Paragraph<'a> {
                 ),
                 None => words!("screen-draw-bottom-ended-and-gone", since = since.0),
             },
-            Style::new().fg(Color::Red).add_modifier(Modifier::BOLD),
+            Some(Color::Red),
+            Style::new().add_modifier(Modifier::BOLD),
         ),
     };
     // A line broken over several in its catalog, to keep the file readable, is one
-    // line here, after the one space the bottom lines start with.
-    Paragraph::new(Line::styled(format!(" {}", said.replace('\n', " ")), style))
+    // line here, after the one space the bottom lines start with. The dot, when there
+    // is one, only says that this line changed colour; the words say what it means.
+    let mut line = vec![Span::raw(" ")];
+    if let Some(colour) = mark {
+        line.push(Span::styled(MARK, Style::new().fg(colour)));
+    }
+    line.push(Span::styled(said.replace('\n', " "), style));
+    Paragraph::new(Line::from(line))
 }
 
 /// The order words, as they are typed. The command line's own, in every language.

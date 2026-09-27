@@ -138,6 +138,35 @@ fn titled(name: String) -> Block<'static> {
         ))
 }
 
+/// The mark colour is allowed to be: a dot, with the words beside it carrying the
+/// meaning. A whole line in red is unreadable on a cheap screen, in sunlight and to
+/// somebody who cannot tell red from green, and on a terminal it sets the mood of
+/// everything around it.
+const MARK: &str = "\u{25cf} ";
+
+/// Words folded to `width`, the first line after a dot of `colour` and every further
+/// line lined up under the words rather than under the dot.
+fn marked(text: &str, width: usize, colour: Color, style: Style) -> Vec<Line<'static>> {
+    let room = width.saturating_sub(MARK.width()).max(1);
+    let mut lines = Vec::new();
+    for (at, line) in text
+        .split('\n')
+        .flat_map(|line| right::fold(line, room))
+        .enumerate()
+    {
+        let lead = if at == 0 {
+            Span::styled(MARK, Style::new().fg(colour))
+        } else {
+            Span::raw(" ".repeat(MARK.width()))
+        };
+        lines.push(Line::from(vec![
+            lead,
+            Span::styled(line.trim_start().to_owned(), style),
+        ]));
+    }
+    lines
+}
+
 /// Text followed by spaces to fill `columns` terminal columns, counted as a terminal
 /// counts them: a Korean label padded by its letters would push the number after it
 /// out of line by the width of the label.
