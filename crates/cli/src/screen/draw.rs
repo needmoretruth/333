@@ -31,6 +31,7 @@ use crate::commands::hours::to_the_boundary;
 use crate::words::Arg;
 
 use bottom::{the_keys, the_silence};
+
 use left::this_node;
 use right::vigil;
 
@@ -43,11 +44,12 @@ const TOO_NARROW: u16 = 62;
 /// Draw everything.
 pub(super) fn everything(frame: &mut Frame<'_>, watch: &Watch, log: &[String], saying: &Saying) {
     let twelve = counting_in_twelve();
+    let refused = bottom::refused(saying, frame.area().width);
     let [top, counting, middle, bottom] = Layout::vertical([
         Constraint::Length(1),
         Constraint::Length(u16::from(twelve.is_some())),
         Constraint::Min(3),
-        Constraint::Length(2),
+        Constraint::Length(2 + u16::try_from(refused.len()).unwrap_or(0)),
     ])
     .areas(frame.area());
 
@@ -67,9 +69,14 @@ pub(super) fn everything(frame: &mut Frame<'_>, watch: &Watch, log: &[String], s
         frame.render_widget(this_node(watch, left), left);
         frame.render_widget(vigil(log, right), right);
     }
-    let [silence, keys] =
-        Layout::vertical([Constraint::Length(1), Constraint::Length(1)]).areas(bottom);
+    let [silence, why, keys] = Layout::vertical([
+        Constraint::Length(1),
+        Constraint::Min(0),
+        Constraint::Length(1),
+    ])
+    .areas(bottom);
     frame.render_widget(the_silence(watch, silence.width), silence);
+    frame.render_widget(Paragraph::new(refused), why);
     frame.render_widget(the_keys(watch, saying, keys.width), keys);
     if matches!(saying, Saying::Keys) {
         keys::every_key(frame, frame.area());
@@ -186,10 +193,18 @@ fn ahead(text: &str, columns: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::screen::Entry;
     use ratatui::Terminal;
     use ratatui::backend::TestBackend;
 
     use crate::words::count::Base;
+
+    fn typed(typed: &str, refused: Option<&str>) -> Entry {
+        Entry {
+            typed: typed.to_owned(),
+            refused: refused.map(str::to_owned),
+        }
+    }
 
     /// Every row of the screen drawn at this size, as text, without trailing spaces.
     fn drawn(width: u16, height: u16, saying: &Saying) -> Vec<String> {
@@ -231,11 +246,11 @@ mod tests {
              all the keys   this node has not been given the file"
         );
         assert_eq!(
-            rows(Saying::Which("4".into()))[19],
+            rows(Saying::Which(typed("4", None)))[19],
             " say which of the 333? 4▏   enter to say it · esc to say nothing"
         );
         assert_eq!(
-            rows(Saying::Typing("pi".into()))[19],
+            rows(Saying::Typing(typed("pi", None)))[19],
             " : pi\u{258f}   ping · join · bootstrap · say · tor on · tor off · bridge · status · quit"
         );
     }
@@ -291,6 +306,27 @@ mod tests {
         ] {
             assert!(shown.contains(typed), "{typed} is missing from\n{shown}");
         }
+    }
+
+    #[test]
+    fn a_refusal_stays_beside_what_was_typed_until_it_is_mended() {
+        let refused = typed("ping", Some("that wants an address after it"));
+        let rows =
+            crate::words::speaking("en", Base::Ten, || drawn(48, 20, &Saying::Typing(refused)));
+        assert_eq!(rows[18], " \u{25cf} that wants an address after it");
+        assert_eq!(rows[19], " : ping\u{258f}");
+    }
+
+    #[test]
+    fn a_line_typed_past_the_edge_keeps_its_end_and_the_cursor_in_sight() {
+        let long = typed(&format!("join 333:{}:3333", "a".repeat(60)), None);
+        let rows = crate::words::speaking("en", Base::Ten, || drawn(48, 20, &Saying::Typing(long)));
+        assert!(
+            rows[19].starts_with(" : \u{2026}") && rows[19].ends_with("a:3333\u{258f}"),
+            "{}",
+            rows[19]
+        );
+        assert!(rows[19].width() <= 48);
     }
 
     #[test]

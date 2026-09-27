@@ -104,39 +104,72 @@ fn wide_verdict(watch: &Watch) -> String {
 
 /// What the keys do, or what is being typed.
 pub(super) fn the_keys<'a>(watch: &'a Watch, saying: &'a Saying, width: u16) -> Paragraph<'a> {
+    let width = usize::from(width);
+    if let Saying::Typing(entry) = saying {
+        let words = format!("   {ORDER_WORDS}");
+        return Paragraph::new(typing(" : ".to_owned(), &entry.typed, width, &words));
+    }
+    if let Saying::Which(entry) = saying {
+        let asked = format!(
+            " {} ",
+            words!("screen-draw-bottom-say-which", signals = SIGNAL_COUNT)
+        );
+        let keys = format!("   {}", words!("screen-draw-bottom-say-keys"));
+        return Paragraph::new(typing(asked, &entry.typed, width, &keys));
+    }
+    Paragraph::new(what_the_keys_do(watch, width))
+}
+
+/// What is being typed, after what it is being typed for, with the hint after it when
+/// the hint fits.
+///
+/// The end of what was typed is the part being typed, so on a line too narrow for all
+/// of it the beginning is what goes, and the cursor stays in sight.
+fn typing(asked: String, typed: &str, width: usize, hint: &str) -> Line<'static> {
     let bold = Style::new().add_modifier(Modifier::BOLD);
-    let grey = Style::new().fg(Color::DarkGray);
-    let wide = width >= super::TOO_NARROW;
-    if let Saying::Typing(typed) = saying {
-        let mut asked = vec![
-            Span::styled(" : ", bold),
-            Span::styled(format!("{typed}\u{258f}"), bold),
-        ];
-        if wide {
-            asked.push(Span::styled(format!("   {ORDER_WORDS}"), grey));
-        }
-        return Paragraph::new(Line::from(asked));
+    let room = width.saturating_sub(asked.width() + 1);
+    let (mut shown, cut) = (typed, typed.width() > room);
+    while cut && !shown.is_empty() && shown.width() + 1 > room {
+        let mut letters = shown.chars();
+        letters.next();
+        shown = letters.as_str();
     }
-    if let Saying::Which(typed) = saying {
-        let mut asked = vec![
-            Span::styled(
-                format!(
-                    " {} ",
-                    words!("screen-draw-bottom-say-which", signals = SIGNAL_COUNT)
-                ),
-                bold,
-            ),
-            Span::styled(format!("{typed}▏"), bold),
-        ];
-        if wide {
-            asked.push(Span::styled(
-                format!("   {}", words!("screen-draw-bottom-say-keys")),
-                grey,
-            ));
-        }
-        return Paragraph::new(Line::from(asked));
+    let mut spans = vec![
+        Span::styled(asked, bold),
+        Span::styled(
+            format!("{}{shown}\u{258f}", if cut { "\u{2026}" } else { "" }),
+            bold,
+        ),
+    ];
+    let used: usize = spans.iter().map(|span| span.content.width()).sum();
+    if used + hint.width() <= width {
+        spans.push(Span::styled(
+            hint.to_owned(),
+            Style::new().fg(Color::DarkGray),
+        ));
     }
-    Paragraph::new(what_the_keys_do(watch, usize::from(width)))
+    Line::from(spans)
+}
+
+/// Why the last line typed was refused, folded to fit, under the verdict and over the
+/// line being typed. Nothing when nothing was refused.
+pub(super) fn refused(saying: &Saying, width: u16) -> Vec<Line<'static>> {
+    let (Saying::Typing(entry) | Saying::Which(entry)) = saying else {
+        return Vec::new();
+    };
+    let Some(why) = &entry.refused else {
+        return Vec::new();
+    };
+    let mut lines = super::marked(
+        why,
+        usize::from(width).saturating_sub(1),
+        Color::Red,
+        Style::new(),
+    );
+    for line in &mut lines {
+        line.spans.insert(0, Span::raw(" "));
+    }
+    lines
 }
 
 /// The four keys, with as much said about each as fits, so that the keys themselves are

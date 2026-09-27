@@ -50,11 +50,37 @@ pub(super) enum Saying {
     /// Nothing. Watching.
     Nothing,
     /// Typing which of the 333 to say.
-    Which(String),
+    Which(Entry),
     /// Typing anything the terminal can be told, in the terminal's own words.
-    Typing(String),
+    Typing(Entry),
     /// Reading every key and every order word, until any key is pressed.
     Keys,
+}
+
+/// A line being typed, and why the last try at it was refused, if it was.
+///
+/// The refusal stays beside what was typed, with the typing, so that a person who
+/// mistyped one letter mends that letter instead of typing the whole line again.
+#[derive(Default)]
+pub(super) struct Entry {
+    /// What has been typed so far.
+    pub(super) typed: String,
+    /// Why pressing enter on it did nothing, until the next key changes it.
+    pub(super) refused: Option<String>,
+}
+
+impl Entry {
+    /// One more letter, which makes the old refusal about a different line.
+    fn push(&mut self, letter: char) {
+        self.typed.push(letter);
+        self.refused = None;
+    }
+
+    /// One letter fewer.
+    fn pop(&mut self) {
+        self.typed.pop();
+        self.refused = None;
+    }
 }
 
 /// Is there a terminal here that wants a screen?
@@ -160,14 +186,14 @@ async fn pressed(
         Saying::Nothing => match key {
             KeyCode::Char('q' | 'Q') | KeyCode::Esc => Pressed::Leave,
             KeyCode::Char('s' | 'S') => {
-                *saying = Saying::Which(String::new());
+                *saying = Saying::Which(Entry::default());
                 Pressed::Carry
             }
             // Everything the terminal can be told, told here. The node holding these
             // files is this one, so the same words typed in another terminal are handed
             // to this process too, rather than opening files it is writing.
             KeyCode::Char(':') => {
-                *saying = Saying::Typing(String::new());
+                *saying = Saying::Typing(Entry::default());
                 Pressed::Carry
             }
             KeyCode::Char('?') => {
@@ -182,77 +208,92 @@ async fn pressed(
             *saying = Saying::Nothing;
             Pressed::Carry
         }
-        Saying::Typing(typed) => match key {
+        Saying::Typing(entry) => match key {
             KeyCode::Esc => {
                 *saying = Saying::Nothing;
                 Pressed::Carry
             }
             KeyCode::Char(letter) => {
-                typed.push(letter);
+                entry.push(letter);
                 Pressed::Carry
             }
             KeyCode::Backspace => {
-                typed.pop();
+                entry.pop();
                 Pressed::Carry
             }
-            KeyCode::Enter => {
-                // Echoed as it was typed rather than as it was understood. A person who
-                // mistyped wants to see what they typed, and the shape of the thing this
-                // program turned it into is not something they asked to be shown.
-                let said = words!("screen-asked", typed = typed.trim());
-                let asked = Order::read(typed);
-                *saying = Saying::Nothing;
-                match asked {
-                    Ok(Order::Leave) => Pressed::Leave,
-                    // Carried out where the dialler and the listeners are, which is not
-                    // here: this is a drawing, and a drawing that opened connections
-                    // would be a second node inside the first.
-                    Ok(order) => {
-                        if orders.send(order).is_err() {
-                            return Pressed::Said(words!("screen-unheard"));
-                        }
-                        Pressed::Said(said)
+            KeyCode::Enter => match Order::read(&entry.typed) {
+                Ok(Order::Leave) => Pressed::Leave,
+                // Carried out where the dialler and the listeners are, which is not
+                // here: this is a drawing, and a drawing that opened connections would
+                // be a second node inside the first.
+                Ok(order) => {
+                    // Echoed as it was typed rather than as it was understood. A person
+                    // who mistyped wants to see what they typed, and the shape of the
+                    // thing this program turned it into is not something they asked to
+                    // be shown.
+                    let said = words!("screen-asked", typed = entry.typed.trim());
+                    *saying = Saying::Nothing;
+                    if orders.send(order).is_err() {
+                        return Pressed::Said(words!("screen-unheard"));
                     }
-                    Err(why) => Pressed::Said(words!("screen-unread", why = why.to_string())),
+                    Pressed::Said(said)
                 }
-            }
+                Err(why) => {
+                    let why = why.to_string();
+                    let said = words!("screen-unread", why = why.as_str());
+                    entry.refused = Some(why);
+                    Pressed::Said(said)
+                }
+            },
             _ => Pressed::Carry,
         },
-        Saying::Which(typed) => match key {
+        Saying::Which(entry) => match key {
             KeyCode::Esc => {
                 *saying = Saying::Nothing;
                 Pressed::Carry
             }
-            // Three digits is all there is: the largest of them is 332.
-            KeyCode::Char(digit @ '0'..='9') if typed.len() < 3 => {
-                typed.push(digit);
+            // Three digits is all there is, in ten or in twelve: the largest of them is
+            // 332, or 238. A digit is whatever reads as one in the base this person
+            // counts in, so ten and eleven can be typed as well as shown.
+            KeyCode::Char(digit)
+                if entry.typed.chars().count() < 3
+                    && !digit.is_whitespace()
+                    && crate::words::count::read(&format!("{}{digit}", entry.typed)).is_some() =>
+            {
+                entry.push(digit);
                 Pressed::Carry
             }
             KeyCode::Backspace => {
-                typed.pop();
+                entry.pop();
                 Pressed::Carry
             }
-            KeyCode::Enter => {
-                let said = say_it(node, typed).await;
-                *saying = Saying::Nothing;
-                Pressed::Said(said)
-            }
+            KeyCode::Enter => match crate::words::count::index(&entry.typed)
+                .filter(|index| usize::from(*index) < usize::from(SIGNAL_COUNT))
+            {
+                Some(index) => {
+                    let said = say_it(node, index).await;
+                    *saying = Saying::Nothing;
+                    Pressed::Said(said)
+                }
+                None => {
+                    let why = words!(
+                        "say-not-one",
+                        count = SIGNAL_COUNT,
+                        last = SIGNAL_COUNT - 1,
+                        typed = entry.typed.as_str()
+                    );
+                    let said = words!("screen-refused", why = why.as_str());
+                    entry.refused = Some(why);
+                    Pressed::Said(said)
+                }
+            },
             _ => Pressed::Carry,
         },
     }
 }
 
 /// Say one of the 333, and say what happened either way.
-async fn say_it(node: &Arc<Node>, typed: &str) -> String {
-    let Some(index) = crate::words::count::index(typed) else {
-        let why = words!(
-            "say-not-one",
-            count = SIGNAL_COUNT,
-            last = SIGNAL_COUNT - 1,
-            typed = typed
-        );
-        return words!("screen-refused", why = why);
-    };
+async fn say_it(node: &Arc<Node>, index: u16) -> String {
     match crate::commands::say::speak(node, index).await {
         // Saying it says its own lines; there is nothing to add here.
         Ok(()) => String::new(),
