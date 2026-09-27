@@ -18,6 +18,12 @@ path = "src/main.rs"
 # must not be able to reach it with `.workspace = true`. Typed access to the output
 # of `cargo metadata`, so that the dependency graph is read rather than parsed. MIT.
 cargo_metadata = "0.23.1"
+# Declared here for the same reason. Reads the SPDX expressions the manifests declare —
+# `MIT OR Apache-2.0`, `(MIT OR Apache-2.0) AND Unicode-3.0`, the old `MIT/Apache-2.0`
+# — as expressions rather than strings, so that the licence check below asks what a
+# package may be taken under instead of matching text. Apache-2.0; with no features it
+# brings only smallvec, which the tree already has, and nothing of it is in a release.
+spdx = "0.13.5"
 
 # Already in the tree, so none of these adds a licence to account for.
 # anyhow carries the reason a run failed; clap refuses an unknown flag rather than

@@ -9,12 +9,15 @@
 //! Keeping such a file by hand does not work; it goes stale on the first `cargo
 //! update` and nobody notices for a year. So it is generated from the dependency
 //! graph, and `--check` regenerates it in memory and fails if the file on disk has
-//! drifted, which is what runs on every push.
+//! drifted, which is what runs on every push. `--licences` reads the same graph and
+//! fails if any package in it carries a licence the tree has not carried before; see
+//! `ratchet.rs`.
 //!
 //! This crate is a tool. Nothing that ships depends on it.
 
 mod graph;
 mod licences;
+mod ratchet;
 mod render;
 
 use anyhow::{Context, Result};
@@ -24,19 +27,37 @@ use std::collections::BTreeSet;
 /// How many changed packages are worth naming before a count says the rest.
 const NAMED_IN_SUMMARY: usize = 20;
 
-/// Two modes and no more: write the file, or say whether it is current.
+/// Write the file, say whether it is current, or say whether every licence in the graph
+/// is one the tree already carries.
 #[derive(Parser)]
 #[command(about = "Writes THIRD-PARTY.md from the dependency graph of the released binaries.")]
 struct Args {
     /// Regenerate in memory and fail if what is on disk differs. Changes nothing.
     #[arg(long)]
     check: bool,
+
+    /// Fail if a released package carries a licence the tree has not carried before, or
+    /// one that is never taken. Reads the graph only, and changes nothing.
+    #[arg(long, conflicts_with = "check")]
+    licences: bool,
 }
 
 fn main() -> Result<()> {
     let args = Args::parse();
     let repository = graph::locate()?;
     let shipped = graph::shipped(&repository.released_manifest)?;
+    if args.licences {
+        let stopped = ratchet::check(&shipped);
+        if stopped.is_empty() {
+            println!(
+                "Every licence is one the tree already carries: {} packages.",
+                shipped.len()
+            );
+            return Ok(());
+        }
+        eprint!("{}", ratchet::report(&stopped));
+        std::process::exit(1);
+    }
     let corpus = licences::gather(&shipped);
     let regenerated = render::document(&shipped, &corpus);
     let path = repository.root.join(render::FILE);

@@ -25,6 +25,13 @@ jobs:
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo clippy --workspace --no-default-features --all-targets --locked -- -D warnings
       - run: cargo test --workspace --locked
+      # A ratchet, not a verdict: the licences the released graph carries today, frozen
+      # in crates/notices/src/ratchet.rs. A dependency that brings a new one stops here
+      # with its name, so that taking it is a decision somebody wrote down rather than
+      # something a `cargo update` did. GPL, AGPL, SSPL and BUSL are refused even as one
+      # choice among several, and the LGPL is taken only beside something else.
+      - name: No licence the tree has not carried before
+        run: cargo run -p n333-notices --locked -- --licences
       # The released binaries are statically linked and carry five hundred-odd other
       # people's packages, whose licences ask that their notices go along with the
       # copies. THIRD-PARTY.md is that, generated from the dependency graph rather
