@@ -128,7 +128,7 @@ async fn main() -> anyhow::Result<ExitCode> {
             no_direct,
             announce,
             no_mdns,
-            no_upnp,
+            no_router,
             meet,
             no_meet,
             plain,
@@ -142,7 +142,7 @@ async fn main() -> anyhow::Result<ExitCode> {
                     nearby: !no_mdns,
                     meet: (!no_meet).then_some(meet),
                     plain,
-                    ask_the_router: !no_upnp,
+                    ask_the_router: !no_router,
                 },
             )
             .await

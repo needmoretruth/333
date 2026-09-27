@@ -38,6 +38,7 @@ bundled = [
 
 [dependencies]
 igd-next = { workspace = true }
+crab_nat.workspace = true
 n333-core.workspace = true
 futures.workspace = true
 mdns-sd.workspace = true

@@ -141,11 +141,12 @@ pub(crate) enum Command {
         ///
         /// Asking is what makes a socket on a home connection answer anybody: the
         /// router in front of it drops what nobody inside asked for until a program on
-        /// the inside asks it not to, over a protocol most of them already speak. It is
-        /// a real change to somebody's network, so it is said out loud when it is made
-        /// and this refuses it outright.
-        #[arg(long)]
-        no_upnp: bool,
+        /// the inside asks it not to, over UPnP-IGD, PCP or NAT-PMP, one of which most
+        /// of them already speak. It is a real change to somebody's network, so it is
+        /// said out loud when it is made and this refuses it outright. `--no-upnp` is
+        /// the older name for the same thing, from when UPnP was all that was asked.
+        #[arg(long, visible_alias = "no-upnp")]
+        no_router: bool,
 
         /// Where to look for nodes nobody introduced this one to.
         ///

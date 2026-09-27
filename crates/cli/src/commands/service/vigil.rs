@@ -95,7 +95,7 @@ pub(crate) fn write(cli: crate::Cli, exe: PathBuf) -> anyhow::Result<Vigil> {
         no_direct,
         announce,
         no_mdns,
-        no_upnp,
+        no_router,
         meet,
         no_meet,
         plain: _,
@@ -141,7 +141,7 @@ pub(crate) fn write(cli: crate::Cli, exe: PathBuf) -> anyhow::Result<Vigil> {
     flag(tor, "--tor");
     flag(no_direct, "--no-direct");
     flag(no_mdns, "--no-mdns");
-    flag(no_upnp, "--no-upnp");
+    flag(no_router, "--no-router");
     flag(no_meet, "--no-meet");
     if let Some(announce) = announce {
         serve.extend(["--announce".to_owned(), announce.to_string()]);

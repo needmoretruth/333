@@ -201,17 +201,18 @@ pub(crate) async fn run(common: &Common, how: Vigil) -> anyhow::Result<()> {
              \x20        there is believed. --no-meet keeps this node away from it.",
             board.place()
         );
-        if let Some(bound) = bound_at {
-            reach::tell_them(
-                board.clone(),
-                dialer.clone(),
-                Arc::clone(&node),
-                bound,
-                found_address.clone(),
-                ask_the_router,
-            );
-        }
     }
+    let lent = bound_at.map(|bound| {
+        let (board, dialer, node) = (board.clone(), dialer.clone(), Arc::clone(&node));
+        reach::tell_them(
+            board,
+            dialer,
+            node,
+            bound,
+            found_address.clone(),
+            ask_the_router,
+        )
+    });
 
     // What the screen asked for, and what other terminals hand over, done where the
     // dialler is. Before the hours, so that a person who types at once is answered
@@ -250,6 +251,9 @@ pub(crate) async fn run(common: &Common, how: Vigil) -> anyhow::Result<()> {
         // at the terminal to read this, and one arm is one arm on every system rather
         // than a second unix-only path.
         () = async { tokio::signal::ctrl_c().await.ok(); } => {}
+    }
+    if let Some(lent) = lent {
+        lent.give_back().await;
     }
     farewell();
     Ok(())

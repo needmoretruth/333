@@ -58,6 +58,13 @@ tor-rtcompat = "=0.46.0"
 # does and the reason it works on a home connection without anybody configuring
 # anything. Only the tokio half is taken; the crate's own HTTP stack comes with it.
 igd-next = { version = "0.17.1", default-features = false, features = ["aio_tokio"] }
+# The same, for the routers that speak PCP or NAT-PMP instead: Apple's, many providers'
+# boxes, OpenWrt. Pure Rust, no unsafe, one small UDP message each way, no features to
+# choose. bytes, rand, displaydoc, thiserror and tokio are already in every edition;
+# num_enum (and its derive macro) is already in the Tor editions through arti and is the
+# only package the smallest edition gains besides this one. Measured on the smallest
+# release binary: about 90 KB.
+crab_nat = "0.8.1"
 tor-error = "=0.46.0"
 safelog = "0.9"
 futures = "0.3"
