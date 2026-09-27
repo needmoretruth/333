@@ -28,6 +28,9 @@
 // First, so that everything below it can say something out loud.
 #[macro_use]
 mod aloud;
+// Second, so that everything below it can say something in the reader's language.
+#[macro_use]
+mod words;
 mod archive;
 mod began;
 mod claim;
@@ -105,6 +108,9 @@ async fn run() -> anyhow::Result<ExitCode> {
         trust_directory_permissions: cli.dangerously_trust_directory_permissions,
     };
 
+    // Before anything is said, because everything that is said is said in these.
+    words::install(cli.language.as_deref(), cli.count_in, common.paths.root());
+
     // First of all, because it is the one thing a person who has stopped being counted
     // most needs to hear, and they hear it from whichever command they typed. Not from
     // the ones that keep the vigil or set it up: those are the answer to it. And not
@@ -134,6 +140,11 @@ async fn run() -> anyhow::Result<ExitCode> {
         return commands::service::run(&common, order)
             .await
             .map(|()| ExitCode::SUCCESS);
+    }
+
+    // The catalogs are read, and nothing of the node, so a running vigil need not be asked.
+    if let Command::Languages = cli.command {
+        return commands::languages::run(&common).map(|()| ExitCode::SUCCESS);
     }
 
     // Unpacking takes the directory itself: it may not exist yet, and it has to be
@@ -180,7 +191,10 @@ async fn run() -> anyhow::Result<ExitCode> {
         Command::Bootstrap { meet, anyway } => {
             commands::bootstrap::run(&common, &meet, anyway).await
         }
-        Command::Say { index } => commands::say::run(&common, index).await,
+        Command::Say { index } => match commands::say::read_index(&index) {
+            Ok(index) => commands::say::run(&common, index).await,
+            Err(e) => Err(e),
+        },
         Command::Status { sources, json } => {
             commands::status::run(&common, commands::status::Show::of(sources, json)).await
         }
@@ -190,7 +204,7 @@ async fn run() -> anyhow::Result<ExitCode> {
         Command::Moved => commands::moved::run(&common),
         Command::Tell { .. } => return Ok(commands::elsewhere::nobody_to_tell()),
         // Dispatched above, before the directory is taken.
-        Command::Service { .. } | Command::Unpack { .. } => Ok(()),
+        Command::Service { .. } | Command::Unpack { .. } | Command::Languages => Ok(()),
     };
     done.map(|()| ExitCode::SUCCESS)
 }

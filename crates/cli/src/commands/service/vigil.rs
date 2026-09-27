@@ -87,6 +87,8 @@ pub(crate) fn write(cli: crate::Cli, exe: PathBuf) -> anyhow::Result<Vigil> {
         keep_everything,
         bridges,
         bridge_helper,
+        language: _,
+        count_in: _,
         command,
     } = cli;
     let crate::Command::Serve {

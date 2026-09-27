@@ -8,6 +8,7 @@ pub(crate) mod elsewhere;
 pub(crate) mod hours;
 pub(crate) mod id;
 pub(crate) mod join;
+pub(crate) mod languages;
 pub(crate) mod moved;
 pub(crate) mod pack;
 pub(crate) mod ping;
@@ -86,16 +87,10 @@ pub(crate) fn shorten(name: &str) -> String {
 }
 
 /// A number with its digits in threes, which is how a person reads a large one.
+///
+/// In the base this client counts in, like every count a person reads.
 pub(crate) fn in_threes(number: u64) -> String {
-    let digits = number.to_string();
-    let mut grouped = String::with_capacity(digits.len() + digits.len() / 3);
-    for (place, digit) in digits.chars().enumerate() {
-        if place != 0 && (digits.len() - place).is_multiple_of(3) {
-            grouped.push(',');
-        }
-        grouped.push(digit);
-    }
-    grouped
+    crate::words::count::write(number, true, 0)
 }
 
 /// The one address written into this client.

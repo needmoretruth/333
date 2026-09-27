@@ -34,6 +34,10 @@ n333-store.workspace = true
 anyhow.workspace = true
 clap.workspace = true
 directories.workspace = true
+fluent-bundle.workspace = true
+fluent-syntax.workspace = true
+intl-memoizer.workspace = true
+include_dir.workspace = true
 humantime.workspace = true
 tar.workspace = true
 ratatui = { workspace = true, optional = true }
@@ -44,6 +48,8 @@ serde_json.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
+unic-langid.workspace = true
+unicode-width.workspace = true
 
 [lints]
 workspace = true

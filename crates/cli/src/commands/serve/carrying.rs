@@ -177,7 +177,7 @@ impl Carrier {
 
     /// Say one of the 333 in this epoch.
     async fn say(&self, which: &str) -> bool {
-        let Ok(index) = which.parse::<u16>() else {
+        let Some(index) = crate::words::count::index(which) else {
             aloud!(
                 "refused  there are {} of them, numbered 0 to {}. \"{which}\" is not one.",
                 n333_core::signal::SIGNAL_COUNT,

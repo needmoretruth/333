@@ -28,6 +28,23 @@ pub(crate) async fn run(common: &Common, index: u16) -> anyhow::Result<()> {
     speak(&node, index).await
 }
 
+/// Read which of the 333 a person typed, in the base they count in.
+///
+/// # Errors
+/// Fails, saying how many there are, for anything that is not one of them.
+pub(crate) fn read_index(typed: &str) -> anyhow::Result<u16> {
+    crate::words::count::index(typed)
+        .filter(|index| Signal::new(*index).is_some())
+        .ok_or_else(|| {
+            anyhow::anyhow!(words!(
+                "say-not-one",
+                count = SIGNAL_COUNT,
+                last = SIGNAL_COUNT - 1,
+                typed = typed
+            ))
+        })
+}
+
 /// Say one of the 333, on a node that is already open.
 ///
 /// Shared with the screen, where saying something is the one act of taking part a

@@ -233,7 +233,7 @@ async fn pressed(
 
 /// Say one of the 333, and say what happened either way.
 async fn say_it(node: &Arc<Node>, typed: &str) -> String {
-    let Ok(index) = typed.parse::<u16>() else {
+    let Some(index) = crate::words::count::index(typed) else {
         return format!(
             "refused  there are {SIGNAL_COUNT} of them, numbered 0 to {}. \"{typed}\" is not one.",
             SIGNAL_COUNT - 1

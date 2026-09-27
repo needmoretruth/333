@@ -12,6 +12,7 @@ use clap::{Parser, Subcommand};
 use crate::commands;
 use crate::commands::elsewhere::Wanted;
 use crate::version;
+use crate::words;
 use n333_net::PeerAddress;
 
 /// One node of the 333 network.
@@ -72,6 +73,25 @@ pub(crate) struct Cli {
     /// within a year while looking like the right one.
     #[arg(long, global = true, value_name = "PROGRAM")]
     pub(crate) bridge_helper: Option<String>,
+
+    /// The language to speak, as a tag: `ko`, `es`, `zh-Hant`.
+    ///
+    /// Without it, `THE333_LANGUAGE`, then the system's locale, then English.
+    /// `333 languages` lists the languages there are words for, and a folder of
+    /// catalogs in `<data-dir>/words/<tag>/` adds one without building anything.
+    /// The 333 words themselves are never translated.
+    #[arg(long, global = true, value_name = "TAG")]
+    pub(crate) language: Option<String>,
+
+    /// Count in ten, twelve, or twelve-ascii.
+    ///
+    /// Every count shown is written in it, and every number typed is read in it:
+    /// `say 239` in twelve is the same signal as `say 333` in ten. Names, addresses,
+    /// ports and versions are never re-counted, and nothing on the wire changes.
+    /// Twelve is written with ↊ and ↋, or with X and E where the terminal cannot show
+    /// them. Without it, `THE333_COUNT_IN`, then ten.
+    #[arg(long, global = true, value_name = "BASE", value_parser = words::count::Base::named)]
+    pub(crate) count_in: Option<words::count::Base>,
 
     #[command(subcommand)]
     pub(crate) command: Command,
@@ -174,9 +194,10 @@ pub(crate) enum Command {
     },
     /// Speak one of the 333, once in this epoch. What travels is the number.
     Say {
-        /// Which of them, from 0 to 332. The words are not written yet.
+        /// Which of them, from 0 to 332, typed in the base this counts in
+        /// (--count-in). The words are not written yet.
         #[arg(value_name = "INDEX")]
-        index: u16,
+        index: String,
     },
     /// Show what this node has seen: how many of us are answering, where this node
     /// stands over the window, and how much of the silence is left if it has begun.
@@ -199,6 +220,8 @@ pub(crate) enum Command {
         #[arg(value_parser = n333_net::invite::address_or_invite)]
         address: PeerAddress,
     },
+    /// List the languages there are words for, and how much of each is written.
+    Languages,
     /// Knock on another node, and exchange one heartbeat with it.
     Ping {
         /// An invitation (`333:host:port`), or an address typed by hand as `host`,
@@ -292,6 +315,9 @@ impl Command {
             ),
             // Never asked: `unpack` takes the directory itself, and refuses on its own.
             Self::Unpack { .. } => Wanted::Kept(commands::unpack::KEPT),
+            // Never asked: `languages` reads the catalogs, not the node, and is dispatched
+            // before the directory is taken.
+            Self::Languages => Wanted::Kept("it reads the catalogs, not the vigil."),
             // Never asked: `service` is dispatched before the directory is taken, because
             // it asks the service manager and reads the awake stamp and nothing else.
             Self::Service { .. } => Wanted::Kept("it asks the service manager, not the vigil."),

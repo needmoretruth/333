@@ -141,6 +141,28 @@ openssl-sys = "0.9.117"
 # The calendar widget and the macros are left out; nothing here uses them.
 ratatui = { version = "0.30.2", default-features = false, features = ["crossterm", "layout-cache", "underline-color"] }
 
+# --- the words a person reads -----------------------------------------------------
+# Project Fluent: the catalogs are `.ftl` files a translator can read, and plurals and
+# select expressions follow each language's own rules (CLDR) instead of English's, so
+# adding a language is adding a folder. It costs about 190 KB of release binary over a
+# probe of a hand-rolled key-and-value format, on both editions, and the whole of the
+# words as built (these, the two below, the code and two catalogs) about 320 KB; the
+# measurements are in crates/cli/src/words.rs. What a hand-rolled format would have
+# lacked is the plural rules, which it would have to grow in Rust for each language.
+# The other three are what its API is made of and are already in the tree through it.
+fluent-bundle = "=0.16.0"
+fluent-syntax = "=0.12.0"
+intl-memoizer = "=0.5.3"
+unic-langid = "=0.9.6"
+# Puts the whole `words/` folder into the binary at compile time, so a new language is
+# a new folder and no Rust names it. A proc macro and a small reader; about 14 KB with
+# the width tables below.
+include_dir = "=0.7.4"
+# How many columns a character takes on a terminal, so a keyword in Korean or Chinese
+# still ends where an English one does. Already in the Standard edition through the
+# screen; the Light edition pays for its tables here.
+unicode-width = "0.2.2"
+
 n333-core = { path = "crates/core" }
 # default-features off at the root so each edition names what it wants; the CLI
 # turns "tor" back on through its own feature of the same name.
