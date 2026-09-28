@@ -112,10 +112,17 @@ impl Log {
         let size = Self::size(&file, path)?;
         let truncated = size - whole;
         if truncated != 0 {
-            file.set_len(whole).map_err(|source| Error::Io {
-                path: path.to_path_buf(),
-                source,
-            })?;
+            // Through a second handle opened to write: one opened to append may add to
+            // the file and nothing else on Windows, where shortening it through that
+            // one is refused, and the node could not open its own record at all.
+            OpenOptions::new()
+                .write(true)
+                .open(path)
+                .and_then(|writing| writing.set_len(whole))
+                .map_err(|source| Error::Io {
+                    path: path.to_path_buf(),
+                    source,
+                })?;
         }
         Ok((
             Self {
