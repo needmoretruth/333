@@ -75,7 +75,7 @@ pub(crate) async fn knock(
         })?
         .with_context(|| words!("ping-exchanging"))?;
 
-    aloud!("{}", describe(&exchange));
+    crate::aloud::line(&describe(&exchange));
     Ok(exchange.peer.node_id)
 }
 

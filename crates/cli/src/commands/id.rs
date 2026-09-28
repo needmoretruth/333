@@ -16,13 +16,10 @@ pub(crate) fn run(common: &Common) -> anyhow::Result<()> {
     // Out loud, like every other command, so that a reader who walks away after the
     // first lines (`333 id | head -2`) ends the output rather than the program.
     for line in said(&identity.node_id().to_string(), origin, home) {
-        aloud!("{line}");
+        crate::aloud::line(&line);
     }
     crate::named::report(origin, home);
-    aloud!(
-        "{}",
-        crate::began::describe(crate::began::read(home).as_ref())
-    );
+    crate::aloud::line(&crate::began::describe(crate::began::read(home).as_ref()));
     Ok(())
 }
 
@@ -30,7 +27,7 @@ pub(crate) fn run(common: &Common) -> anyhow::Result<()> {
 /// the directory: the run that made the name is long past.
 pub(crate) fn beside_the_vigil(name: &str, home: &Path) {
     for line in said(name, Origin::Loaded, home) {
-        aloud!("{line}");
+        crate::aloud::line(&line);
     }
 }
 

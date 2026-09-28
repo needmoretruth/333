@@ -84,7 +84,7 @@ pub(crate) async fn run(
 
 /// Refuse, when the vigil is kept here and what was asked is not for it to do.
 fn keeping(who: &str, why: &str) -> ExitCode {
-    aloud!("{}", kept(who, why));
+    crate::aloud::line(&kept(who, why));
     ExitCode::FAILURE
 }
 

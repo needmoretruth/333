@@ -234,7 +234,7 @@ async fn exchange(
             Heard::Unknown => {}
         }
     }
-    anyhow::bail!("the vigil stopped answering before it said whether that was done")
+    anyhow::bail!(words!("control-stopped-answering"))
 }
 
 /// Nothing can be handed over on this system yet; see the module's last paragraph.
@@ -268,6 +268,17 @@ mod tests {
     /// The request of a client that does not say how it reads.
     fn request(order: &str) -> String {
         request_read_as(order, "", "")
+    }
+
+    #[test]
+    fn in_english_the_moved_line_says_exactly_what_it_said_before() {
+        let said = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+            words!("control-stopped-answering")
+        });
+        assert_eq!(
+            said,
+            "the vigil stopped answering before it said whether that was done"
+        );
     }
 
     #[test]

@@ -15,7 +15,7 @@ use crate::identity_file::Origin;
 /// told less because of which command they typed first.
 pub(crate) fn report(origin: Origin, home: &Path) {
     for line in said(origin, home) {
-        aloud!("{line}");
+        crate::aloud::line(&line);
     }
 }
 

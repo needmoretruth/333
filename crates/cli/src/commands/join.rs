@@ -67,7 +67,7 @@ pub(crate) async fn ask(
         let exchange = n333_net::initiate(&mut stream, node.identity())
             .await
             .with_context(|| words!("join-exchanging"))?;
-        aloud!("{}", describe(&exchange));
+        crate::aloud::line(&describe(&exchange));
         node.answered_at(&address.to_string(), exchange.peer.node_id)
             .await;
         n333_net::handover::ask(&mut stream, node.identity(), Epoch::now())
@@ -87,10 +87,10 @@ pub(crate) async fn ask(
         "join-given",
         giver = taken.handover.transfer.giver().to_string()
     );
-    aloud!(
-        "{}",
-        crate::commands::what_was_signed(&taken.handover.transfer, false)
-    );
+    crate::aloud::line(&crate::commands::what_was_signed(
+        &taken.handover.transfer,
+        false,
+    ));
     aloud_in!("join-joined", epoch = joined.0);
     node.receive(taken.subject).await?;
     aloud_in!("join-holding");

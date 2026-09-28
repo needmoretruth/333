@@ -75,7 +75,7 @@ pub(crate) fn load_or_create(
         Ok(bytes) => {
             let identity = from_seed_bytes(&bytes, &seed)?;
             if let Some(elsewhere) = crate::dwelling::check_here(&home)? {
-                aloud!("{elsewhere}");
+                crate::aloud::line(&elsewhere);
             }
             Ok((identity, Origin::Loaded))
         }

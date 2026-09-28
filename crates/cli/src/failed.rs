@@ -45,11 +45,20 @@ pub(crate) fn is_our_own(error: &anyhow::Error) -> bool {
 /// is; only a failure of this node's own record is not a refusal. Said by the vigil,
 /// for an order typed into its screen or handed to it from another terminal.
 pub(crate) fn not_said(error: &anyhow::Error) -> String {
-    if is_our_own(error) {
-        format!("failed   {error:#}")
+    let text = format!("{error:#}");
+    let mut lines = text.splitn(2, '\n');
+    let first = lines.next().unwrap_or_default();
+    let mut said = if is_our_own(error) {
+        words!("failed-failed", why = first)
     } else {
-        format!("refused  {error:#}")
+        words!("failed-refused", why = first)
+    };
+    // What a refusal says after its first line follows as the refusal wrote it.
+    if let Some(rest) = lines.next() {
+        said.push('\n');
+        said.push_str(rest);
     }
+    said
 }
 
 /// A failed command, as the lines this client says.
@@ -64,7 +73,7 @@ pub(crate) fn said(error: &anyhow::Error) -> String {
         .map(ToString::to_string)
         .filter(|sentence| Some(sentence.as_str()) != step)
         .collect();
-    let mut text = format!("failed   {}", chain.join(": "));
+    let mut text = words!("failed-failed", why = chain.join(": "));
     if let Some(step) = step {
         text.push('\n');
         text.push_str(step);
@@ -83,6 +92,23 @@ pub(crate) fn said(error: &anyhow::Error) -> String {
 mod tests {
     use super::*;
     use anyhow::Context as _;
+
+    #[test]
+    fn in_english_a_refusal_the_vigil_says_is_exactly_what_it_said_before() {
+        let refusal = anyhow::anyhow!(
+            "you already said #3 in epoch 9. One each, and saying it again would\n\
+             not replace it."
+        );
+        let own = anyhow::Error::new(n333_store::log::Error::TooLongToWrite { got: 9 })
+            .context("writing");
+        let said = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+            [not_said(&refusal), not_said(&own)]
+        });
+        assert_eq!(
+            said,
+            [format!("refused  {refusal:#}"), format!("failed   {own:#}"),]
+        );
+    }
 
     #[test]
     fn the_whole_chain_is_said_and_not_only_the_outermost() {

@@ -85,7 +85,7 @@ pub(crate) async fn speak(node: &Node, index: u16) -> anyhow::Result<()> {
 
     // The invocation is a formula, counted in words, and is said in these words in
     // every language.
-    aloud!("{}", crate::commands::INVOCATION);
+    crate::aloud::line(crate::commands::INVOCATION);
     aloud_in!("say-said", index = index, epoch = now.0);
     aloud_in!(
         "say-goes-out",

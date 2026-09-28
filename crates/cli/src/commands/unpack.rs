@@ -271,10 +271,7 @@ fn say_it_is_here(target: &Path, file: &Path, name: &str, epochs: u64, packed: &
     if archive::has_onion_key(target) {
         aloud_in!("unpack-onion-key");
     }
-    aloud!(
-        "{}",
-        crate::began::describe(crate::began::read(target).as_ref())
-    );
+    crate::aloud::line(&crate::began::describe(crate::began::read(target).as_ref()));
     aloud_in!(
         "unpack-unpacked",
         target = target.display().to_string(),

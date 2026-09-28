@@ -79,10 +79,7 @@ impl Dialer {
             return self.through_tor(address).await;
         }
         if self.roads == Roads::OnlyUnseen {
-            anyhow::bail!(
-                "this node keeps its address unseen, so it will not open a connection \
-                 to {address}, which would show it"
-            );
+            anyhow::bail!(words!("dial-would-show", address = address.to_string()));
         }
         // Neither of these names the address. Every caller that prints one of these
         // has already said which peer it was reaching, and a line that says the
@@ -95,7 +92,7 @@ impl Dialer {
 
     /// The sentence both transports use when the peer never answers.
     fn gave_up_on(&self) -> String {
-        format!("no answer after {} s", self.common.timeout.as_secs())
+        words!("dial-no-answer", seconds = self.common.timeout.as_secs())
     }
 }
 
@@ -136,17 +133,9 @@ impl Dialer {
         if !any_unseen {
             return;
         }
-        aloud!(
-            "waking   somebody worth reaching is at an unseen address and Tor is not up.\n\
-             \x20        The first bootstrap takes seconds to minutes, and nothing is\n\
-             \x20        asked of anybody until it is over."
-        );
+        aloud_in!("dial-waking");
         if let Err(e) = self.tor().await {
-            aloud!(
-                "unwoken  Tor did not start: {e:#}\n\
-                 \x20        Unseen addresses are skipped this epoch. The nodes behind them\n\
-                 \x20        have not failed to answer — nothing reached them to ask."
-            );
+            aloud_in!("dial-unwoken", why = format!("{e:#}"));
         }
     }
 
@@ -178,7 +167,7 @@ impl Dialer {
         )
         .await
         .map_err(|_| anyhow::Error::msg(self.gave_up_on()))?
-        .with_context(|| format!("connecting to {address}"))?;
+        .with_context(|| words!("dial-connecting", address = address.to_string()))?;
         Ok(Box::new(stream))
     }
 }
@@ -197,6 +186,49 @@ impl Dialer {
     /// Refuse an onion address by name, rather than fail further down with a
     /// name-resolution error that reads like a broken network.
     async fn through_tor(&self, address: &PeerAddress) -> anyhow::Result<Stream> {
-        anyhow::bail!("this client was built without Tor, so it cannot reach {address}")
+        anyhow::bail!(words!("dial-without-tor", address = address.to_string()))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn in_english_every_moved_line_says_exactly_what_it_said_before() {
+        let pairs = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+            [
+                (
+                    words!("dial-would-show", address = "192.0.2.7:3333"),
+                    "this node keeps its address unseen, so it will not open a connection \
+                     to 192.0.2.7:3333, which would show it",
+                ),
+                (
+                    words!("dial-no-answer", seconds = 300_u64),
+                    "no answer after 300 s",
+                ),
+                (
+                    words!("dial-waking"),
+                    "waking   somebody worth reaching is at an unseen address and Tor is not up.\n\
+                     \x20        The first bootstrap takes seconds to minutes, and nothing is\n\
+                     \x20        asked of anybody until it is over.",
+                ),
+                (
+                    words!("dial-unwoken", why = "no network"),
+                    "unwoken  Tor did not start: no network\n\
+                     \x20        Unseen addresses are skipped this epoch. The nodes behind them\n\
+                     \x20        have not failed to answer — nothing reached them to ask.",
+                ),
+                (
+                    words!("dial-connecting", address = "abc.onion:3333"),
+                    "connecting to abc.onion:3333",
+                ),
+                (
+                    words!("dial-without-tor", address = "abc.onion:3333"),
+                    "this client was built without Tor, so it cannot reach abc.onion:3333",
+                ),
+            ]
+        });
+        for (now, before) in pairs {
+            assert_eq!(now, before);
+        }
     }
 }
