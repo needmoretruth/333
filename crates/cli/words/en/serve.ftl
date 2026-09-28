@@ -44,3 +44,8 @@ serve-farewell = ended in epoch { $epoch }. Whoever is drawn to ask for you whil
     that is what your window reads. It is { $window } epochs long, and it
     moves.
     .keyword = vigil
+
+serve-farewell-on-no-roll = ended in epoch { $epoch }. You are on nobody's roll, so nobody goes out
+    to ask for you, and nothing is signed about you while this is not
+    running.
+    .keyword = vigil

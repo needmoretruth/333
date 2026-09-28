@@ -255,7 +255,7 @@ pub(crate) async fn run(common: &Common, how: Vigil) -> anyhow::Result<()> {
     if let Some(lent) = lent {
         lent.give_back().await;
     }
-    farewell();
+    farewell(node.joined_in().await.is_some());
     Ok(())
 }
 
@@ -276,17 +276,24 @@ fn the_screen(plain: bool) -> Option<tokio::sync::mpsc::UnboundedReceiver<String
 /// Printed rather than said, because by the time this runs the screen has given the
 /// terminal back and there is nobody left listening to what the node says. Dropped if
 /// nobody reads standard output any more: a vigil piped into `head` has nobody to tell.
-fn farewell() {
+fn farewell(on_a_roll: bool) {
     use std::io::Write as _;
     let _ = writeln!(
         std::io::stdout().lock(),
         "{}",
-        said_at_the_end(Epoch::now())
+        said_at_the_end(Epoch::now(), on_a_roll)
     );
 }
 
 /// The farewell's words, for the epoch it is said in.
-fn said_at_the_end(now: Epoch) -> String {
+///
+/// Whoever is drawn goes out to ask the members on their roll and nobody else, so for
+/// a node on nobody's roll — one not yet handed the file, or the one given it by
+/// nobody — there is nobody to sign that it was not there.
+fn said_at_the_end(now: Epoch, on_a_roll: bool) -> String {
+    if !on_a_roll {
+        return words!("serve-farewell-on-no-roll", epoch = now.0);
+    }
     words!(
         "serve-farewell",
         epoch = now.0,
@@ -585,7 +592,8 @@ mod tests {
             [
                 words!("serve-waiting-for-the-file"),
                 words!("serve-name", name = "333abc"),
-                said_at_the_end(Epoch(89_612)),
+                said_at_the_end(Epoch(89_612), true),
+                said_at_the_end(Epoch(89_612), false),
             ]
         });
         for line in &lines {
@@ -603,7 +611,7 @@ mod tests {
     #[test]
     fn the_farewell_says_in_english_what_it_said_before_its_words_moved() {
         let said = crate::words::speaking("en", crate::words::count::Base::Ten, || {
-            said_at_the_end(Epoch(89_612))
+            said_at_the_end(Epoch(89_612), true)
         });
         assert_eq!(
             said,
@@ -611,6 +619,21 @@ mod tests {
              \x20        is not running signs that they asked and heard nothing, and\n\
              \x20        that is what your window reads. It is 333 epochs long, and it\n\
              \x20        moves."
+        );
+    }
+
+    #[test]
+    fn a_node_on_nobodys_roll_is_not_told_that_anybody_signs_it_absent() {
+        // Nobody goes out to ask a node that is on no roll: not a newcomer that has not
+        // been handed the file, and not the one that was handed it by nobody.
+        let said = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+            said_at_the_end(Epoch(89_612), false)
+        });
+        assert_eq!(
+            said,
+            "vigil    ended in epoch 89612. You are on nobody's roll, so nobody goes out\n\
+             \x20        to ask for you, and nothing is signed about you while this is not\n\
+             \x20        running."
         );
     }
 }
