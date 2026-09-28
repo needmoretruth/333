@@ -31,6 +31,15 @@ pub enum Error {
     /// It could not be reached at all: no route, no name, no answer, no certificate.
     #[error("could not reach the meeting point: {0}")]
     Unreachable(String),
+    /// Something took the connection there and said nothing before the time ran out.
+    ///
+    /// Not the same as unreachable: the machine is there, and what is on it is not
+    /// answering, which is somebody else's to put right, or a wrong place to have asked.
+    #[error("the meeting point took the connection and did not answer within {seconds} s")]
+    Silent {
+        /// How long it was given.
+        seconds: u64,
+    },
     /// It was reached, and its answer stopped before it was finished.
     #[error("the meeting point's answer broke off: {0}")]
     BrokeOff(String),

@@ -173,7 +173,7 @@ impl Carrier {
     /// Begin a line of this node's own, if nobody has begun one.
     async fn bootstrap(&self, anyway: bool) -> bool {
         let place = n333_net::meeting::THE_PLACE;
-        crate::commands::bootstrap::begin(&self.node, place, anyway)
+        crate::commands::bootstrap::begin(&self.node, place, anyway, self.common.timeout)
             .await
             .map_err(|e| aloud_in!("serve-carrying-unbegun", why = format!("{e:#}")))
             .is_ok()

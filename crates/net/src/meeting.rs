@@ -30,7 +30,7 @@
 mod answered;
 
 use std::io::Read as _;
-use std::net::IpAddr;
+use std::net::{IpAddr, TcpStream, ToSocketAddrs as _};
 use std::time::Duration;
 
 use n333_core::identity::NodeId;
@@ -59,6 +59,13 @@ pub const LONGEST_STATEMENT: usize = 512;
 /// past a bad mobile connection and nowhere near long enough to hold anything up.
 const PATIENCE: Duration = Duration::from_secs(20);
 
+/// How much of the patience is kept back, after a request that got no answer, for
+/// knocking once more to see whether anything is there at all.
+///
+/// A second is long for a machine that took the connection a moment ago, and a
+/// place that took nothing is not going to start in the next second.
+const KNOCK: Duration = Duration::from_secs(1);
+
 /// The most of the board this node will read.
 const LONGEST_BOARD: usize = MAX_BATCH_FRAMES * (LENGTH_PREFIX_LEN + LONGEST_STATEMENT);
 
@@ -79,21 +86,33 @@ pub struct Meeting {
     place: String,
     /// The connection pool and its timeouts.
     agent: ureq::Agent,
+    /// How long a visit may take, all of it, which is what a failure is said against.
+    patience: Duration,
 }
 
 impl Meeting {
     /// Deal with the meeting point at `place`.
     #[must_use]
     pub fn at(place: &str) -> Self {
+        Self::within(place, PATIENCE)
+    }
+
+    /// Deal with the meeting point at `place`, giving each visit no longer than
+    /// `ceiling`: a person who said how long they will wait is not kept waiting longer.
+    /// It never waits longer than it would anyway.
+    #[must_use]
+    pub fn within(place: &str, ceiling: Duration) -> Self {
+        let patience = ceiling.min(PATIENCE);
         // Every status comes back as an answer, so that what the meeting point said with
         // it can be read. Treated as an error, the body is gone before anybody sees it.
         let config = ureq::Agent::config_builder()
-            .timeout_global(Some(PATIENCE))
+            .timeout_global(Some(patience.saturating_sub(KNOCK).max(KNOCK)))
             .http_status_as_error(false)
             .build();
         Self {
             place: place.to_owned(),
             agent: config.into(),
+            patience,
         }
     }
 
@@ -121,10 +140,10 @@ impl Meeting {
     /// Fails if the meeting point cannot be reached, refuses, or answers with something that
     /// is not an address.
     pub fn what_address_do_i_arrive_from(&self) -> Result<IpAddr, Error> {
-        let said = yes(self.agent.get(self.url("/where")).call())?
+        let said = yes(self, self.agent.get(self.url("/where")).call())?
             .body_mut()
             .read_to_string()
-            .map_err(broke_off)?;
+            .map_err(|cause| self.broke_off(cause))?;
         said.trim().parse().map_err(|_| Error::NotAnAddress)
     }
 
@@ -142,7 +161,10 @@ impl Meeting {
                 got: statement.len(),
             });
         }
-        yes(self.agent.put(self.url(&format!("/{who}"))).send(statement))?;
+        yes(
+            self,
+            self.agent.put(self.url(&format!("/{who}"))).send(statement),
+        )?;
         Ok(())
     }
 
@@ -154,7 +176,7 @@ impl Meeting {
     /// # Errors
     /// Fails if the meeting point cannot be reached or refuses.
     pub fn read(&self) -> Result<Vec<Vec<u8>>, Error> {
-        let mut answer = yes(self.agent.get(self.url("")).call())?;
+        let mut answer = yes(self, self.agent.get(self.url("")).call())?;
         let mut board = Vec::new();
         let cap = u64::try_from(LONGEST_BOARD).unwrap_or(u64::MAX);
         answer
@@ -178,7 +200,7 @@ impl Meeting {
     /// Fails if the meeting point cannot be reached, refuses, or answers with more bytes
     /// than the file could possibly be.
     pub fn the_file(&self) -> Result<Vec<u8>, Error> {
-        let mut answer = yes(self.agent.get(self.whole("/333.txt")).call())?;
+        let mut answer = yes(self, self.agent.get(self.whole("/333.txt")).call())?;
         let mut bytes = Vec::new();
         answer
             .body_mut()
@@ -216,8 +238,8 @@ impl Meeting {
 }
 
 /// The answer, if it was yes; what it meant, if it was not.
-fn yes(sent: Result<Answer, ureq::Error>) -> Result<Answer, Error> {
-    let mut answer = sent.map_err(unreachable)?;
+fn yes(meeting: &Meeting, sent: Result<Answer, ureq::Error>) -> Result<Answer, Error> {
+    let mut answer = sent.map_err(|cause| meeting.unreachable(cause))?;
     let status = answer.status();
     if status.is_success() {
         return Ok(answer);
@@ -248,26 +270,52 @@ fn yes(sent: Result<Answer, ureq::Error>) -> Result<Answer, Error> {
 /// What one request comes back as.
 type Answer = ureq::http::Response<ureq::Body>;
 
-/// Why the meeting point could not be reached, in the words for what happened.
-///
-/// The library's own words lead with the category it sorted the failure into — `io:`,
-/// `timeout:` — which is not what a person needs to read.
-fn unreachable(cause: ureq::Error) -> Error {
-    Error::Unreachable(match cause {
-        ureq::Error::Io(cause) => cause.to_string(),
-        ureq::Error::Timeout(_) => format!("no answer within {} s", PATIENCE.as_secs()),
-        ureq::Error::HostNotFound => "its name does not resolve".to_owned(),
-        other => other.to_string(),
-    })
-}
+impl Meeting {
+    /// Why the meeting point could not be reached, in the words for what happened.
+    ///
+    /// The library's own words lead with the category it sorted the failure into —
+    /// `io:`, `timeout:` — which is not what a person needs to read. A request that ran
+    /// out of time is two different things: nothing there, and something there that
+    /// took the connection and said nothing. Only knocking again tells them apart.
+    fn unreachable(&self, cause: ureq::Error) -> Error {
+        let seconds = self.patience.as_secs();
+        match cause {
+            ureq::Error::Timeout(_) if self.takes_a_connection() => Error::Silent { seconds },
+            ureq::Error::Timeout(_) => Error::Unreachable(format!("no answer within {seconds} s")),
+            ureq::Error::Io(cause) => Error::Unreachable(cause.to_string()),
+            ureq::Error::HostNotFound => Error::Unreachable("its name does not resolve".to_owned()),
+            other => Error::Unreachable(other.to_string()),
+        }
+    }
 
-/// An answer that started and did not finish.
-fn broke_off(cause: ureq::Error) -> Error {
-    Error::BrokeOff(match cause {
-        ureq::Error::Io(cause) => cause.to_string(),
-        ureq::Error::Timeout(_) => format!("not finished within {} s", PATIENCE.as_secs()),
-        other => other.to_string(),
-    })
+    /// An answer that started and did not finish.
+    fn broke_off(&self, cause: ureq::Error) -> Error {
+        Error::BrokeOff(match cause {
+            ureq::Error::Io(cause) => cause.to_string(),
+            ureq::Error::Timeout(_) => {
+                format!("not finished within {} s", self.patience.as_secs())
+            }
+            other => other.to_string(),
+        })
+    }
+
+    /// Does anything take a connection where the meeting point is said to be?
+    ///
+    /// One plain connection, closed at once, with [`KNOCK`] to be taken in.
+    fn takes_a_connection(&self) -> bool {
+        let Ok(uri) = self.whole("/").parse::<ureq::http::Uri>() else {
+            return false;
+        };
+        let Some(host) = uri.host() else {
+            return false;
+        };
+        let plain = uri.scheme_str() == Some("http");
+        let port = uri.port_u16().unwrap_or(if plain { 80 } else { 443 });
+        let host = host.trim_start_matches('[').trim_end_matches(']');
+        (host, port).to_socket_addrs().is_ok_and(|mut addresses| {
+            addresses.any(|address| TcpStream::connect_timeout(&address, KNOCK).is_ok())
+        })
+    }
 }
 
 /// Split a board into the statements it is made of.
@@ -398,5 +446,48 @@ mod tests {
         assert_eq!(meeting.url(""), "http://127.0.0.1:8787/333");
         assert_eq!(meeting.url("/where"), "http://127.0.0.1:8787/333/where");
         assert_eq!(meeting.whole("/333.txt"), "http://127.0.0.1:8787/333.txt");
+    }
+
+    #[test]
+    fn a_place_that_takes_the_connection_and_says_nothing_is_said_to_be_silent() {
+        // Taken by the system and never read: the connection is accepted into the
+        // backlog, and nothing ever answers on it.
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("binds");
+        let port = listener.local_addr().expect("has an address").port();
+        for place in [
+            format!("http://127.0.0.1:{port}"),
+            format!("127.0.0.1:{port}"),
+        ] {
+            let began = std::time::Instant::now();
+            let failed = Meeting::within(&place, Duration::from_secs(3)).read();
+            assert!(
+                matches!(failed, Err(Error::Silent { seconds: 3 })),
+                "{place}: {failed:?}"
+            );
+            assert!(began.elapsed() < Duration::from_secs(5), "{place}");
+        }
+        drop(listener);
+    }
+
+    #[test]
+    fn a_place_nothing_listens_at_is_said_to_be_out_of_reach() {
+        let port = std::net::TcpListener::bind("127.0.0.1:0")
+            .and_then(|listener| listener.local_addr())
+            .expect("a port")
+            .port();
+        let failed = Meeting::within(&format!("http://127.0.0.1:{port}"), PATIENCE).read();
+        assert!(matches!(failed, Err(Error::Unreachable(_))), "{failed:?}");
+    }
+
+    #[test]
+    fn a_longer_ceiling_does_not_make_it_wait_longer_than_it_would() {
+        assert_eq!(
+            Meeting::within("x.test", Duration::from_secs(300)).patience,
+            PATIENCE
+        );
+        assert_eq!(
+            Meeting::within("x.test", Duration::from_secs(4)).patience,
+            Duration::from_secs(4)
+        );
     }
 }

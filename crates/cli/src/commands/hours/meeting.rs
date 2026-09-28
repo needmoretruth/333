@@ -285,6 +285,7 @@ fn what_was_said(
             (line, None)
         }
         meeting::Error::Unreachable(_)
+        | meeting::Error::Silent { .. }
         | meeting::Error::BrokeOff(_)
         | meeting::Error::NotAnAddress => (
             words!(

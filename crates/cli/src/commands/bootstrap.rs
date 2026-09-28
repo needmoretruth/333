@@ -38,7 +38,7 @@ pub(crate) async fn run(common: &Common, meet: &str, anyway: bool) -> anyhow::Re
         name = node.identity().node_id().to_string()
     );
     crate::commands::report_opening(&opened);
-    if begin(&node, meet, anyway).await? {
+    if begin(&node, meet, anyway, common.timeout).await? {
         aloud_in!("bootstrap-vigil");
     }
     Ok(())
@@ -47,16 +47,22 @@ pub(crate) async fn run(common: &Common, meet: &str, anyway: bool) -> anyhow::Re
 /// Begin a line of your own, as a node that is already open. True if it began.
 ///
 /// Shared with the vigil, which holds the node already and is already answering.
+/// No visit to the meeting point takes longer than `timeout`, which is `--timeout`.
 ///
 /// # Errors
 /// Fails if the node already has the file, if the meeting point cannot be reached, or
 /// if what comes back is not the file.
-pub(crate) async fn begin(node: &Node, meet: &str, anyway: bool) -> anyhow::Result<bool> {
+pub(crate) async fn begin(
+    node: &Node,
+    meet: &str,
+    anyway: bool,
+    timeout: std::time::Duration,
+) -> anyhow::Result<bool> {
     if node.subject().await.is_some() {
         bail!(words!("bootstrap-already-has-it"));
     }
 
-    let meeting = Meeting::at(meet);
+    let meeting = Meeting::within(meet, timeout);
     let already = look_first(&meeting).await?;
     if already != 0 && !anyway {
         aloud_in!(
