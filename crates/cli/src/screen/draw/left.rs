@@ -24,13 +24,8 @@ pub(super) fn this_node<'a>(watch: &'a Watch, area: Rect) -> Paragraph<'a> {
     let width = usize::from(area.width).saturating_sub(4);
     let mut lines = another_copy(watch, width);
     lines.extend(numbers(watch, width));
-    lines.extend([
-        Line::raw(""),
-        Line::from(Span::styled(
-            words!("screen-draw-left-you"),
-            Style::new().add_modifier(Modifier::BOLD),
-        )),
-    ]);
+    let you = words!("screen-draw-left-you");
+    lines.extend([Line::raw(""), Line::styled(you, Modifier::BOLD)]);
     lines.extend(standing(&watch.standing, width));
     if watch.unseen {
         lines.extend(unseen(width));
@@ -44,12 +39,10 @@ pub(super) fn this_node<'a>(watch: &'a Watch, area: Rect) -> Paragraph<'a> {
 /// The count, the roll, the addresses and what was witnessed, each number in one
 /// column, with the ways the addresses were first heard of set in under their count.
 fn numbers(watch: &Watch, width: usize) -> Vec<Line<'static>> {
+    let silent = watch.roll.saturating_sub(watch.answering);
     let rows = [
         (words!("screen-draw-left-answering"), watch.answering),
-        (
-            words!("screen-draw-left-silent"),
-            watch.roll.saturating_sub(watch.answering),
-        ),
+        (words!("screen-draw-left-silent"), silent),
         (words!("screen-draw-left-roll"), watch.roll),
         (words!("screen-draw-left-known-where"), watch.addresses),
         (words!("screen-draw-left-witnessed"), watch.witnessed),
