@@ -84,13 +84,6 @@ pub(crate) fn shorten(name: &str) -> String {
     }
 }
 
-/// A number with its digits in threes, which is how a person reads a large one.
-///
-/// In the base this client counts in, like every count a person reads.
-pub(crate) fn in_threes(number: u64) -> String {
-    crate::words::count::write(number, true, 0)
-}
-
 /// The one address written into this client.
 ///
 /// Not a node and not a way in: it hands over no file, joins no roll, and issues no
@@ -344,17 +337,6 @@ fn clocks(apart_ms: i64) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn a_large_number_is_grouped_the_way_a_person_reads_one() {
-        // The one number in this client nobody can check by eye: the years left after
-        // the last of us stops. Nineteen thousand of anything is unreadable as digits.
-        assert_eq!(in_threes(19_683), "19,683");
-        assert_eq!(in_threes(0), "0");
-        assert_eq!(in_threes(333), "333");
-        assert_eq!(in_threes(1_000), "1,000");
-        assert_eq!(in_threes(1_234_567), "1,234,567");
-    }
 
     /// What the lines said before their words moved into a catalog, byte for byte,
     /// beside what the catalog says now.
