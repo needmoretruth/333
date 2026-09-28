@@ -43,20 +43,22 @@ const TOO_NARROW: u16 = 62;
 
 /// Draw everything.
 pub(super) fn everything(frame: &mut Frame<'_>, watch: &Watch, log: &[Heard], saying: &Saying) {
-    let twelve = counting_in_twelve();
+    let twelve = counting_in_twelve(usize::from(frame.area().width).saturating_sub(1));
     let refused = bottom::refused(saying, frame.area().width);
     let [top, counting, middle, bottom] = Layout::vertical([
         Constraint::Length(1),
-        Constraint::Length(u16::from(twelve.is_some())),
+        Constraint::Length(u16::try_from(twelve.len()).unwrap_or(0)),
         Constraint::Min(3),
         Constraint::Length(2 + u16::try_from(refused.len()).unwrap_or(0)),
     ])
     .areas(frame.area());
 
     frame.render_widget(header(watch, usize::from(top.width)), top);
-    if let Some(twelve) = twelve {
-        frame.render_widget(Paragraph::new(format!(" {twelve}")), counting);
-    }
+    let twelve: Vec<Line<'_>> = twelve
+        .into_iter()
+        .map(|line| Line::raw(format!(" {line}")))
+        .collect();
+    frame.render_widget(Paragraph::new(twelve), counting);
     if middle.width < TOO_NARROW {
         // Too narrow for two columns. The count and this node's standing, in a line
         // each, then the vigil in what is left: a person on a small terminal is
@@ -93,14 +95,17 @@ pub(super) fn everything(frame: &mut Frame<'_>, watch: &Watch, log: &[Heard], sa
 /// The line the client says at the start when it counts in twelve, which the screen
 /// covers up as soon as it is drawn. Said again here, once, where it is seen without
 /// looking for it: every number below it is in twelve, and read in ten each of them
-/// is wrong.
-fn counting_in_twelve() -> Option<String> {
-    let (ten, eleven) = crate::words::current().base().past_nine()?;
-    Some(words!(
+/// is wrong. Laid out for `width`, so a narrow screen shows all of it. Nothing in ten.
+fn counting_in_twelve(width: usize) -> Vec<String> {
+    let Some((ten, eleven)) = crate::words::current().base().past_nine() else {
+        return Vec::new();
+    };
+    let said = words!(
         "words-counting-in-twelve",
         ten = ten.to_string(),
         eleven = eleven.to_string()
-    ))
+    );
+    crate::words::layout::fold(&said, width)
 }
 
 /// The one line that is always true: who this is, when it is, and how long is left.
@@ -297,6 +302,15 @@ mod tests {
         );
         let ten = crate::words::speaking("en", Base::Ten, || drawn(100, 20, &Saying::Nothing));
         assert!(!ten.concat().contains("twelve"));
+        let narrow = crate::words::speaking("en", Base::Twelve, || drawn(48, 20, &Saying::Nothing));
+        assert_eq!(
+            narrow[1],
+            " counting in twelve. \u{218A} is ten, \u{218B} is eleven, and"
+        );
+        assert_eq!(
+            narrow[2], "          10 is twelve.",
+            "all of it, under its words"
+        );
     }
 
     #[test]
