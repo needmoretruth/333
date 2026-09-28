@@ -26,6 +26,7 @@ pub(crate) fn cause(cause: &(dyn std::error::Error + 'static)) -> String {
 pub(crate) fn meeting(e: &Meeting) -> String {
     match e {
         Meeting::Unreachable(why) => words!("failed-net-unreachable", why = why),
+        Meeting::Silent { seconds } => words!("failed-net-silent", seconds = *seconds),
         Meeting::BrokeOff(why) => words!("failed-net-broke-off", why = why),
         Meeting::NotYet { said, .. } => words!("failed-net-not-yet", said = said),
         Meeting::FullForToday { said, .. } => words!("failed-net-full-for-today", said = said),
@@ -58,6 +59,7 @@ mod tests {
     fn every_reason() -> Vec<Meeting> {
         vec![
             Meeting::Unreachable("Connection refused".into()),
+            Meeting::Silent { seconds: 4 },
             Meeting::BrokeOff("reset".into()),
             Meeting::NotYet {
                 again_in: None,

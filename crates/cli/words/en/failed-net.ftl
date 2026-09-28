@@ -2,6 +2,7 @@
 ### will not take something. English is exactly the library's own sentence.
 
 failed-net-unreachable = could not reach the meeting point: { $why }
+failed-net-silent = the meeting point took the connection and did not answer within { $seconds } s
 failed-net-broke-off = the meeting point's answer broke off: { $why }
 failed-net-not-yet = the meeting point is not taking another statement from this {
     ""}address yet: { $said }
