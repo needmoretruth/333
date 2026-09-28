@@ -325,17 +325,27 @@ fn remember(log: &mut Vec<String>, said: &str) {
         return;
     };
     let seconds = n333_core::epoch::unix_now_seconds();
-    let at = words!(
-        "screen-at",
-        hours = Arg::padded(seconds / 3600 % 24, 2),
-        minutes = Arg::padded(seconds / 60 % 60, 2),
-        seconds = Arg::padded(seconds % 60, 2)
-    );
+    let at = stamp(seconds);
     log.push(format!("{at}  {first}"));
     log.extend(lines.map(|line| format!("          {}", line.trim_start())));
     if log.len() > REMEMBERED {
         log.drain(..log.len() - REMEMBERED);
     }
+}
+
+/// The time of day a line arrived, in UTC, as a clock shows it.
+///
+/// Written in ten whatever the person counts in: it is the reading of a clock, which
+/// names a moment rather than counting anything, and a clock in twelve would read as a
+/// wrong time rather than as the same one. The pane's title says it is UTC.
+fn stamp(seconds: u64) -> String {
+    let clock = |value: u64| Arg::exact(format!("{value:02}"));
+    words!(
+        "screen-at",
+        hours = clock(seconds / 3600 % 24),
+        minutes = clock(seconds / 60 % 60),
+        seconds = clock(seconds % 60)
+    )
 }
 
 /// What the keyboard gave, or why it gave nothing.
@@ -431,19 +441,18 @@ mod tests {
                     "the keyboard could not be read (no terminal), so the screen has closed and\n\
                      the vigil with it. `333 serve --plain` keeps a vigil with no keyboard.",
                 ),
-                (
-                    words!(
-                        "screen-at",
-                        hours = Arg::padded(7, 2),
-                        minutes = Arg::padded(5, 2),
-                        seconds = Arg::padded(0, 2)
-                    ),
-                    "07:05:00",
-                ),
+                (stamp(7 * 3600 + 5 * 60), "07:05:00"),
             ]
         });
         for (now, before) in pairs {
             assert_eq!(now, before);
         }
+    }
+
+    #[test]
+    fn a_time_of_day_is_the_clock_s_whatever_the_base() {
+        let at = 16 * 3600 + 29 * 60 + 51;
+        let twelve = crate::words::speaking("ko", Base::Twelve, || stamp(at));
+        assert_eq!(twelve, "16:29:51");
     }
 }

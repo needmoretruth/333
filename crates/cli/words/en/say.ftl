@@ -17,8 +17,8 @@ say-said = #{ $index } in epoch { $epoch }
 
 # Said under the line before, in its column, with no keyword of its own.
 say-goes-out = It goes out to everyone this node reaches, and they pass it on.
-    Once every 333 minutes you may say one of { $signals } things, and you say
-    it as a number. There is no { $beyond }th and there never will be. You cannot
+    Once every 333 minutes you may say one of 333 things, and you say
+    it as a number. There is no 334th and there never will be. You cannot
     say it twice, you cannot say it louder, and nobody alive has more to
     say than you do.
     Nobody will tell you what it means, either. There is no table yet, and

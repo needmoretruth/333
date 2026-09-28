@@ -32,12 +32,12 @@ status-stopped-knowing = 여기는 이 노드가 아는 것이 끝나는 곳이�
     없고, 이 노드가 아직 건네받지 못한 기록도 여기서는 똑같아 보입니다.
 
 status-nothing-said = 에포크 { $epoch }에는 아무도 말하지 않았습니다. 말할 수 있는 것은
-    { $signals }가지이고, 아직 어느 것에도 뜻이 적혀 있지 않습니다.
+    333가지이고, 아직 어느 것에도 뜻이 적혀 있지 않습니다.
 
 status-said = 에포크 { $epoch }에 한 말 — 이 노드가 볼 수 있는 우리 { $seen }명 중
     { $spoke }명이 말했고, { $silent }명은 말하지 않았습니다.
 status-a-third = ← 우리 중 삼분의 일 이상
-status-not-said = { $signals }가지 중 나머지 { $others }가지는 아무도 말하지 않았습니다.
+status-not-said = 333가지 중 나머지 { $others }가지는 아무도 말하지 않았습니다.
 
 status-no-winner = 승자는 뽑히지 않고, 이 중 어느 것도 무엇을 정하지 않습니다. 이
     노드에 닿은 것일 뿐입니다. 당신 옆의 노드는 다른 것을 들었고, 그것도

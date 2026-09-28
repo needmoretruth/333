@@ -300,6 +300,22 @@ mod tests {
     }
 
     #[test]
+    fn in_twelve_the_333_the_keys_name_is_the_name_and_not_a_count() {
+        let rows = crate::words::speaking("ko", Base::Twelve, || drawn(100, 20, &Saying::Nothing));
+        // A letter two columns wide is drawn as the letter and a blank cell after it.
+        let keys = rows[19].replace(' ', "");
+        assert!(keys.contains("s333가운데하나말하기"), "{}", rows[19]);
+        let asked = crate::words::speaking("en", Base::Twelve, || {
+            drawn(100, 20, &Saying::Which(typed("", None)))
+        });
+        assert!(
+            asked[19].starts_with(" say which of the 333? "),
+            "{}",
+            asked[19]
+        );
+    }
+
+    #[test]
     fn the_keys_are_the_last_thing_the_bottom_line_gives_up() {
         let at = |width| {
             crate::words::speaking("en", Base::Ten, || drawn(width, 20, &Saying::Nothing))[19]

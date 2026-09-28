@@ -93,11 +93,7 @@ pub(crate) async fn speak(node: &Node, index: u16) -> anyhow::Result<()> {
     // every language.
     crate::aloud::line(crate::commands::INVOCATION);
     aloud_in!("say-said", index = index, epoch = now.0);
-    aloud_in!(
-        "say-goes-out",
-        signals = SIGNAL_COUNT,
-        beyond = SIGNAL_COUNT + 1
-    );
+    aloud_in!("say-goes-out");
     Ok(())
 }
 
@@ -120,11 +116,7 @@ mod tests {
             words!("say-given-by-nobody"),
             words!("say-already", index = 12_u16, epoch = 89_612_u64),
             words!("say-said", index = 7_u16, epoch = 89_612_u64),
-            words!(
-                "say-goes-out",
-                signals = SIGNAL_COUNT,
-                beyond = SIGNAL_COUNT + 1
-            ),
+            words!("say-goes-out"),
         ]
     }
 
@@ -157,11 +149,11 @@ mod tests {
     }
 
     #[test]
-    fn in_twelve_the_index_and_the_epoch_are_counts() {
+    fn in_twelve_the_index_and_the_epoch_are_counts_and_the_333_is_a_name() {
         let lines = crate::words::speaking("en", Base::Twelve, lines);
         assert_eq!(lines[4], "said     #7 in epoch 43\u{218A}38", "89612");
-        assert!(lines[5].contains("one of 239 things"), "{}", lines[5]);
-        assert!(lines[5].contains("no 23\u{218A}th"), "{}", lines[5]);
+        assert!(lines[5].contains("one of 333 things"), "{}", lines[5]);
+        assert!(lines[5].contains("no 334th"), "{}", lines[5]);
     }
 
     #[test]

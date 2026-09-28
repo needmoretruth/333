@@ -40,7 +40,7 @@ screen-draw-left-silent-on = silent on { $epochs } of { $window }
 
 screen-draw-left-said = SAID
 screen-draw-left-nothing-said =
-    nothing yet. { $signals } things
+    nothing yet. 333 things
     can be said.
 screen-draw-left-spoke = { $spoken } of { $observed } spoke
 screen-draw-left-signal = #{ $index }

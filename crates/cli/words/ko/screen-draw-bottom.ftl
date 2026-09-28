@@ -15,12 +15,12 @@ screen-draw-bottom-ended = 에포크 { $since } 이후 아무도 답하지 않�
 screen-draw-bottom-ended-and-gone = 에포크 { $since } 이후 아무도 답하지 않았고, 마지막
     해까지 다 지났습니다
 
-screen-draw-bottom-say-which = { $signals }개 가운데 몇 번을 말할까요?
+screen-draw-bottom-say-which = 333 가운데 몇 번을 말할까요?
 screen-draw-bottom-say-keys = enter 말하기 · esc 말하지 않기
 
 screen-draw-bottom-leave-wide = 철야 떠나기
 screen-draw-bottom-leave = 떠나기
-screen-draw-bottom-say-wide = { $signals } 가운데 하나 말하기
+screen-draw-bottom-say-wide = 333 가운데 하나 말하기
 screen-draw-bottom-say = 말하기
 screen-draw-bottom-more-wide = 그 밖의 모든 것
 screen-draw-bottom-more = 더

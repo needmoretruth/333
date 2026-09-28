@@ -41,7 +41,7 @@ screen-draw-left-silent-on = { $window }개 중 { $epochs }개가 기록 없음
 screen-draw-left-said = 말함
 screen-draw-left-nothing-said =
     아직 없습니다. 말할 수 있는
-    것은 { $signals }가지입니다.
+    것은 333가지입니다.
 screen-draw-left-spoke = { $observed }명 중 { $spoken }명이 말함
 screen-draw-left-signal = #{ $index }
 screen-draw-left-number = { $number }

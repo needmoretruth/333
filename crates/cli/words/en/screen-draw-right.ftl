@@ -1,3 +1,3 @@
 ### The screen's right column: the vigil's lines.
 
-screen-draw-right-title = the vigil
+screen-draw-right-title = the vigil · times in UTC

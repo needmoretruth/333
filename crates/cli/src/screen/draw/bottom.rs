@@ -8,7 +8,6 @@ use ratatui::widgets::Paragraph;
 
 use n333_core::epoch;
 use n333_core::extinction::{Remaining, Verdict};
-use n333_core::signal::SIGNAL_COUNT;
 
 use unicode_width::UnicodeWidthStr as _;
 
@@ -110,10 +109,7 @@ pub(super) fn the_keys<'a>(watch: &'a Watch, saying: &'a Saying, width: u16) -> 
         return Paragraph::new(typing(" : ".to_owned(), &entry.typed, width, &words));
     }
     if let Saying::Which(entry) = saying {
-        let asked = format!(
-            " {} ",
-            words!("screen-draw-bottom-say-which", signals = SIGNAL_COUNT)
-        );
+        let asked = format!(" {} ", words!("screen-draw-bottom-say-which"));
         let keys = format!("   {}", words!("screen-draw-bottom-say-keys"));
         return Paragraph::new(typing(asked, &entry.typed, width, &keys));
     }
@@ -183,7 +179,7 @@ fn what_the_keys_do(watch: &Watch, width: usize) -> Line<'static> {
     };
     let full = [
         words!("screen-draw-bottom-leave-wide"),
-        words!("screen-draw-bottom-say-wide", signals = SIGNAL_COUNT),
+        words!("screen-draw-bottom-say-wide"),
         words!("screen-draw-bottom-more-wide"),
         words!("screen-draw-bottom-keys-wide"),
     ];

@@ -32,7 +32,6 @@ use n333_core::{Epoch, NodeId, epoch};
 use crate::commands::Common;
 use crate::node::Node;
 use crate::words::Arg;
-use crate::words::count::Base;
 
 /// Which of the three ways of saying it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -247,7 +246,7 @@ async fn what_was_said(
     let tally = Tally::of(heard.against(everyone.iter()));
 
     if tally.spoken() == 0 {
-        let nothing = words!("status-nothing-said", epoch = now.0, signals = SIGNAL_COUNT);
+        let nothing = words!("status-nothing-said", epoch = now.0);
         writeln!(out, "{nothing}")?;
         return Ok(());
     }
@@ -276,11 +275,7 @@ async fn what_was_said(
         let (index, count) = (counted(signal.index().into()), counted(count));
         writeln!(out, "  #{index:<4} {count:>5}  {share:>6}{mark}")?;
     }
-    let others = words!(
-        "status-not-said",
-        others = SIGNAL_COUNT - said,
-        signals = SIGNAL_COUNT
-    );
+    let others = words!("status-not-said", others = SIGNAL_COUNT - said);
     writeln!(out, "  {others}")?;
     writeln!(out, "\n{}", words!("status-no-winner"))?;
     Ok(())
@@ -353,19 +348,18 @@ pub(super) fn epochs(count: u64) -> String {
 
 /// A share in parts per thousand, to one place: "66.7%", or "—" for no share at all.
 ///
-/// The place after the point is a tenth in ten and a twelfth in twelve, cut short
-/// rather than rounded in both, so that no share is ever said to be more than it is.
+/// Per hundred and in ten whatever the person counts in, because that is what `%`
+/// means: "42.0%" read in twelve is fifty. Cut short rather than rounded, so that no
+/// share is ever said to be more than it is.
 pub(super) fn share(per_mille: Option<u64>) -> String {
-    let places = match crate::words::current().base() {
-        Base::Ten => 10,
-        Base::Twelve | Base::TwelveAscii => 12,
-    };
     per_mille.map_or_else(
         || "—".to_owned(),
         |per_mille| {
-            let (whole, tenths) = (per_mille / 10, per_mille % 10);
-            let after = tenths * places / 10;
-            words!("status-share", whole = whole, after = after)
+            words!(
+                "status-share",
+                whole = Arg::exact(per_mille / 10),
+                after = Arg::exact(per_mille % 10)
+            )
         },
     )
 }
@@ -388,6 +382,7 @@ pub(super) fn padded(text: &str, width: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::words::count::Base;
     use n333_core::Identity;
     use n333_core::signal::Signal;
     use n333_core::transfer::{Half, Record};
@@ -671,7 +666,7 @@ mod tests {
                         .to_owned(),
                 ),
                 (
-                    words!("status-nothing-said", epoch = 89_612_u64, signals = SIGNAL_COUNT),
+                    words!("status-nothing-said", epoch = 89_612_u64),
                     "Nobody has said anything in epoch 89612. There are 333 things that can be\n\
                      said and no words for any of them yet."
                         .to_owned(),
@@ -723,7 +718,7 @@ mod tests {
          of how close it came.";
 
     #[test]
-    fn in_twelve_every_count_changes_and_no_name_or_address_does() {
+    fn in_twelve_every_count_changes_and_no_name_address_or_share_does() {
         let text = with_fixture("twelve", true, |node| {
             shown(node, Show::Everything, "en", Base::Twelve)
         });
@@ -737,14 +732,17 @@ mod tests {
             "{text}"
         );
         assert!(
-            text.contains("  the other 238 of the 239 were not said."),
+            text.contains("  the other 238 of the 333 were not said."),
             "{text}"
         );
         assert!(
             text.contains("received it in epoch 6\u{218B}4\n"),
             "1000: {text}"
         );
-        assert!(text.contains("  #7        1   42.0%  "), "50.0%: {text}");
+        assert!(
+            text.contains("  #7        1   50.0%  "),
+            "a share is per hundred: {text}"
+        );
         assert!(!text.contains("100000"), "{text}");
         let (share, ended) = crate::words::speaking("en", Base::Twelve, || {
             let ended = Verdict::Ended { since: Epoch(144) };
@@ -754,10 +752,7 @@ mod tests {
             });
             (share(Some(667)), silence(ended, left, true))
         });
-        assert_eq!(
-            share, "56.8%",
-            "66 and seven tenths is 66 and eight twelfths, and a bit"
-        );
+        assert_eq!(share, "66.7%", "a share is per hundred, in ten");
         assert!(ended.contains("stopped in\nepoch 100.\n"), "{ended}");
         assert!(ended.contains("takes \u{218B},483 years."), "{ended}");
         assert!(

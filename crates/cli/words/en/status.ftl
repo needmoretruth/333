@@ -47,14 +47,14 @@ status-stopped-knowing = That is where this node stopped knowing, not where it b
     ""}record this
     node has simply not been handed yet looks exactly the same from here.
 
-status-nothing-said = Nobody has said anything in epoch { $epoch }. There are { $signals } {
+status-nothing-said = Nobody has said anything in epoch { $epoch }. There are 333 {
     ""}things that can be
     said and no words for any of them yet.
 
 status-said = SAID in epoch { $epoch } — { $spoke } of the { $seen } of us this node can {
     ""}see spoke, { $silent } did not.
 status-a-third = ← a third of us or more
-status-not-said = the other { $others } of the { $signals } were not said.
+status-not-said = the other { $others } of the 333 were not said.
 
 status-no-winner = No winner is picked and none of this decides anything. It is {
     ""}what reached

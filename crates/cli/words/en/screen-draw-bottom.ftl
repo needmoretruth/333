@@ -20,12 +20,12 @@ screen-draw-bottom-ended = nobody has answered since epoch { $since }. { $years 
 screen-draw-bottom-ended-and-gone = nobody has answered since epoch { $since }, and the last of
     the years has run out
 
-screen-draw-bottom-say-which = say which of the { $signals }?
+screen-draw-bottom-say-which = say which of the 333?
 screen-draw-bottom-say-keys = enter to say it · esc to say nothing
 
 screen-draw-bottom-leave-wide = leave the vigil
 screen-draw-bottom-leave = leave
-screen-draw-bottom-say-wide = say one of the { $signals }
+screen-draw-bottom-say-wide = say one of the 333
 screen-draw-bottom-say = say
 screen-draw-bottom-more-wide = everything else
 screen-draw-bottom-more = more

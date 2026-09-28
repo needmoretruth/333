@@ -7,12 +7,12 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
 
 use n333_core::presence::{Standing, WINDOW_EPOCHS};
-use n333_core::signal::SIGNAL_COUNT;
 
 use super::right::flush;
 use super::{ahead, marked, padded, titled};
 use crate::node::sources::Counts;
 use crate::screen::watch::{Said, Watch, Where};
+use crate::words::Arg;
 
 /// The left column: the count, then this node, then what was said.
 ///
@@ -242,15 +242,16 @@ fn standing(standing: &Where, width: usize) -> Vec<Line<'static>> {
     }
 }
 
-/// The share of the window this node was present for, as a person reads a share.
+/// The share of the window this node was present for, as a person reads a share: per
+/// hundred, and so in ten whatever the person counts in, the way `%` is read.
 fn share(per_mille: Option<u64>) -> String {
     per_mille.map_or_else(
         || words!("screen-draw-left-no-share"),
         |per_mille| {
             words!(
                 "screen-draw-left-share",
-                whole = per_mille / 10,
-                tenth = per_mille % 10
+                whole = Arg::exact(per_mille / 10),
+                tenth = Arg::exact(per_mille % 10)
             )
         },
     )
@@ -308,7 +309,7 @@ fn said(said: &Said, rows: usize, width: usize) -> Vec<Line<'static>> {
             bold,
         ))];
         lines.extend(broken(
-            &words!("screen-draw-left-nothing-said", signals = SIGNAL_COUNT),
+            &words!("screen-draw-left-nothing-said"),
             width,
             grey,
         ));
@@ -472,6 +473,18 @@ mod tests {
             english(&|| said(&some, 4, 30)),
             "SAID  3 of 9 spoke\n #42     2  66.6%  a third\n and 2 more said\n you said #42"
         );
+    }
+
+    #[test]
+    fn a_share_is_per_hundred_in_every_base() {
+        let short = Standing {
+            counted: 300,
+            present: 150,
+        };
+        let said = crate::words::speaking("en", crate::words::count::Base::Twelve, || {
+            text(&counted_standing(&short, 0, 30))
+        });
+        assert!(said.contains(" — 50.0%"), "{said}");
     }
 
     #[test]
