@@ -23,6 +23,12 @@ screen-draw-left-on-nobodys-roll =
     아직 아무도 파일을 건네지
     않았습니다. 초대가
     필요합니다.
+screen-draw-left-began-alone =
+    스스로 계보를 시작했습니다.
+    아무도 파일을 건네지 않아
+    어느 명부에도 없습니다.
+    파일을 건네십시오. 받는
+    이는 세어집니다.
 screen-draw-left-given-in = 파일을 받은 에포크 { $epoch }
 screen-draw-left-counted-from = 셈 시작 에포크 { $epoch }
 screen-draw-left-until-then =

@@ -23,6 +23,12 @@ screen-draw-left-on-nobodys-roll =
     nobody has handed you
     the file yet. it takes
     an invitation.
+screen-draw-left-began-alone =
+    the start of your own line.
+    nobody handed you the
+    file, so you are on no
+    roll. hand it on: whoever
+    takes it is counted.
 screen-draw-left-given-in = given the file in { $epoch }
 screen-draw-left-counted-from = counted from { $epoch }
 screen-draw-left-until-then =

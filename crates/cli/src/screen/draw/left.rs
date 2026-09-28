@@ -232,6 +232,7 @@ fn standing(standing: &Where, width: usize) -> Vec<Line<'static>> {
             lines.push(Line::styled(crate::commands::THE_PLACE, grey));
             lines
         }
+        Where::BeganAlone => broken(&words!("screen-draw-left-began-alone"), width, Style::new()),
         Where::Waiting {
             joined,
             counted_from,
@@ -438,6 +439,11 @@ mod tests {
             english(&|| standing(&Where::OnNobodysRoll, 30)),
             "on nobody's roll.\nnobody has handed you\nthe file yet. it takes\n\
              an invitation.\nthe333.dev"
+        );
+        assert_eq!(
+            english(&|| standing(&Where::BeganAlone, 30)),
+            "the start of your own line.\nnobody handed you the\nfile, so you are on no\n\
+             roll. hand it on: whoever\ntakes it is counted."
         );
         let waiting = Where::Waiting {
             joined: Epoch(5),

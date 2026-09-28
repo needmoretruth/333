@@ -52,6 +52,11 @@ pub(super) struct Watch {
 pub(super) enum Where {
     /// Nobody has handed it the file.
     OnNobodysRoll,
+    /// It holds the file and nobody handed it over: `333 bootstrap` began a line here.
+    ///
+    /// Also on no roll, and the way on from here is the opposite of the one above: not
+    /// to be handed the file, but to hand it on.
+    BeganAlone,
     /// Admitted, and not yet counted.
     Waiting {
         /// The epoch somebody handed it the file.
@@ -156,9 +161,12 @@ impl Watch {
     }
 }
 
-/// Which of the three sentences about this node is the true one.
+/// Which of the four sentences about this node is the true one.
 async fn stands(node: &Node, now: Epoch) -> anyhow::Result<Where> {
     let Some(joined) = node.joined_in().await else {
+        if node.subject().await.is_some() {
+            return Ok(Where::BeganAlone);
+        }
         return Ok(Where::OnNobodysRoll);
     };
     let counted_from = enrollment::active_from(joined);
