@@ -13,6 +13,10 @@ use crate::words::Arg;
 
 use super::door::{Caller, Door, spawn_exchange};
 
+/// The first port an ordinary user may listen on, on the systems that keep the ones
+/// below it for the administrator.
+const PRIVILEGED_BELOW: u16 = 1024;
+
 /// Open the socket, or say what stood in the way and the one thing that moves it.
 ///
 /// The two failures a person meets are both about the address they gave, and the
@@ -33,6 +37,17 @@ pub(super) async fn listen(bind: SocketAddr) -> anyhow::Result<direct::Listener>
             ip = bind.ip().to_string(),
             port = Arg::exact(bind.port())
         )),
+        // Below 1024 most systems let only the administrator listen, and this client
+        // never asks to be run as one.
+        direct::Error::Io { cause }
+            if cause.kind() == ErrorKind::PermissionDenied && bind.port() < PRIVILEGED_BELOW =>
+        {
+            Some(words!(
+                "serve-socket-privileged",
+                port = Arg::exact(bind.port()),
+                suggested = SocketAddr::new(bind.ip(), n333_net::DEFAULT_PORT).to_string()
+            ))
+        }
         _ => None,
     };
     let failed = anyhow::Error::new(failed)
@@ -112,5 +127,20 @@ mod tests {
             "{said}"
         );
         assert!(said.contains("pass --bind with another port."), "{said}");
+    }
+
+    #[tokio::test]
+    async fn a_port_kept_for_the_administrator_says_to_take_one_above_it() {
+        let bind: SocketAddr = "127.0.0.1:80".parse().expect("an address");
+        let refused = match listen(bind).await {
+            // Run as the administrator, or on a system that keeps nothing back.
+            Ok(_) => return,
+            Err(refused) => refused,
+        };
+        let said = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+            crate::failed::said(&refused)
+        });
+        assert!(said.contains("Port 80 is below 1024"), "{said}");
+        assert!(said.contains("127.0.0.1:3333."), "{said}");
     }
 }
