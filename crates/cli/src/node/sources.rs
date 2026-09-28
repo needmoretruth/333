@@ -49,12 +49,14 @@ pub(crate) enum Source {
 impl std::fmt::Display for Source {
     /// How it reached this node, said so that it follows "it arrived".
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::ByHand => write!(f, "by hand"),
-            Self::ThisNetwork => write!(f, "on this network"),
-            Self::MeetingPoint { place } => write!(f, "at the meeting point {place}"),
-            Self::Peer { name } => write!(f, "from {}", crate::commands::shorten(name)),
-        }
+        f.write_str(&match self {
+            Self::ByHand => words!("node-sources-by-hand"),
+            Self::ThisNetwork => words!("node-sources-this-network"),
+            Self::MeetingPoint { place } => words!("node-sources-meeting-point", place = place),
+            Self::Peer { name } => {
+                words!("node-sources-peer", name = crate::commands::shorten(name))
+            }
+        })
     }
 }
 
@@ -96,7 +98,7 @@ impl Sighting {
     /// node's own name, `me`, and that is said as the thing it is.
     pub(crate) fn arrived(&self, me: &str) -> String {
         match &self.heard.from {
-            Source::Peer { name } if name == me => "from the other copy itself".to_owned(),
+            Source::Peer { name } if name == me => words!("node-sources-the-other-copy"),
             other => other.to_string(),
         }
     }
@@ -310,5 +312,41 @@ impl Counts {
         }
         counts.peers = peers.len();
         counts
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn in_english_every_moved_line_says_exactly_what_it_said_before() {
+        let pairs = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+            [
+                (Source::ByHand.to_string(), "by hand"),
+                (Source::ThisNetwork.to_string(), "on this network"),
+                (
+                    Source::MeetingPoint {
+                        place: "the333.dev".into(),
+                    }
+                    .to_string(),
+                    "at the meeting point the333.dev",
+                ),
+                (
+                    Source::Peer {
+                        name: "333ab".into(),
+                    }
+                    .to_string(),
+                    "from 333ab",
+                ),
+                (
+                    words!("node-sources-the-other-copy"),
+                    "from the other copy itself",
+                ),
+            ]
+        });
+        for (now, before) in pairs {
+            assert_eq!(now, before);
+        }
     }
 }

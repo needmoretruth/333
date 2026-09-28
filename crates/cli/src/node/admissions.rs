@@ -34,7 +34,7 @@ impl Admitted {
     /// # Errors
     /// Fails if the file cannot be opened or read.
     pub(crate) fn open(path: &Path) -> anyhow::Result<(Self, Read)> {
-        let (log, stored) = Once::open(path).context("opening the admissions")?;
+        let (log, stored) = Once::open(path).with_context(|| words!("node-admissions-opening"))?;
         let mut paired = Admissions::new();
         for frame in &stored {
             paired.add(frame);
@@ -57,7 +57,11 @@ impl Admitted {
     pub(crate) fn keep(&mut self, halves: &[Vec<u8>]) -> anyhow::Result<usize> {
         let mut fresh = 0;
         for half in halves {
-            if !self.log.keep(half).context("keeping an admission")? {
+            if !self
+                .log
+                .keep(half)
+                .with_context(|| words!("node-admissions-keeping"))?
+            {
                 continue;
             }
             self.paired.add(half);
@@ -83,6 +87,19 @@ mod tests {
     use super::*;
     use n333_core::transfer::{Half, Record};
     use n333_core::{Epoch, Identity};
+
+    #[test]
+    fn in_english_every_moved_line_says_exactly_what_it_said_before() {
+        let pairs = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+            [
+                (words!("node-admissions-opening"), "opening the admissions"),
+                (words!("node-admissions-keeping"), "keeping an admission"),
+            ]
+        });
+        for (now, before) in pairs {
+            assert_eq!(now, before);
+        }
+    }
 
     fn scratch(name: &str) -> std::path::PathBuf {
         let dir = std::env::temp_dir().join(format!("n333-admissions-test-{name}"));

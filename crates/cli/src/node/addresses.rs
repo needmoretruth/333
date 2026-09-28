@@ -41,7 +41,7 @@ impl Node {
         from: &Source,
         now: Epoch,
     ) -> anyhow::Result<bool> {
-        let signed = whereabouts::open(frame).context("reading an address")?;
+        let signed = whereabouts::open(frame).with_context(|| words!("node-addresses-reading"))?;
         self.note_signed(signed, frame, from, now).await
     }
 
@@ -90,7 +90,7 @@ impl Node {
         state
             .whereabouts
             .append(frame)
-            .context("keeping an address")?;
+            .with_context(|| words!("node-addresses-keeping"))?;
         Ok(true)
     }
 
@@ -103,7 +103,8 @@ impl Node {
     /// # Errors
     /// Fails if a file cannot be written.
     pub(crate) async fn note_own_address(&self, frame: &[u8], now: Epoch) -> anyhow::Result<()> {
-        let signed = whereabouts::open(frame).context("reading this node's address")?;
+        let signed =
+            whereabouts::open(frame).with_context(|| words!("node-addresses-reading-own"))?;
         {
             let mut state = self.state.lock().await;
             state
@@ -113,7 +114,7 @@ impl Node {
                 state
                     .whereabouts
                     .append(frame)
-                    .context("keeping this node's address")?;
+                    .with_context(|| words!("node-addresses-keeping-own"))?;
             }
         }
         self.write_down_sources(now).await
@@ -286,42 +287,22 @@ impl Node {
 }
 
 /// Say, as loudly as a line can, that this node's name is being used somewhere else.
-///
 fn say_there_is_another_copy(sighting: &Sighting, me: &str) {
-    let from = sighting.arrived(me);
-    aloud!(
-        "another  copy of this node's name is out there. A statement signed with this\n\
-         \x20        node's key, which this node never made, says it is at\n\
-         \x20        {}, in epoch {}.\n\
-         \x20        It arrived {from}. Either this directory was copied and the copy was\n\
-         \x20        started, or somebody else has the key. Two nodes on one name\n\
-         \x20        contradict each other in every epoch either is asked about. Stop\n\
-         \x20        one of them; `333 pack` is how a node moves. This one keeps\n\
-         \x20        running until you decide which.",
-        sighting.address,
-        sighting.said_in,
+    aloud_in!(
+        "node-addresses-another-copy",
+        address = &sighting.address,
+        said_in = sighting.said_in,
+        from = sighting.arrived(me)
     );
 }
 
 /// What opening the record of where addresses came from found, when it is worth a line.
 pub(crate) fn say_what_the_sources_held(opened: &super::Opened) {
     if opened.sources == sources::Loaded::Unreadable {
-        aloud!(
-            "unread   the note of where each address came from could not be read, so a\n\
-             \x20        new one begins. Nothing this node decides reads it."
-        );
+        aloud_in!("node-addresses-unread");
     }
     if opened.copies != 0 {
-        let statements = if opened.copies == 1 {
-            "a statement".to_owned()
-        } else {
-            format!("{} statements", opened.copies)
-        };
-        aloud!(
-            "another  {statements} signed with this node's key, which it did not make,\n\
-             \x20        reached it in the window. Another copy of this name has been\n\
-             \x20        running. `333 status` says where it said it was."
-        );
+        aloud_in!("node-addresses-copies", copies = opened.copies);
     }
 }
 
@@ -330,6 +311,76 @@ mod tests {
     use super::*;
     use crate::node::Keeping;
     use n333_core::whereabouts::Whereabouts;
+
+    #[test]
+    fn in_english_every_moved_line_says_exactly_what_it_said_before() {
+        let pairs = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+            [
+                (
+                    words!("node-addresses-reading"),
+                    "reading an address".to_owned(),
+                ),
+                (
+                    words!("node-addresses-keeping"),
+                    "keeping an address".to_owned(),
+                ),
+                (
+                    words!("node-addresses-reading-own"),
+                    "reading this node's address".to_owned(),
+                ),
+                (
+                    words!("node-addresses-keeping-own"),
+                    "keeping this node's address".to_owned(),
+                ),
+                (
+                    words!(
+                        "node-addresses-another-copy",
+                        address = "there.example:3333",
+                        said_in = 89_612_u64,
+                        from = "from 333ab"
+                    ),
+                    format!(
+                        "another  copy of this node's name is out there. A statement signed with this\n\
+                         \x20        node's key, which this node never made, says it is at\n\
+                         \x20        {}, in epoch {}.\n\
+                         \x20        It arrived {from}. Either this directory was copied and the copy was\n\
+                         \x20        started, or somebody else has the key. Two nodes on one name\n\
+                         \x20        contradict each other in every epoch either is asked about. Stop\n\
+                         \x20        one of them; `333 pack` is how a node moves. This one keeps\n\
+                         \x20        running until you decide which.",
+                        "there.example:3333",
+                        89_612,
+                        from = "from 333ab"
+                    ),
+                ),
+                (
+                    words!("node-addresses-unread"),
+                    "unread   the note of where each address came from could not be read, so a\n\
+                     \x20        new one begins. Nothing this node decides reads it."
+                        .to_owned(),
+                ),
+                (
+                    words!("node-addresses-copies", copies = 1_usize),
+                    "another  a statement signed with this node's key, which it did not make,\n\
+                     \x20        reached it in the window. Another copy of this name has been\n\
+                     \x20        running. `333 status` says where it said it was."
+                        .to_owned(),
+                ),
+                (
+                    words!("node-addresses-copies", copies = 3_usize),
+                    format!(
+                        "another  {statements} signed with this node's key, which it did not make,\n\
+                         \x20        reached it in the window. Another copy of this name has been\n\
+                         \x20        running. `333 status` says where it said it was.",
+                        statements = "3 statements"
+                    ),
+                ),
+            ]
+        });
+        for (now, before) in pairs {
+            assert_eq!(now, before);
+        }
+    }
 
     /// A directory for one test, gone when the test is.
     struct Scratch(std::path::PathBuf);

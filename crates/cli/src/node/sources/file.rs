@@ -86,21 +86,30 @@ pub(crate) fn save(home: &Path, sources: &mut Sources, now: Epoch) -> anyhow::Re
         format: FORMAT,
         sources: sources.clone(),
     };
-    let bytes =
-        serde_json::to_vec_pretty(&on_disk).context("writing down where things came from")?;
+    let bytes = serde_json::to_vec_pretty(&on_disk)
+        .with_context(|| words!("node-sources-file-writing-down"))?;
     // Named for this process and this write, so that two writers at once — two
     // processes, or the vigil and an order typed into its screen — never write into
     // each other's half-finished file.
     static WRITES: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
     let write = WRITES.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let temporary = home.join(format!("{FILE}.{}.{write}.tmp", std::process::id()));
-    let mut file = std::fs::File::create(&temporary)
-        .with_context(|| format!("creating {}", temporary.display()))?;
+    let mut file = std::fs::File::create(&temporary).with_context(|| {
+        words!(
+            "node-sources-file-creating",
+            file = temporary.display().to_string()
+        )
+    })?;
     file.write_all(&bytes)
         .and_then(|()| file.sync_data())
-        .with_context(|| format!("writing {}", temporary.display()))?;
+        .with_context(|| {
+            words!(
+                "node-sources-file-writing",
+                file = temporary.display().to_string()
+            )
+        })?;
     std::fs::rename(&temporary, home.join(FILE))
-        .with_context(|| format!("putting {FILE} in place"))?;
+        .with_context(|| words!("node-sources-file-putting", file = FILE))?;
     Ok(())
 }
 
@@ -127,6 +136,39 @@ pub(crate) fn typed(home: &Path, address: &str, name: Option<NodeId>) -> anyhow:
 mod tests {
     use super::super::{Heard, Mine, Sighting, Source};
     use super::*;
+
+    #[test]
+    fn in_english_every_moved_line_says_exactly_what_it_said_before() {
+        let pairs = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+            [
+                (
+                    words!("node-sources-file-writing-down"),
+                    "writing down where things came from",
+                ),
+                (
+                    words!(
+                        "node-sources-file-creating",
+                        file = "/n/sources.json.1.0.tmp"
+                    ),
+                    "creating /n/sources.json.1.0.tmp",
+                ),
+                (
+                    words!(
+                        "node-sources-file-writing",
+                        file = "/n/sources.json.1.0.tmp"
+                    ),
+                    "writing /n/sources.json.1.0.tmp",
+                ),
+                (
+                    words!("node-sources-file-putting", file = FILE),
+                    "putting sources.json in place",
+                ),
+            ]
+        });
+        for (now, before) in pairs {
+            assert_eq!(now, before);
+        }
+    }
 
     /// A directory for one test, gone when the test is.
     struct Scratch(std::path::PathBuf);

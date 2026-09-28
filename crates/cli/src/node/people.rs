@@ -15,6 +15,7 @@ use n333_core::{Epoch, utterance};
 
 use super::sources::Source;
 use super::{Heard, Node};
+use crate::words::Arg;
 
 impl Node {
     /// The members this node knows of, in the shape the draw takes.
@@ -84,7 +85,7 @@ impl Node {
             let held = state
                 .window
                 .read(epoch)
-                .with_context(|| format!("reading epoch {number}"))?;
+                .with_context(|| words!("node-people-reading-epoch", epoch = Arg::exact(number)))?;
             about_epochs.extend(held.into_iter().filter(|frame| {
                 // Everything anybody said about this epoch except the questions and the
                 // answers: those two are the prover's own receipt and are its business
@@ -331,6 +332,22 @@ fn share_the_room<const N: usize>(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn in_english_every_moved_line_says_exactly_what_it_said_before() {
+        let pairs = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+            [(
+                words!(
+                    "node-people-reading-epoch",
+                    epoch = crate::words::Arg::exact(89_612)
+                ),
+                "reading epoch 89612",
+            )]
+        });
+        for (now, before) in pairs {
+            assert_eq!(now, before);
+        }
+    }
 
     /// `count` frames of one kind, each one distinguishable from the others.
     fn kind(mark: u8, count: usize) -> Vec<Vec<u8>> {

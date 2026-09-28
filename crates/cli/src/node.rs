@@ -187,22 +187,27 @@ impl Node {
         let (identity, origin) = identity_file::load_or_create(mistrust, home)?;
 
         let (mut chain, chain_opened) =
-            Log::open(&home.join(CHAIN_FILE)).context("opening this node's record")?;
-        let entries = chain.read_all().context("reading this node's record")?;
-        let head = chain::verify(&entries).context("this node's own record does not verify")?;
+            Log::open(&home.join(CHAIN_FILE)).with_context(|| words!("node-opening-record"))?;
+        let entries = chain
+            .read_all()
+            .with_context(|| words!("node-reading-record"))?;
+        let head = chain::verify(&entries).with_context(|| words!("node-does-not-verify"))?;
 
         let (admissions, read) = Admitted::open(&home.join(ADMISSIONS_FILE))?;
 
-        let (witnessed, _) =
-            Once::open(&home.join(WITNESSED_FILE)).context("opening what was witnessed")?;
+        let (witnessed, _) = Once::open(&home.join(WITNESSED_FILE))
+            .with_context(|| words!("node-opening-witnessed"))?;
 
         let window = Window::keeping(&home.join(WINDOW_DIR), keeping.epochs())
-            .context("opening the statements")?;
+            .with_context(|| words!("node-opening-statements"))?;
 
-        let (mut whereabouts, _) =
-            Log::open(&home.join(WHEREABOUTS_FILE)).context("opening the addresses")?;
-        let (directory, _) =
-            Directory::from_frames(&whereabouts.read_all().context("reading the addresses")?);
+        let (mut whereabouts, _) = Log::open(&home.join(WHEREABOUTS_FILE))
+            .with_context(|| words!("node-opening-addresses"))?;
+        let (directory, _) = Directory::from_frames(
+            &whereabouts
+                .read_all()
+                .with_context(|| words!("node-reading-addresses"))?,
+        );
 
         let (sources, loaded) = sources::load(home, n333_core::Epoch::now());
         let subject = read_the_file(home);
@@ -264,7 +269,7 @@ impl Node {
     pub(crate) async fn receive(&self, subject: Subject) -> anyhow::Result<()> {
         let path = self.home.join(subject::FILENAME);
         std::fs::write(&path, subject.content())
-            .with_context(|| format!("writing {}", path.display()))?;
+            .with_context(|| words!("node-writing", path = path.display().to_string()))?;
         *self.subject.lock().await = Some(subject);
         Ok(())
     }
@@ -301,4 +306,35 @@ pub(crate) struct Heard {
 fn read_the_file(home: &Path) -> Option<Subject> {
     let bytes = std::fs::read(home.join(subject::FILENAME)).ok()?;
     Subject::recognise(&bytes).ok()
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn in_english_every_moved_line_says_exactly_what_it_said_before() {
+        let pairs = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+            [
+                (words!("node-opening-record"), "opening this node's record"),
+                (words!("node-reading-record"), "reading this node's record"),
+                (
+                    words!("node-does-not-verify"),
+                    "this node's own record does not verify",
+                ),
+                (
+                    words!("node-opening-witnessed"),
+                    "opening what was witnessed",
+                ),
+                (words!("node-opening-statements"), "opening the statements"),
+                (words!("node-opening-addresses"), "opening the addresses"),
+                (words!("node-reading-addresses"), "reading the addresses"),
+                (
+                    words!("node-writing", path = "/tmp/n/333.txt"),
+                    "writing /tmp/n/333.txt",
+                ),
+            ]
+        });
+        for (now, before) in pairs {
+            assert_eq!(now, before);
+        }
+    }
 }

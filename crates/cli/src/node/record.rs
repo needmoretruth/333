@@ -35,10 +35,15 @@ impl Node {
             attendance,
             evidence,
         );
-        let frame = entry.seal(&self.identity).context("sealing the entry")?;
+        let frame = entry
+            .seal(&self.identity)
+            .with_context(|| words!("node-record-sealing"))?;
         // The head moves only after the bytes are on the disk. A head advanced first
         // and written second is a head that answers can commit to and nothing holds.
-        state.chain.append(&frame).context("writing the entry")?;
+        state
+            .chain
+            .append(&frame)
+            .with_context(|| words!("node-record-writing"))?;
         state.head = Head {
             digest: n333_core::subject::digest_of(&frame),
             length: state.head.length + 1,
@@ -52,13 +57,13 @@ impl Node {
         let frames = state
             .chain
             .read_all()
-            .context("reading this node's record")?;
+            .with_context(|| words!("node-record-reading"))?;
         let Some(last) = frames.last() else {
             return Ok(None);
         };
         Ok(Some(
             chain::open(last)
-                .context("reading the last entry")?
+                .with_context(|| words!("node-record-reading-last"))?
                 .entry
                 .epoch(),
         ))
@@ -73,13 +78,34 @@ impl Node {
         let frames = state
             .chain
             .read_all()
-            .context("reading this node's record")?;
+            .with_context(|| words!("node-record-reading"))?;
         frames
             .iter()
             .map(|frame| {
-                let entry = chain::open(frame).context("reading an entry")?.entry;
+                let entry = chain::open(frame)
+                    .with_context(|| words!("node-record-reading-entry"))?
+                    .entry;
                 Ok((entry.epoch(), entry.attendance))
             })
             .collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn in_english_every_moved_line_says_exactly_what_it_said_before() {
+        let pairs = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+            [
+                (words!("node-record-sealing"), "sealing the entry"),
+                (words!("node-record-writing"), "writing the entry"),
+                (words!("node-record-reading"), "reading this node's record"),
+                (words!("node-record-reading-last"), "reading the last entry"),
+                (words!("node-record-reading-entry"), "reading an entry"),
+            ]
+        });
+        for (now, before) in pairs {
+            assert_eq!(now, before);
+        }
     }
 }
