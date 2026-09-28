@@ -16,6 +16,7 @@
 pub(crate) mod answering;
 mod carrying;
 mod door;
+mod ending;
 mod invitation;
 #[cfg(test)]
 mod learning;
@@ -87,6 +88,8 @@ pub(crate) async fn run(common: &Common, how: Vigil) -> anyhow::Result<()> {
     // wiped by the first drawing. The smallest edition has no screen to take.
     #[cfg(feature = "screen")]
     let watching = the_screen(plain);
+    #[cfg(feature = "screen")]
+    let drawing = watching.is_some();
     #[cfg(not(feature = "screen"))]
     let _ = plain;
     let (node, opened) = Node::open(&common.mistrust(), common.paths.root(), common.keeping)?;
@@ -224,19 +227,31 @@ pub(crate) async fn run(common: &Common, how: Vigil) -> anyhow::Result<()> {
 
     // No line here saying the vigil has begun: with --no-direct it would not be true
     // yet. Each listener announces itself at the moment it can actually answer.
-    tokio::select! {
+    let asked_to_end = tokio::select! {
         // Nothing here is supposed to finish: the listeners loop, and so do the hours.
         // The screen does, when the person watching leaves, and that is the end of the
         // vigil rather than the end of one part of it.
         finished = listening.join_next() => match finished {
-            Some(finished) => finished.with_context(|| words!("serve-listener-stopped"))??,
+            Some(finished) => {
+                finished.with_context(|| words!("serve-listener-stopped"))??;
+                false
+            }
             None => return Ok(()),
         },
-        // Ctrl-C and nothing else. A service being stopped by its manager has nobody
-        // at the terminal to read this, and one arm is one arm on every system rather
-        // than a second unix-only path.
-        () = async { tokio::signal::ctrl_c().await.ok(); } => {}
+        // Ctrl-C, a service manager stopping it, a terminal closing under it: one
+        // ending, however it was asked for.
+        () = ending::asked() => true,
+    };
+    // A screen still drawing when the vigil was asked to end from outside is stopped
+    // first and the terminal given back, so that what follows is printed on a terminal
+    // rather than into a drawing nobody will clear.
+    #[cfg(feature = "screen")]
+    if asked_to_end && drawing {
+        listening.shutdown().await;
+        let _ = ratatui::try_restore();
     }
+    #[cfg(not(feature = "screen"))]
+    let _ = asked_to_end;
     if let Some(lent) = lent {
         lent.give_back().await;
     }
