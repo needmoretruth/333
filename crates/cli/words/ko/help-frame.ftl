@@ -1,5 +1,3 @@
-# Machine translation, awaiting review by a person who reads Korean.
-
 ### 각 명령의 도움말에서 clap이 말 둘레에 붙이는 말.
 
 help-frame-usage = 사용법

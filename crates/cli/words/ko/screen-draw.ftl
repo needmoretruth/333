@@ -1,5 +1,3 @@
-# Machine translation, awaiting review by a person who reads Korean.
-
 ### 화면 맨 윗줄: 누구인지, 몇 번째 에포크인지, 얼마나 남았는지.
 
 screen-draw-epoch = 에포크

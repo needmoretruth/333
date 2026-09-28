@@ -1,5 +1,3 @@
-# Machine translation. Read by a person who reads Korean before it is relied on.
-
 ### `333 --help`: 각 명령과 플래그가 하는 일.
 ###
 ### 문단 안의 줄바꿈은 공백으로 읽고, 빈 줄은 새 문단을 시작합니다.
@@ -159,9 +157,9 @@ help-language-long = 말할 언어의 태그: `ko`, `es`, `zh-Hant`.
     카탈로그 폴더를 두면 아무것도 빌드하지 않고 언어가 하나 늘어납니다.
     333의 말 자체는 번역하지 않습니다.
 
-help-count-in = 십, 십이, 또는 twelve-ascii로 셉니다
+help-count-in = ten, twelve, twelve-ascii 가운데 하나로 셉니다
 
-help-count-in-long = 십, 십이, 또는 twelve-ascii로 셉니다.
+help-count-in-long = ten, twelve, twelve-ascii 가운데 하나로 셉니다.
 
     보이는 모든 수를 그 진법으로 쓰고, 입력한 모든 수를 그 진법으로
     읽습니다. 십이진법의 `say 238`은 십진법의 `say 332`와 같은 신호입니다.

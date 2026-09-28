@@ -1,5 +1,3 @@
-# Machine translation.
-
 ### `333 id`.
 
 id-name = { $name }

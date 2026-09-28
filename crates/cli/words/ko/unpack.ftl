@@ -1,5 +1,3 @@
-# Machine translation, awaiting review by a person who reads Korean.
-
 ### `333 unpack`: 포장된 노드를 이 기계의 노드 디렉터리에 넣기.
 
 unpack-kept = 이 디렉터리에는 이미 노드가 삽니다. 그 곁에 풀려면

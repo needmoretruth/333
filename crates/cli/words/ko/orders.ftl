@@ -1,5 +1,3 @@
-# Machine translation, awaiting review by a person who reads Korean.
-
 ### 읽을 수 없는 명령에 돌려주는 말. 명령어 자체(ping, join, say, tor on,
 ### quit, ...)는 명령줄의 것이라 여기 없고, 옮기지 않습니다.
 

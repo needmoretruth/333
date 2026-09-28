@@ -1,5 +1,3 @@
-# Machine translation, awaiting review by a person who reads Korean.
-
 ### 이 노드가 사는 곳, 그리고 아직 거기 사는지.
 
 dwelling-made-at = 에서 만들어졌고

@@ -1,5 +1,3 @@
-# Machine translation, awaiting review by a person who reads Korean.
-
 ### `333 serve`: 상대가 문에서 청할 수 있는 것과, 이 노드가 그것에 하는 일.
 
 serve-answering-asked = 에포크 { $epoch }, 물은 이 { $verifier }

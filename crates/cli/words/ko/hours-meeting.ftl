@@ -1,5 +1,3 @@
-# Machine translation, awaiting review by a person who reads Korean.
-
 ### `333 serve`: 만남의 장소에 이 노드의 주소를 남기고, 다른 이들의 주소를 읽기.
 
 hours-meeting-unreadable = { $place }을(를) 읽을 수 없습니다: { $why }

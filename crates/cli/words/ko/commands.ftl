@@ -1,6 +1,3 @@
-# Machine translation. The narrative lines (unseen, keeping, witnessed, rejoined)
-# await review by a person who reads Korean; the rest should be read too.
-
 ### 명령들이 함께 쓰는 말: 노드를 여는 것, 진술을 주고받는 것, 한 번의 교환, 그리고 시계.
 
 commands-clock-at-zero = { $epoch }. 이 기계의 시계가 1970년을 가리키고 있어서,
@@ -97,8 +94,6 @@ commands-waking-through = Tor, 브리지 { $bridges }개를 거쳐서. 보이지
 commands-no-tor = { $seconds }초가 지나도록 Tor 연결이 없습니다
 commands-starting-tor = Tor 클라이언트 시작하기
 
-# The two sentences a handover is signed under: they await review by a person who
-# reads Korean, and should be read beside the English.
 commands-signed-giving = 당신이 말했습니다: 에포크 { $epoch }에 당신에게 파일을 건넸습니다.
     상대가 말했습니다: 에포크 { $epoch }에 당신에게서 파일을 받았습니다.
     두 손으로 적혔고, 어느 손도 되돌릴 수 없습니다.

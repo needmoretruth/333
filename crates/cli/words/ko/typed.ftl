@@ -1,5 +1,3 @@
-# Machine translation, awaiting review by a person who reads Korean.
-
 ### 도는 철야 곁에서 입력한 명령을 철야에게 넘길 수 없는 이유. 각각 "여기서
 ### 철야를 지키고 있으며," 뒤에 이어집니다.
 

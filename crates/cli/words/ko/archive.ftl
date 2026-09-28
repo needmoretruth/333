@@ -1,5 +1,3 @@
-# Machine translation, awaiting review by a person who reads Korean.
-
 ### 옮기는 동안 노드가 되는 파일 하나: 그것을 읽고 쓰기.
 
 archive-not-a-packed-node = 그 파일은 포장된 노드가 아닙니다: 매니페스트의 첫 줄이 `{ $heading }`가 아닙니다

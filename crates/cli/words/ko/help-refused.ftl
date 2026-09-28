@@ -1,5 +1,3 @@
-# Machine translation, awaiting review by a person who reads Korean.
-
 ### 명령줄을 거절할 때 clap이 하는 말. 메시지 안의 줄바꿈은 공백으로 읽습니다.
 
 help-refused-error = 오류

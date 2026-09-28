@@ -1,5 +1,3 @@
-# Machine translation, awaiting review by a person who reads Korean.
-
 ### `333 serve`.
 
 serve-nothing-listening = 아무것도 듣고 있지 않게 됩니다: --no-direct에는 --tor가 필요합니다

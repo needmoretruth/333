@@ -1,7 +1,3 @@
-# Machine translation. The narrative lines (status-yourself-record,
-# status-yourself-not-counted, status-yourself-standing) await review by a person
-# who reads Korean; the rest should be read too.
-
 ### `333 status`: 이 노드 자신의 기록이 이 노드에 대해 말하는 것.
 
 status-yourself-on-no-roll = 당신은 어느 명부에도 없습니다. 아무도 당신에게 파일을

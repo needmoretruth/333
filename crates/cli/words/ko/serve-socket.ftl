@@ -1,5 +1,3 @@
-# Machine translation, awaiting review by a person who reads Korean.
-
 ### `333 serve`: 소켓으로 듣는 쪽.
 
 serve-socket-port-taken = 이 기계에서 무언가가 이미 포트 { $port }에서 듣고 있습니다. 다른

@@ -1,5 +1,3 @@
-# Machine translation, awaiting review by a person who reads Korean.
-
 ### 한 에포크에 말해진 것을 보관하다 잘못된 것.
 
 node-words-keeping = 에포크 { $epoch }에 대한 진술 보관하기

@@ -1,5 +1,3 @@
-# Machine translation, awaiting review by a person who reads Korean.
-
 ### 실행 중인 333이 자기 노드의 디렉터리에 거는 잠금.
 
 claim-opening = 이 노드 디렉터리의 잠금 열기

@@ -1,5 +1,3 @@
-# Machine translation, awaiting review by a person who reads Korean.
-
 ### `333 serve`: 이 기계의 다른 터미널에서 오는 명령.
 
 serve-told-not-here = 이 시스템에서는 명령이 이 철야의 화면으로만 들어옵니다. 옆에서

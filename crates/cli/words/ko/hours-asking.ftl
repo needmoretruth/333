@@ -1,5 +1,3 @@
-# Machine translation, awaiting review by a person who reads Korean.
-
 ### `333 serve`: 에포크마다 다른 노드와 주고받고, 뽑힌 상대에게 묻기.
 
 hours-asking-failed-gathering = 이 노드가 건넬 것을 모으는 중: { $why }

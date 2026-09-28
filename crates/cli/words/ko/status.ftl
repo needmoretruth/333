@@ -1,8 +1,3 @@
-# Machine translation. The narrative lines (status-seen-nobody, status-waiting,
-# status-nobody-keeping, status-remain, status-run-out, status-one-answer: the
-# silence and the countdown) await review by a person who reads Korean; the rest
-# should be read too.
-
 ### `333 status`: 이 노드가 본 다른 이들, 말해진 것, 그리고 누가 여기 있는지.
 
 status-name = { $name }

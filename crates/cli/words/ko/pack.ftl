@@ -1,5 +1,3 @@
-# Machine translation, awaiting review by a person who reads Korean.
-
 ### `333 pack`: 다른 기계로 옮기려고 이 노드를 파일 하나에 담기.
 
 pack-name-the-file = 이 노드를 담을 파일을 지정하십시오: 333 pack <FILE>

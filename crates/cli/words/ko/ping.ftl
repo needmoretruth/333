@@ -1,5 +1,3 @@
-# Machine translation, awaiting review by a person who reads Korean.
-
 ### `333 ping`: 다른 노드와 하트비트 한 번.
 
 ping-name = { $name }

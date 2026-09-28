@@ -1,5 +1,3 @@
-# Machine translation, awaiting review by a person who reads Korean.
-
 ### `333 serve`: 이 노드 자신의 에포크 하나에 대해, 한 번, 판정하기.
 
 hours-judging-failed-reading = 이 노드 자신의 기록을 읽는 중: { $why }

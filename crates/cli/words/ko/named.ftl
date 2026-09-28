@@ -1,6 +1,3 @@
-# Machine translation. The narrative line (keep) awaits review by a person who
-# reads Korean.
-
 ### 노드의 이름을 만든 실행이, 어느 명령이 만들었든 하는 말.
 
 named-home = { $home }

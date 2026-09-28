@@ -37,12 +37,12 @@ impl Base {
     ///
     /// # Errors
     /// Fails, naming the three there are, for anything else.
-    pub(crate) fn named(name: &str) -> Result<Self, String> {
+    pub(crate) fn named(name: &str) -> Result<Self, NotABase> {
         match name.trim().to_ascii_lowercase().as_str() {
             "ten" | "10" => Ok(Self::Ten),
             "twelve" | "12" => Ok(Self::Twelve),
             "twelve-ascii" => Ok(Self::TwelveAscii),
-            _ => Err(format!("{name} is not ten, twelve or twelve-ascii")),
+            _ => Err(NotABase(name.to_owned())),
         }
     }
 
@@ -112,6 +112,26 @@ impl Base {
         (value < self.radix()).then_some(value)
     }
 }
+
+/// A name that is none of the bases, and says so in words only when it is shown.
+///
+/// A base is read before the words are chosen — from the command line clap reads
+/// first, and from `THE333_COUNT_IN` while choosing — and the first sentence said in
+/// this process fixes the words it speaks for good. So the sentence waits until
+/// somebody shows the refusal, which clap does only once the words are chosen.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct NotABase(String);
+
+impl std::fmt::Display for NotABase {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&crate::words!(
+            "words-count-not-a-base",
+            name = self.0.as_str()
+        ))
+    }
+}
+
+impl std::error::Error for NotABase {}
 
 /// Write a count in the base this client counts in.
 ///
@@ -252,6 +272,16 @@ mod tests {
         for base in [Base::Ten, Base::Twelve, Base::TwelveAscii] {
             assert_eq!(Base::named(base.name()), Ok(base));
         }
+    }
+
+    #[test]
+    fn a_base_nobody_counts_in_is_refused_in_the_words_chosen() {
+        let refused = Base::named("eight").unwrap_err();
+        let english = crate::words::speaking("en", Base::Ten, || refused.to_string());
+        assert_eq!(english, "eight is not ten, twelve or twelve-ascii");
+        let korean = crate::words::speaking("ko", Base::Ten, || refused.to_string());
+        assert!(korean.starts_with("eight은(는) "), "{korean}");
+        assert!(!korean.contains(" is not "), "{korean}");
     }
 
     #[test]

@@ -1,5 +1,3 @@
-# Machine translation, awaiting review by a person who reads Korean.
-
 ### 화면 왼쪽 칸: 셈, 이 노드의 자리, 그리고 말해진 것.
 ### 여러 줄인 말은 폭 30칸(한글 15자)에 맞춰 손으로 끊었습니다.
 

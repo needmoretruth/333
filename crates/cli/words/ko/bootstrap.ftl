@@ -1,5 +1,3 @@
-# Machine translation, awaiting review by a person who reads Korean.
-
 ### `333 bootstrap`: 합류할 이가 없을 때 자기 계보를 시작하기.
 
 bootstrap-name = { $name }

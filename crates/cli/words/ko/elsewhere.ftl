@@ -1,5 +1,3 @@
-# Machine translation, awaiting review by a person who reads Korean.
-
 ### 다른 333이 이미 이 노드의 디렉터리를 가지고 있을 때 명령이 하는 말.
 
 elsewhere-the-vigil = 이 디렉터리에서 지키는 철야

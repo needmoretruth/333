@@ -1,5 +1,3 @@
-# Machine translation, awaiting review by a person who reads Korean.
-
 ### `333 serve --tor`: 숨어 있는 노드를 위한 어니언 주소.
 
 serve-onion-launching = 어니언 서비스를 띄우는 중

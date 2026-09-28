@@ -1,5 +1,3 @@
-# Machine translation, awaiting review by a person who reads Korean.
-
 ### 화면 맨 아래 두 줄: 누군가 여기 있는지, 그리고 키가 하는 일.
 ### 줄마다 넓은 것과 좁은 것(62칸 미만)이 있습니다. 여기서 끊은 줄은
 ### 화면에서는 한 줄입니다.

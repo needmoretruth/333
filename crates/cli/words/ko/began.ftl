@@ -1,5 +1,3 @@
-# Machine translation, awaiting review by a person who reads Korean.
-
 ### 이 노드의 이름이 만들어진 때, `333 id`와 `333 unpack`이 말하는 대로.
 
 began-at-by = { $at }, `{ $by }` 실행

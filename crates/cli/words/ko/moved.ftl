@@ -1,5 +1,3 @@
-# Machine translation, awaiting review by a person who reads Korean.
-
 ### `333 moved`: 이 노드의 디렉터리를 복사한 것이 아니라 옮겼다고 말하기.
 
 moved-no-node = { $root }에는 옮겼다고 할 노드가 없습니다.

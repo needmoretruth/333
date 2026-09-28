@@ -1,5 +1,4 @@
-# Machine translation, awaiting review by a person who reads Korean.
-# The 1 and 2 below are written the same in every base this client counts in.
+# 아래의 1과 2는 이 클라이언트가 세는 어느 진법에서나 똑같이 씁니다.
 
 ### `333 serve`: 공유기에 묻고, 빌려준 것을 지키고, 돌려주기.
 

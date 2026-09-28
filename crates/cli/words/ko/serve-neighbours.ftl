@@ -1,5 +1,3 @@
-# Machine translation, awaiting review by a person who reads Korean.
-
 ### `333 serve`: 같은 네트워크에서 찾은 노드에게 인사하기.
 
 serve-neighbours-found = { $address }에 우리 중 하나가 있습니다

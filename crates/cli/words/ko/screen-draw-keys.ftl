@@ -1,5 +1,3 @@
-# Machine translation, awaiting review by a person who reads Korean.
-
 ### `?`가 화면 위에 여는 상자: 모든 키, 그리고 `:` 뒤에 입력하는 모든 명령.
 ### 입력하는 것은 여기 없고 옮기지도 않습니다. 하는 일만 옮깁니다.
 

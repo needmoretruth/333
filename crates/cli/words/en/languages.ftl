@@ -3,7 +3,7 @@
 # The language's name in itself. Shown in every language's list as it is written here.
 languages-name = English
 
-languages-one = { $tag }  { $name }  { $percent }% of what English says
+languages-one = { $tag }  { $name }  { $percent }% of the messages English has
     .keyword = language
 
 languages-speaking = { $tag }. `--language <TAG>` or THE333_LANGUAGE chooses another.

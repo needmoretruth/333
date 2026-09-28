@@ -151,7 +151,7 @@ impl Carrier {
             }
             // The failure already names the address when the address is what failed.
             Err(e) => {
-                aloud_in!("serve-carrying-unheard", why = format!("{e:#}"));
+                aloud_in!("serve-carrying-unheard", why = crate::failed::chain(&e));
                 false
             }
         }
@@ -166,7 +166,7 @@ impl Carrier {
             crate::commands::join::ask(&self.node, &self.dialer, self.common.timeout, &address);
         asked
             .await
-            .map_err(|e| aloud_in!("serve-carrying-unheard", why = format!("{e:#}")))
+            .map_err(|e| aloud_in!("serve-carrying-unheard", why = crate::failed::chain(&e)))
             .is_ok()
     }
 
@@ -175,7 +175,7 @@ impl Carrier {
         let place = n333_net::meeting::THE_PLACE;
         crate::commands::bootstrap::begin(&self.node, place, anyway, self.common.timeout)
             .await
-            .map_err(|e| aloud_in!("serve-carrying-unbegun", why = format!("{e:#}")))
+            .map_err(|e| aloud_in!("serve-carrying-unbegun", why = crate::failed::chain(&e)))
             .is_ok()
     }
 

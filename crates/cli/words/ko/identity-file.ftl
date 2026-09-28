@@ -1,5 +1,3 @@
-# Machine translation, awaiting review by a person who reads Korean.
-
 ### 디스크에 있는 이 노드의 신원: 읽고, 만들고, 거절하기.
 
 identity-file-reading = { $path } 읽기

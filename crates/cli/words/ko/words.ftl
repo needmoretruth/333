@@ -1,5 +1,3 @@
-# Machine translation, awaiting review by a person who reads Korean.
-
 ### 말과 진법을 고르면서, 시작할 때 한 번 하는 말.
 
 words-broken = { $file }의 일부를 읽지 못했습니다({ $line }번째 줄). 그 부분은

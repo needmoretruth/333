@@ -1,5 +1,3 @@
-# Machine translation, awaiting review by a person who reads Korean.
-
 ### `333 serve`: 문. 누가 들어오고 누가 돌아가는지.
 
 serve-door-over-tor = 토르를 거친 상대

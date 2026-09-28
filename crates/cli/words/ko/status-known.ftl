@@ -1,7 +1,3 @@
-# Machine translation, awaiting review by a person who reads Korean.
-# The place a statement arrived from, and where an address was first heard of,
-# are still said in English inside these lines: they are not this file's words.
-
 ### `333 status`: 다른 이들이 어디 있는지, 이 노드가 아는 만큼, 그리고 각각 어디서
 ### 들었는지.
 

@@ -9,6 +9,8 @@
 //! `Error: `, which is a program talking to itself in front of a guest: a different
 //! voice, a stack of `Caused by:` and nothing about what to do.
 
+pub(crate) mod net;
+
 use std::fmt;
 
 /// The one thing a person can do next, attached to a failure by the code that knows it.
@@ -45,7 +47,7 @@ pub(crate) fn is_our_own(error: &anyhow::Error) -> bool {
 /// is; only a failure of this node's own record is not a refusal. Said by the vigil,
 /// for an order typed into its screen or handed to it from another terminal.
 pub(crate) fn not_said(error: &anyhow::Error) -> String {
-    let text = format!("{error:#}");
+    let text = chain(error);
     let mut lines = text.splitn(2, '\n');
     let first = lines.next().unwrap_or_default();
     let mut said = if is_our_own(error) {
@@ -61,6 +63,12 @@ pub(crate) fn not_said(error: &anyhow::Error) -> String {
     said
 }
 
+/// Every sentence of a failure, outermost first, joined the way `{:#}` joins them, with
+/// what the libraries below said put in words.
+pub(crate) fn chain(error: &anyhow::Error) -> String {
+    error.chain().map(net::cause).collect::<Vec<_>>().join(": ")
+}
+
 /// A failed command, as the lines this client says.
 ///
 /// `failed   ` and every sentence in the chain joined by `: `, then the next step when
@@ -70,19 +78,29 @@ pub(crate) fn said(error: &anyhow::Error) -> String {
     let step = error.downcast_ref::<NextStep>().map(|step| step.0.as_str());
     let chain: Vec<String> = error
         .chain()
-        .map(ToString::to_string)
-        .filter(|sentence| Some(sentence.as_str()) != step)
+        .filter(|cause| Some(cause.to_string().as_str()) != step)
+        .map(net::cause)
         .collect();
     let mut text = words!("failed-failed", why = chain.join(": "));
     if let Some(step) = step {
         text.push('\n');
         text.push_str(step);
     }
+    in_one_column(&text)
+}
+
+/// A laid-out line with every further line starting where the first line's words do,
+/// and blank lines left blank.
+fn in_one_column(text: &str) -> String {
+    let column = text.lines().next().map_or(
+        crate::words::layout::COLUMN,
+        crate::words::layout::where_the_words_begin,
+    );
     text.lines()
         .enumerate()
         .map(|(at, line)| match (at, line.trim_end()) {
             (0, line) | (_, line @ "") => line.to_owned(),
-            (_, line) => format!("         {}", line.trim_start()),
+            (_, line) => format!("{}{}", " ".repeat(column), line.trim_start()),
         })
         .collect::<Vec<_>>()
         .join("\n")

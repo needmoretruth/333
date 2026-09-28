@@ -1,5 +1,3 @@
-# Machine translation, awaiting review by a person who reads Korean.
-
 ### `333 join`: 파일을 가진 노드에게 건네 달라고 청하기.
 
 join-name = { $name }

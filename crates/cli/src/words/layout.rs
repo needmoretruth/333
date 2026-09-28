@@ -38,7 +38,7 @@ pub(crate) fn line(keyword: &str, words: &str) -> String {
 
 /// The display column the words of one laid-out line begin in: after the keyword and
 /// the spaces that follow it.
-#[cfg(test)]
+#[must_use]
 pub(crate) fn where_the_words_begin(first_line: &str) -> usize {
     let keyword = first_line.split(' ').next().unwrap_or_default();
     let spaces = first_line

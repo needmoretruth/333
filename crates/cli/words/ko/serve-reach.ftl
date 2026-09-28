@@ -1,5 +1,3 @@
-# Machine translation, awaiting review by a person who reads Korean.
-
 ### `333 serve`: 밖에서 누가 정말 들어올 수 있는지.
 
 serve-reach-unanswered-at-the-end = 철야가 끝날 때까지 공유기가 답하지 않았습니다. 공유기가

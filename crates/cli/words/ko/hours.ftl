@@ -1,5 +1,3 @@
-# Machine translation, awaiting review by a person who reads Korean.
-
 ### `333 serve`: 에포크 경계마다 시간을 지키기.
 
 hours-failed-marking = 이 에포크를 지켰다고 적는 중: { $why }
