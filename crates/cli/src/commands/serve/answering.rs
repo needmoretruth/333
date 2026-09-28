@@ -111,10 +111,7 @@ where
         receiver = given.transfer.receiver().to_string(),
         epoch = given.transfer.epoch().0
     );
-    aloud!(
-        "{}",
-        crate::commands::what_was_signed(&given.transfer, true)
-    );
+    crate::aloud::line(&crate::commands::what_was_signed(&given.transfer, true));
     let members = node.admit(&[given.gave, given.received]).await?;
     aloud_in!("serve-answering-roll", members = members);
     Ok(())

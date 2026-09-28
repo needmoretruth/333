@@ -53,6 +53,12 @@ pub(crate) fn say(line: std::fmt::Arguments<'_>) {
     }
 }
 
+/// Say a line that is already in words: one made by [`words!`](crate::words), or a
+/// formula that is the same in every language.
+pub(crate) fn line(line: &str) {
+    say(format_args!("{line}"));
+}
+
 /// Write one line where there is no screen, and drop it if nobody reads there.
 ///
 /// `333 serve --plain | head` closes the vigil's standard output after ten lines, and a
@@ -90,8 +96,9 @@ pub(crate) fn into_screen() -> Option<UnboundedReceiver<String>> {
 
 /// Say one thing out loud, written the way `println!` is.
 ///
-/// It exists so that the shape of the call at the hundred places that have something
-/// to say is the shape everybody already knows.
+/// Nothing calls it: every line this client says has its words in a catalog, and
+/// `words::checks` fails on a call. It stays so that a line written this way on
+/// another branch still builds and is caught by that check, which says what to do.
 #[macro_export]
 macro_rules! aloud {
     ($($arg:tt)*) => { $crate::aloud::say(format_args!($($arg)*)) };

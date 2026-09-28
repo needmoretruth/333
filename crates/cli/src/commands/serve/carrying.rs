@@ -136,7 +136,7 @@ impl Carrier {
         // knocks there rather than the one after the vigil next reads the disk.
         let typed = address.to_string();
         if let Err(e) = self.node.given_by_hand(&typed, None).await {
-            aloud!("failed   writing down the address: {e:#}");
+            aloud_in!("serve-carrying-not-written-down", why = format!("{e:#}"));
         }
         let knocked = crate::commands::ping::knock(
             self.node.identity(),
@@ -147,13 +147,13 @@ impl Carrier {
         match knocked.await {
             Ok(answered) => {
                 if let Err(e) = self.node.given_by_hand(&typed, Some(answered)).await {
-                    aloud!("failed   writing down who answered: {e:#}");
+                    aloud_in!("serve-carrying-not-written-who", why = format!("{e:#}"));
                 }
                 true
             }
             // The failure already names the address when the address is what failed.
             Err(e) => {
-                aloud!("unheard  {e:#}");
+                aloud_in!("serve-carrying-unheard", why = format!("{e:#}"));
                 false
             }
         }
@@ -166,7 +166,10 @@ impl Carrier {
         };
         let asked =
             crate::commands::join::ask(&self.node, &self.dialer, self.common.timeout, &address);
-        asked.await.map_err(|e| aloud!("unheard  {e:#}")).is_ok()
+        asked
+            .await
+            .map_err(|e| aloud_in!("serve-carrying-unheard", why = format!("{e:#}")))
+            .is_ok()
     }
 
     /// Begin a line of this node's own, if nobody has begun one.
@@ -174,24 +177,26 @@ impl Carrier {
         let place = n333_net::meeting::THE_PLACE;
         crate::commands::bootstrap::begin(&self.node, place, anyway)
             .await
-            .map_err(|e| aloud!("unbegun  {e:#}"))
+            .map_err(|e| aloud_in!("serve-carrying-unbegun", why = format!("{e:#}")))
             .is_ok()
     }
 
     /// Say one of the 333 in this epoch.
     async fn say(&self, which: &str) -> bool {
         let Some(index) = crate::words::count::index(which) else {
-            aloud!(
-                "refused  there are {} of them, numbered 0 to {}. \"{which}\" is not one.",
-                n333_core::signal::SIGNAL_COUNT,
-                n333_core::signal::SIGNAL_COUNT - 1
+            let why = words!(
+                "say-not-one",
+                count = n333_core::signal::SIGNAL_COUNT,
+                last = n333_core::signal::SIGNAL_COUNT - 1,
+                typed = which
             );
+            aloud_in!("serve-carrying-refused", why = why);
             return false;
         };
         // Saying it says its own lines, so there is nothing to add when it works.
         crate::commands::say::speak(&self.node, index)
             .await
-            .map_err(|e| aloud!("{}", crate::failed::not_said(&e)))
+            .map_err(|e| crate::aloud::line(&crate::failed::not_said(&e)))
             .is_ok()
     }
 
@@ -204,12 +209,11 @@ impl Carrier {
     async fn status(&self, show: crate::commands::status::Show) -> bool {
         let Some(asker) = crate::aloud::the_asker() else {
             let roll = self.node.roll().await.len();
-            let has = if self.node.subject().await.is_some() {
-                "the file is here"
+            if self.node.subject().await.is_some() {
+                aloud_in!("serve-carrying-holding-the-file", roll = roll);
             } else {
-                "this node has not been given the file"
-            };
-            aloud!("holding  {roll} of us on the roll, and {has}");
+                aloud_in!("serve-carrying-holding-no-file", roll = roll);
+            }
             return true;
         };
         let mut page = Vec::new();
@@ -217,7 +221,7 @@ impl Carrier {
         let written = crate::commands::status::whole(&mut page, &self.node, now, show).await;
         let _ = asker.send(String::from_utf8_lossy(&page).trim_end().to_owned());
         written
-            .map_err(|e| aloud!("unread   what this node holds: {e:#}"))
+            .map_err(|e| aloud_in!("serve-carrying-unread-holding", why = format!("{e:#}")))
             .is_ok()
     }
 
@@ -234,7 +238,7 @@ impl Carrier {
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
             if unseen.as_ref().is_some_and(|task| !task.is_finished()) {
-                aloud!("standing the unseen address is already up. `tor off` takes it down.");
+                aloud_in!("serve-carrying-already-up");
                 return true;
             }
             let answering = super::onion::answer(
@@ -246,7 +250,7 @@ impl Carrier {
             let listening = async move {
                 let ended = answering.await;
                 if let Err(e) = &ended {
-                    aloud!("unraised {e:#}");
+                    aloud_in!("serve-carrying-unraised", why = format!("{e:#}"));
                 }
                 let _ = fell.send(());
                 ended
@@ -281,12 +285,9 @@ impl Carrier {
                 // was signed and handed out, and there is no way to unsay a signed
                 // statement; it stops answering, and the board forgets it two epochs
                 // from now.
-                aloud!(
-                    "unseen   the onion address stops answering now. What was already said about\n\
-                     \x20        it stands until it is forgotten, two epochs from when it was said."
-                );
+                aloud_in!("serve-carrying-tor-off");
             }
-            _ => aloud!("standing there is no unseen address up to take down."),
+            _ => aloud_in!("serve-carrying-none-up"),
         }
         true
     }
@@ -294,10 +295,7 @@ impl Carrier {
     /// Add a bridge line for the next time Tor starts.
     fn bridge(&self, line: String) -> bool {
         if self.dialer.tor_is_up() {
-            aloud!(
-                "too late Tor is already running, and a bridge added now changes nothing about\n\
-                 \x20        the connection it already made. Restart the node with it instead."
-            );
+            aloud_in!("serve-carrying-too-late");
             return false;
         }
         // A lock another task panicked while holding still holds the list, and the list
@@ -309,11 +307,7 @@ impl Carrier {
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         bridges.lines.push(line);
-        aloud!(
-            "bridged  {} bridge{} will be used the next time Tor starts.",
-            bridges.lines.len(),
-            if bridges.lines.len() == 1 { "" } else { "s" }
-        );
+        aloud_in!("serve-carrying-bridged", bridges = bridges.lines.len());
         true
     }
 
@@ -324,7 +318,7 @@ impl Carrier {
             .bridges
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
-        aloud!("bridged  {program} will be run for any obfuscated bridge.");
+        aloud_in!("serve-carrying-helper", program = &program);
         bridges.helper = Some(program);
         true
     }
@@ -333,16 +327,19 @@ impl Carrier {
 /// Read what was typed as an address, or say why it is not one.
 fn readable(typed: &str) -> Option<PeerAddress> {
     n333_net::invite::address_or_invite(typed)
-        .map_err(|e| aloud!("unread   {typed} is not an address: {e}"))
+        .map_err(|e| {
+            aloud_in!(
+                "serve-carrying-not-an-address",
+                typed = typed,
+                why = e.to_string()
+            )
+        })
         .ok()
 }
 
 /// Leaving is the screen's, and it never sends it here. Anybody else is refused.
 fn leave() -> bool {
-    aloud!(
-        "refused  another terminal cannot end this vigil. It ends where it was started:\n\
-         \x20        `q` in its screen, Ctrl-C, or the service manager that keeps it."
-    );
+    aloud_in!("serve-carrying-cannot-end");
     false
 }
 
@@ -355,4 +352,100 @@ async fn onion_published(raised: &mut watch::Receiver<Option<PeerAddress>>) {
     }
     // The vigil is ending and nothing will be published; the listener says why.
     std::future::pending::<()>().await;
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn in_english_every_moved_line_says_exactly_what_it_said_before() {
+        let pairs = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+            [
+                (
+                    words!("serve-carrying-not-written-down", why = "disk full"),
+                    "failed   writing down the address: disk full",
+                ),
+                (
+                    words!("serve-carrying-not-written-who", why = "disk full"),
+                    "failed   writing down who answered: disk full",
+                ),
+                (
+                    words!("serve-carrying-unheard", why = "no answer after 5 s"),
+                    "unheard  no answer after 5 s",
+                ),
+                (
+                    words!("serve-carrying-unbegun", why = "somebody has"),
+                    "unbegun  somebody has",
+                ),
+                (
+                    words!(
+                        "serve-carrying-refused",
+                        why = words!("say-not-one", count = 333_u16, last = 332_u16, typed = "x")
+                    ),
+                    "refused  there are 333 of them, numbered 0 to 332. \"x\" is not one.",
+                ),
+                (
+                    words!("serve-carrying-holding-the-file", roll = 7_usize),
+                    "holding  7 of us on the roll, and the file is here",
+                ),
+                (
+                    words!("serve-carrying-holding-no-file", roll = 0_usize),
+                    "holding  0 of us on the roll, and this node has not been given the file",
+                ),
+                (
+                    words!("serve-carrying-unread-holding", why = "torn"),
+                    "unread   what this node holds: torn",
+                ),
+                (
+                    words!("serve-carrying-already-up"),
+                    "standing the unseen address is already up. `tor off` takes it down.",
+                ),
+                (
+                    words!("serve-carrying-unraised", why = "no Tor"),
+                    "unraised no Tor",
+                ),
+                (
+                    words!("serve-carrying-tor-off"),
+                    "unseen   the onion address stops answering now. What was already said about\n\
+                     \x20        it stands until it is forgotten, two epochs from when it was said.",
+                ),
+                (
+                    words!("serve-carrying-none-up"),
+                    "standing there is no unseen address up to take down.",
+                ),
+                (
+                    words!("serve-carrying-too-late"),
+                    "too late Tor is already running, and a bridge added now changes nothing about\n\
+                     \x20        the connection it already made. Restart the node with it instead.",
+                ),
+                (
+                    words!("serve-carrying-bridged", bridges = 1_usize),
+                    "bridged  1 bridge will be used the next time Tor starts.",
+                ),
+                (
+                    words!("serve-carrying-bridged", bridges = 2_usize),
+                    "bridged  2 bridges will be used the next time Tor starts.",
+                ),
+                (
+                    words!("serve-carrying-helper", program = "obfs4proxy"),
+                    "bridged  obfs4proxy will be run for any obfuscated bridge.",
+                ),
+                (
+                    words!(
+                        "serve-carrying-not-an-address",
+                        typed = "x",
+                        why = "no port"
+                    ),
+                    "unread   x is not an address: no port",
+                ),
+                (
+                    words!("serve-carrying-cannot-end"),
+                    "refused  another terminal cannot end this vigil. It ends where it was started:\n\
+                     \x20        `q` in its screen, Ctrl-C, or the service manager that keeps it.",
+                ),
+            ]
+        });
+        for (now, before) in pairs {
+            assert_eq!(now, before);
+        }
+    }
 }

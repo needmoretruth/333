@@ -209,7 +209,7 @@ fn say_what_was_said(
         may_wait,
         to_the_boundary(Epoch::now()),
     );
-    aloud!("{line}");
+    crate::aloud::line(&line);
     again_in
 }
 

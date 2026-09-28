@@ -190,7 +190,7 @@ where
         .await
         {
             Ok(Ok(())) => {}
-            Ok(Err(e)) => aloud!("{}", ended(caller, &e)),
+            Ok(Err(e)) => crate::aloud::line(&ended(caller, &e)),
             Err(_elapsed) => aloud_in!(
                 "serve-door-silence-exchange",
                 seconds = EXCHANGE_TIMEOUT.as_secs()
@@ -240,9 +240,9 @@ where
         Ok(exchange) if exchange.peer.node_id == node.identity().node_id() => {
             aloud_in!("serve-door-knock");
         }
-        Ok(exchange) => aloud!("{}", describe(&exchange)),
+        Ok(exchange) => crate::aloud::line(&describe(&exchange)),
         Err(e) => {
-            aloud!("{}", unmet(caller, &e));
+            crate::aloud::line(&unmet(caller, &e));
             return Ok(None);
         }
     }
