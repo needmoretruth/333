@@ -89,7 +89,7 @@ pub(crate) struct Words {
     /// language the same way for whoever asks in one.
     #[cfg_attr(
         all(not(unix), not(test)),
-        expect(
+        allow(
             dead_code,
             reason = "orders are handed over only through a Unix socket"
         )

@@ -26,7 +26,7 @@ tokio::task_local! {
 /// language there are words for in each of the three bases.
 #[cfg_attr(
     all(not(unix), not(test)),
-    expect(
+    allow(
         dead_code,
         reason = "orders are handed over only through a Unix socket"
     )
@@ -45,7 +45,7 @@ pub(super) fn here() -> Option<&'static Words> {
 /// the way it always was.
 #[cfg_attr(
     all(not(unix), not(test)),
-    expect(
+    allow(
         dead_code,
         reason = "orders are handed over only through a Unix socket"
     )
@@ -84,7 +84,7 @@ pub(crate) async fn spoken_in<F: Future>(words: &'static Words, work: F) -> F::O
 /// [`spoken_in`], for work that does not wait on anything.
 #[cfg_attr(
     all(not(unix), not(test)),
-    expect(
+    allow(
         dead_code,
         reason = "orders are handed over only through a Unix socket"
     )
