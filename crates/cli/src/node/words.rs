@@ -37,8 +37,19 @@ impl Node {
     /// # Errors
     /// Fails if the file cannot be written.
     pub(crate) async fn keep(&self, epoch: Epoch, frame: &[u8]) -> anyhow::Result<()> {
+        self.keep_new(epoch, frame).await.map(|_| ())
+    }
+
+    /// Keep a statement as [`Node::keep`] does, and say whether it was new here.
+    ///
+    /// What a peer passes on is mostly what this node already holds, so this is the
+    /// only way to tell a trade that brought something from one that did not.
+    ///
+    /// # Errors
+    /// Fails if the file cannot be written.
+    pub(crate) async fn keep_new(&self, epoch: Epoch, frame: &[u8]) -> anyhow::Result<bool> {
         let mut state = self.state.lock().await;
-        state
+        let new = state
             .window
             .record(epoch, frame)
             .with_context(|| words!("node-words-keeping", epoch = Arg::exact(epoch.0)))?;
@@ -50,7 +61,7 @@ impl Node {
                 .keep(frame)
                 .with_context(|| words!("node-words-keeping-witnessed"))?;
         }
-        Ok(())
+        Ok(new)
     }
 
     /// How many statements other nodes signed about this one are held.

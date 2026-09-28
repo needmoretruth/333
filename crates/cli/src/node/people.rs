@@ -145,6 +145,7 @@ impl Node {
     ) -> anyhow::Result<Heard> {
         let mut heard = Heard::default();
         let mut admissions = Vec::new();
+        let mut speakers = BTreeSet::new();
         for frame in told {
             if let Ok(signed) = whereabouts::open(frame) {
                 if self.note_signed(signed, frame, from, now).await? {
@@ -154,23 +155,24 @@ impl Node {
                 || transfer::open(frame, Half::Received).is_ok()
             {
                 admissions.push(frame.clone());
-            } else if utterance::open(frame).is_ok() {
-                self.keep_utterance(frame).await?;
-                heard.said += 1;
+            } else if let Ok(signed) = utterance::open(frame) {
+                if self.keep_new(signed.utterance.epoch(), frame).await? {
+                    speakers.insert(signed.utterance.speaker);
+                }
             } else if let Ok(signed) = attestation::open(frame) {
                 // Kept only while it could still change a verdict. After that the epoch
                 // has been judged by everyone who was going to judge it, and holding
                 // other people's statements about it is being an archive nobody asked
                 // for.
                 let epoch = Epoch(signed.attestation.epoch);
-                if still_open(epoch, now) {
-                    self.keep(epoch, frame).await?;
+                if still_open(epoch, now) && self.keep_new(epoch, frame).await? {
                     heard.witnessed += 1;
                 }
             } else {
                 heard.unreadable += 1;
             }
         }
+        heard.speakers = speakers.len();
         if !admissions.is_empty() {
             let before = self.state.lock().await.admissions.roll().len();
             heard.were = before;
@@ -397,6 +399,40 @@ mod tests {
         assert_eq!(took[1], few.len(), "the small kind is sent whole");
         assert_eq!(run.frames.len(), room);
         assert_eq!(took[0], room - few.len(), "and gives the rest back");
+    }
+
+    #[tokio::test]
+    async fn what_is_heard_again_is_neither_kept_again_nor_counted_again() {
+        // What a restart or a join used to do: every trade handed back the same
+        // statements, each was written again, and one speaker was said as many.
+        let home =
+            std::env::temp_dir().join(format!("n333-people-test-again-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&home);
+        std::fs::create_dir_all(&home).expect("creates dir");
+        let mistrust = fs_mistrust::Mistrust::new_dangerously_trust_everyone();
+        let (node, _) =
+            Node::open(&mistrust, &home, super::super::Keeping::TheWindow).expect("opens");
+        let speaker = n333_core::Identity::from_seed(&[5; 32]);
+        let now = Epoch(1_000);
+        let said = |epoch| {
+            let signal = n333_core::signal::Signal::new(7).expect("a signal");
+            utterance::Utterance::of(&speaker, signal, epoch)
+                .seal(&speaker)
+                .expect("seals")
+        };
+        let told = vec![said(now), said(now), said(Epoch(now.0 - 1))];
+
+        let first = node.hear(&told, now, &Source::ByHand).await.expect("hears");
+        assert_eq!(first.speakers, 1, "one of us spoke, in two epochs");
+        let file = home
+            .join(super::super::WINDOW_DIR)
+            .join(format!("{:020}.seg", now.0));
+        let size = std::fs::metadata(&file).expect("kept").len();
+
+        let again = node.hear(&told, now, &Source::ByHand).await.expect("hears");
+        assert_eq!(again.speakers, 0, "nothing new was said");
+        assert_eq!(std::fs::metadata(&file).expect("kept").len(), size);
+        let _ = std::fs::remove_dir_all(&home);
     }
 
     #[tokio::test]

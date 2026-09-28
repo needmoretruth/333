@@ -157,7 +157,7 @@ pub(crate) struct Opened {
     pub(crate) chain_truncated: u64,
     /// How many members it knows of.
     pub(crate) members: usize,
-    /// How many nodes it knows an address for.
+    /// How many other nodes it knows an address for.
     pub(crate) addresses: usize,
     /// Whether it has the file.
     pub(crate) has_the_file: bool,
@@ -211,13 +211,15 @@ impl Node {
 
         let (sources, loaded) = sources::load(home, n333_core::Epoch::now());
         let subject = read_the_file(home);
+        let me = identity.public_key();
         let opened = Opened {
             origin,
             home: home.to_path_buf(),
             chain_length: head.length,
             chain_truncated: chain_opened.truncated,
             members: admissions.roll().len(),
-            addresses: directory.len(),
+            // Where this node said it is, is not somewhere it would look for one of us.
+            addresses: directory.entries().filter(|(key, _)| **key != me).count(),
             has_the_file: subject.is_some(),
             keeping,
             read,
@@ -287,12 +289,14 @@ pub(crate) struct Heard {
     /// Kept so that one trade bringing more of us than this node had ever held can be
     /// said as the thing it is, rather than as another routine line.
     pub(crate) were: usize,
-    /// Statements about epochs still open to judgement.
+    /// Statements about epochs still open to judgement, that this node did not hold.
     pub(crate) witnessed: usize,
-    /// Utterances kept, including ones already held: what a node said travels by
-    /// being repeated, so the same one arrives many times and that is the mechanism
-    /// working rather than a duplicate.
-    pub(crate) said: usize,
+    /// How many of us said something this node had not yet heard from them.
+    ///
+    /// Speakers, not utterances, because the line that says it counts speakers; and
+    /// only what was new, because what a node said travels by being repeated and the
+    /// same one arrives from everybody every round.
+    pub(crate) speakers: usize,
     /// Frames that opened as nothing this build knows.
     pub(crate) unreadable: usize,
 }

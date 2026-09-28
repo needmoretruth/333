@@ -500,6 +500,28 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn where_this_node_said_it_is_is_not_counted_among_the_others() {
+        // The opening line said "where 2 of us said to look" of a node that knew
+        // one other, while the screen and status said 1.
+        let (node, _, _dirs) = a_node_and_its_copy("counted");
+        let now = Epoch::now();
+        let mine = Whereabouts::of(node.identity(), "here.example:3333".into(), now)
+            .seal(node.identity())
+            .expect("seals");
+        node.note_own_address(&mine, now).await.expect("keeps");
+        let someone = n333_core::Identity::from_seed(&[9; 32]);
+        let theirs = Whereabouts::of(&someone, "there.example:3333".into(), now)
+            .seal(&someone)
+            .expect("seals");
+        node.hear(&[theirs], now, &from_a_peer())
+            .await
+            .expect("hears");
+        let mistrust = fs_mistrust::Mistrust::new_dangerously_trust_everyone();
+        let (_, opened) = Node::open(&mistrust, &node.home, Keeping::TheWindow).expect("opens");
+        assert_eq!(opened.addresses, 1);
+    }
+
+    #[tokio::test]
     async fn a_copy_given_the_other_copys_address_keeps_knocking_there() {
         // The only way either of two copies ever finds out about the other is by one
         // of them handing the other its statement.

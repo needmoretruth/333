@@ -16,16 +16,26 @@
 //! stranger verifies exactly as well as one kept by anybody else, and there is no
 //! canonical archive to be.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::path::{Path, PathBuf};
 
 use n333_core::Epoch;
 use n333_core::presence::WINDOW_EPOCHS;
+use n333_core::subject::digest_of;
 
 use crate::log::{Error, Log, Opened};
+use crate::once::Once;
 
 /// The extension every epoch file carries.
 const EXTENSION: &str = "seg";
+
+/// How many epoch files are held open with what they hold, to tell a repeat cheaply.
+///
+/// Statements are filed under the epochs still open to judgement, which is five of
+/// them at any moment; eight leaves room for a few stragglers. An epoch that fell out
+/// is read again from its file when something next arrives for it, so the bound costs
+/// time and never correctness.
+const OPEN_EPOCHS: usize = 8;
 
 /// Statements about an epoch — others' about this node, this node's about others,
 /// and the challenges and answers behind them — one file per epoch.
@@ -34,6 +44,12 @@ pub struct Window {
     root: PathBuf,
     /// How many epochs to keep, counting back from the newest written.
     keep: u64,
+    /// The epoch files most recently written to, each knowing what it holds.
+    ///
+    /// A trade hands back mostly what this node handed over, and every restart trades
+    /// afresh; written each time, an epoch's file doubled on every restart. Holding
+    /// the digests of what is there makes a repeat cost one hash.
+    open: BTreeMap<u64, Once>,
 }
 
 /// What was found for one epoch.
@@ -71,6 +87,7 @@ impl Window {
         Ok(Self {
             root: root.to_path_buf(),
             keep,
+            open: BTreeMap::new(),
         })
     }
 
@@ -81,13 +98,28 @@ impl Window {
         self.root.join(format!("{:020}.{EXTENSION}", epoch.0))
     }
 
-    /// Add one statement to an epoch.
+    /// Add one statement to an epoch, unless that epoch already holds these bytes.
+    /// True if it was written.
+    ///
+    /// The same bytes are the same statement: a signature over the same words by the
+    /// same key comes out the same every time, so a second copy says nothing the
+    /// first did not.
     ///
     /// # Errors
-    /// Fails if the file cannot be opened or written.
-    pub fn record(&self, epoch: Epoch, frame: &[u8]) -> Result<(), Error> {
-        let (mut log, _) = Log::open(&self.path_for(epoch))?;
-        log.append(frame)
+    /// Fails if the file cannot be opened, read or written.
+    pub fn record(&mut self, epoch: Epoch, frame: &[u8]) -> Result<bool, Error> {
+        if !self.open.contains_key(&epoch.0) {
+            if self.open.len() >= OPEN_EPOCHS {
+                // The oldest goes first: what arrives is about the epochs now open.
+                self.open.pop_first();
+            }
+            let (file, _) = Once::open(&self.path_for(epoch))?;
+            self.open.insert(epoch.0, file);
+        }
+        match self.open.get_mut(&epoch.0) {
+            Some(file) => file.keep(frame),
+            None => Ok(false),
+        }
     }
 
     /// Mark an epoch as one this node was awake for, without recording anything.
@@ -113,11 +145,15 @@ impl Window {
         self.path_for(epoch).exists()
     }
 
-    /// Everything held for one epoch, in the order it arrived.
+    /// Everything held for one epoch, in the order it arrived, each statement once.
     ///
     /// An epoch nothing was ever recorded for reads as empty rather than missing:
     /// having heard nothing and never having asked look the same from here, and it is
     /// the reader that knows which it was.
+    ///
+    /// A file an earlier build wrote may hold the same statement many times over. It
+    /// is read as what it says, once, so that nothing counts or passes on a repeat;
+    /// the file is left as it is and goes when its epoch leaves the window.
     ///
     /// # Errors
     /// Fails if the file cannot be read.
@@ -127,7 +163,12 @@ impl Window {
             return Ok(Vec::new());
         }
         let (mut log, _) = Log::open(&path)?;
-        log.read_all()
+        let mut seen = HashSet::new();
+        Ok(log
+            .read_all()?
+            .into_iter()
+            .filter(|record| seen.insert(digest_of(record)))
+            .collect())
     }
 
     /// Open one epoch's file directly, to see whether it was torn.
@@ -185,10 +226,13 @@ impl Window {
     ///
     /// # Errors
     /// Fails if the directory cannot be listed or a file cannot be removed.
-    pub fn forget_before(&self, now: Epoch) -> Result<usize, Error> {
+    pub fn forget_before(&mut self, now: Epoch) -> Result<usize, Error> {
         let Some(oldest_kept) = now.0.checked_sub(self.keep) else {
             return Ok(0);
         };
+        // Closed before they are removed: a file still open cannot be removed on
+        // every system this runs on.
+        self.open.retain(|epoch, _| *epoch >= oldest_kept);
         let mut dropped = 0;
         for epoch in self.held()? {
             if epoch < oldest_kept {
@@ -214,7 +258,7 @@ mod tests {
     #[test]
     fn statements_come_back_from_the_epoch_they_were_filed_under() {
         let root = scratch("roundtrip");
-        let window = Window::open(&root).expect("opens");
+        let mut window = Window::open(&root).expect("opens");
         window.record(Epoch(10), b"first").expect("records");
         window.record(Epoch(10), b"second").expect("records");
         window.record(Epoch(11), b"elsewhere").expect("records");
@@ -226,6 +270,45 @@ mod tests {
         assert_eq!(
             window.read(Epoch(11)).expect("reads"),
             vec![b"elsewhere".to_vec()]
+        );
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn the_same_statement_handed_over_again_is_kept_once() {
+        // Every trade hands back what this node handed over, and a restart trades
+        // afresh. Written each time, the file doubled on every restart.
+        let root = scratch("repeats");
+        let mut window = Window::open(&root).expect("opens");
+        assert!(window.record(Epoch(10), b"said").expect("records"), "new");
+        let file = window.path_for(Epoch(10));
+        let size = std::fs::metadata(&file).expect("written").len();
+        for _ in 0..5 {
+            assert!(!window.record(Epoch(10), b"said").expect("records"));
+        }
+        drop(window);
+        let mut reopened = Window::open(&root).expect("opens again");
+        assert!(!reopened.record(Epoch(10), b"said").expect("records"));
+        assert_eq!(std::fs::metadata(&file).expect("there").len(), size);
+        assert_eq!(
+            reopened.read(Epoch(10)).expect("reads"),
+            vec![b"said".to_vec()]
+        );
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn repeats_an_earlier_build_wrote_are_read_once() {
+        let root = scratch("old-repeats");
+        let window = Window::open(&root).expect("opens");
+        let (mut log, _) = Log::open(&window.path_for(Epoch(3))).expect("opens");
+        for record in [b"one".as_slice(), b"two", b"one", b"one", b"two"] {
+            log.append(record).expect("appends");
+        }
+        assert_eq!(
+            window.read(Epoch(3)).expect("reads"),
+            vec![b"one".to_vec(), b"two".to_vec()],
+            "each once, in the order first written"
         );
         let _ = std::fs::remove_dir_all(&root);
     }
@@ -256,7 +339,7 @@ mod tests {
     #[test]
     fn the_window_reports_what_it_holds() {
         let root = scratch("range");
-        let window = Window::open(&root).expect("opens");
+        let mut window = Window::open(&root).expect("opens");
         for epoch in [5_u64, 9, 7] {
             window.record(Epoch(epoch), b"x").expect("records");
         }
@@ -274,7 +357,7 @@ mod tests {
     #[test]
     fn epochs_that_can_no_longer_change_a_verdict_are_forgotten() {
         let root = scratch("prune");
-        let window = Window::keeping(&root, 5).expect("opens");
+        let mut window = Window::keeping(&root, 5).expect("opens");
         for epoch in 0..10_u64 {
             window.record(Epoch(epoch), b"x").expect("records");
         }
@@ -299,7 +382,7 @@ mod tests {
         // newest one would then stop pruning for ever, which is exactly when a small
         // machine can least afford it.
         let root = scratch("quiet");
-        let window = Window::keeping(&root, 5).expect("opens");
+        let mut window = Window::keeping(&root, 5).expect("opens");
         for epoch in 0..3_u64 {
             window.record(Epoch(epoch), b"x").expect("records");
         }
@@ -311,7 +394,7 @@ mod tests {
     #[test]
     fn nothing_is_forgotten_early_in_the_life_of_a_network() {
         let root = scratch("early");
-        let window = Window::keeping(&root, 333).expect("opens");
+        let mut window = Window::keeping(&root, 333).expect("opens");
         window.record(Epoch(1), b"x").expect("records");
         assert_eq!(window.forget_before(Epoch(2)).expect("prunes"), 0);
         assert_eq!(window.epochs().expect("lists").count, 1);
@@ -330,7 +413,7 @@ mod tests {
     #[test]
     fn files_that_are_not_ours_are_left_alone() {
         let root = scratch("strangers");
-        let window = Window::open(&root).expect("opens");
+        let mut window = Window::open(&root).expect("opens");
         window.record(Epoch(1), b"x").expect("records");
         std::fs::write(root.join("notes.txt"), b"someone put this here").expect("writes");
         std::fs::write(root.join("nonsense.seg"), b"not a number").expect("writes");

@@ -228,8 +228,8 @@ pub(crate) fn report_heard(heard: &crate::node::Heard) {
             aloud_in!("commands-learned-names", members = heard.members);
         }
     }
-    if heard.said != 0 {
-        aloud_in!("commands-heard", speakers = heard.said);
+    if heard.speakers != 0 {
+        aloud_in!("commands-heard", speakers = heard.speakers);
     }
     if heard.witnessed != 0 {
         aloud_in!("commands-carried", statements = heard.witnessed);
