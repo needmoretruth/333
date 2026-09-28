@@ -1,8 +1,7 @@
 //! What the binary says about itself when asked, as a person asks it.
 //!
-//! The format is tested beside the code. This is the other half: that `--version` is the
-//! long form and `-V` stays the short one, which is clap's wiring and only shows in the
-//! binary.
+//! The format is tested beside the code. This is the other half: that `--version` and
+//! `-V` both say the long form, which is clap's wiring and only shows in the binary.
 
 #![allow(
     clippy::expect_used,
@@ -16,6 +15,9 @@ use std::process::Command;
 /// Run the binary with one argument and return what it printed.
 fn asked(argument: &str) -> String {
     let out = Command::new(env!("CARGO_BIN_EXE_333"))
+        // The words are read in English, whatever this machine speaks.
+        .env("THE333_LANGUAGE", "en")
+        .env_remove("THE333_COUNT_IN")
         .arg(argument)
         .output()
         .expect("runs");
@@ -48,6 +50,6 @@ fn the_long_version_names_the_edition_and_the_target() {
 }
 
 #[test]
-fn the_short_version_is_only_the_number() {
-    assert_eq!(asked("-V"), format!("333 {}\n", env!("CARGO_PKG_VERSION")));
+fn the_short_flag_says_the_same_as_the_long_one() {
+    assert_eq!(asked("-V"), asked("--version"));
 }

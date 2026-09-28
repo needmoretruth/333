@@ -169,8 +169,12 @@ mod unix {
             Ok(order) => order,
             Err(why) => return end(&mut writing, &why, false).await,
         };
-        // In the vigil only, the way the screen echoes what was typed into it.
-        aloud_in!("serve-told-asked", order = text);
+        // In the vigil only, the way the screen echoes what was typed into it; and only
+        // for an order that changes something. `333 status` run every few seconds from
+        // another terminal would otherwise fill the vigil's log with its own asking.
+        if !matches!(order, Order::Status(_)) {
+            aloud_in!("serve-told-asked", order = text);
+        }
         let (lines, mut heard) = unbounded_channel();
         let (done, mut finished) = oneshot::channel();
         let ask = Ask {

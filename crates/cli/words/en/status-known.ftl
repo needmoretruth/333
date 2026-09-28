@@ -42,7 +42,7 @@ status-known-not-noted = not noted
 
 status-known-where-heard = Where each was heard of says nothing about whether anybody {
     ""}answers there.
-    `333 status --sources` lists them.
+status-known-sources-lists = `333 status --sources` lists them.
 
 status-known-sources = SOURCES
 status-known-nobody-answered = nobody has answered here yet

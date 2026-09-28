@@ -34,9 +34,9 @@ struct Vigil {
     child: Child,
     port: u16,
     home: PathBuf,
-    /// Held so the vigil's output always has a reader. A vigil whose standard output
-    /// is closed stops at the next thing it says.
-    _said: Receiver<String>,
+    /// What the vigil says. Held so its output always has a reader: a vigil whose
+    /// standard output is closed stops at the next thing it says.
+    said: Receiver<String>,
 }
 
 impl Drop for Vigil {
@@ -76,7 +76,7 @@ fn keep(home: &Path) -> Vigil {
         child,
         port: port.expect("answering"),
         home: home.to_path_buf(),
-        _said: said,
+        said,
     }
 }
 
@@ -170,6 +170,30 @@ fn what_another_terminal_asks_for_is_done_by_the_vigil_and_refused_by_it() {
 
     let (read, out) = client(&asked.home, &["status"]);
     assert!(read && out.contains("ANSWERING"), "{out}");
+}
+
+#[test]
+fn only_an_order_that_changes_something_leaves_a_line_in_the_vigil() {
+    let vigil = keep(&scratch("quiet"));
+    for _ in 0..2 {
+        let (read, out) = client(&vigil.home, &["status"]);
+        assert!(read, "{out}");
+    }
+    let (told, out) = client(&vigil.home, &["tell", "tor", "off"]);
+    assert!(told, "{out}");
+    let mut said = Vec::new();
+    let started = Instant::now();
+    while !said
+        .iter()
+        .any(|line: &String| line.starts_with("asked    tor off"))
+    {
+        let left = PATIENCE.saturating_sub(started.elapsed());
+        said.push(vigil.said.recv_timeout(left).expect("the vigil said it"));
+    }
+    assert!(
+        !said.iter().any(|line| line.starts_with("asked    status")),
+        "{said:#?}"
+    );
 }
 
 #[test]
@@ -272,7 +296,7 @@ fn a_vigil_whose_output_nobody_reads_goes_on_answering() {
         child,
         port: 0,
         home,
-        _said: never,
+        said: never,
     };
 
     // Each of these makes the vigil say a line into the closed pipe first.

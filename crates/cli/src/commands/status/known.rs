@@ -33,8 +33,13 @@ pub(super) async fn copies(out: &mut impl std::io::Write, node: &Node) -> anyhow
     Ok(())
 }
 
-/// How many addresses this node holds, by how each was first heard of.
-pub(super) async fn counts(out: &mut impl std::io::Write, node: &Node) -> anyhow::Result<()> {
+/// How many addresses this node holds, by how each was first heard of, and where to
+/// see them listed unless `listing`, when the list is what comes next.
+pub(super) async fn counts(
+    out: &mut impl std::io::Write,
+    node: &Node,
+    listing: bool,
+) -> anyhow::Result<()> {
     let known = node.known().await;
     let held = known.by_hand
         + known.this_network
@@ -63,6 +68,9 @@ pub(super) async fn counts(out: &mut impl std::io::Write, node: &Node) -> anyhow
         writeln!(out, "  {} {count:>5}", padded(&name, 18))?;
     }
     writeln!(out, "{}", words!("status-known-where-heard"))?;
+    if !listing {
+        writeln!(out, "{}", words!("status-known-sources-lists"))?;
+    }
     Ok(())
 }
 

@@ -28,7 +28,7 @@ status-known-from-us = 우리 { $peers }명에게서
 status-known-not-noted = 기록 없음
 
 status-known-where-heard = 어디서 들었는지는 그곳에서 누가 답하는지와 상관이 없습니다.
-    `333 status --sources`가 목록을 보여 줍니다.
+status-known-sources-lists = `333 status --sources`가 목록을 보여 줍니다.
 
 status-known-sources = 출처
 status-known-nobody-answered = 여기서는 아직 아무도 답하지 않았습니다

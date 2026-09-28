@@ -10,7 +10,7 @@
 //! something the compiler already knows about the binary it is making.
 
 /// The long form, e.g. `0.5.0 (Standard, tor, x86_64-linux)`, in the words this
-/// process speaks. clap puts the name in front of it.
+/// process speaks, for `-V` and `--version` alike. clap puts the name in front of it.
 pub(crate) fn long() -> String {
     describe(
         env!("CARGO_PKG_VERSION"),

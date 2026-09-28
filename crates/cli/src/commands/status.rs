@@ -111,7 +111,7 @@ async fn rest(
 ) -> anyhow::Result<()> {
     known::copies(out, node).await?;
     if show == Show::Sources {
-        known::counts(out, node).await?;
+        known::counts(out, node, true).await?;
         writeln!(out)?;
         return known::sources(out, node).await;
     }
@@ -152,7 +152,7 @@ async fn report(out: &mut impl std::io::Write, node: &Node, now: Epoch) -> anyho
     writeln!(out)?;
     the_hands(out, node).await?;
     writeln!(out)?;
-    known::counts(out, node).await?;
+    known::counts(out, node, false).await?;
     writeln!(out)?;
     what_was_said(out, node, &answering, now).await?;
     writeln!(out)?;
@@ -588,7 +588,7 @@ mod tests {
     }
 
     #[test]
-    fn in_english_the_sources_say_exactly_what_they_said_before() {
+    fn in_english_the_sources_say_what_they_said_before_but_where_to_find_them() {
         let text = with_fixture("sources", true, |node| {
             shown(node, Show::Sources, "en", Base::Ten)
         });
@@ -616,7 +616,6 @@ mod tests {
             \x20 a meeting point        0\n\
             \x20 from 1 of us           1\n\
             Where each was heard of says nothing about whether anybody answers there.\n\
-            `333 status --sources` lists them.\n\
             \n\
             SOURCES\n\
             \n\

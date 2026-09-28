@@ -23,9 +23,13 @@ use clap::{Arg, ArgAction, Command};
 use crate::words::catalog::ENGLISH;
 
 /// The definition, built, with every word a person reads written in.
+///
+/// `-V` says the same as `--version`: a report quoting either should say which of the
+/// twelve release files it is about.
 #[must_use]
 pub(crate) fn spoken(command: Command) -> Command {
-    let command = in_words(command.long_version(crate::version::long()));
+    let long = crate::version::long();
+    let command = in_words(command.version(long.clone()).long_version(long));
     let english = crate::words::current().tag().eq_ignore_ascii_case(ENGLISH);
     built(command, english)
 }
