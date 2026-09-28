@@ -241,11 +241,8 @@ pub(crate) fn look(path: &Path) -> anyhow::Result<Looked> {
     let file = open(path)?;
     let mut archive = tar::Archive::new(file);
     let (mut manifest, mut seed) = (None, None);
-    for entry in archive
-        .entries()
-        .with_context(|| words!("archive-reading-the-archive"))?
-    {
-        let mut entry = entry.with_context(|| words!("archive-reading-the-archive"))?;
+    for entry in archive.entries().map_err(not_packed(path))? {
+        let mut entry = entry.map_err(not_packed(path))?;
         let name = entry_name(&entry)?;
         if name == MANIFEST {
             let mut text = String::new();
@@ -277,11 +274,8 @@ pub(crate) fn look(path: &Path) -> anyhow::Result<Looked> {
 pub(crate) fn extract(path: &Path, into: &CheckedDir) -> anyhow::Result<()> {
     let file = open(path)?;
     let mut archive = tar::Archive::new(file);
-    for entry in archive
-        .entries()
-        .with_context(|| words!("archive-reading-the-archive"))?
-    {
-        let mut entry = entry.with_context(|| words!("archive-reading-the-archive"))?;
+    for entry in archive.entries().map_err(not_packed(path))? {
+        let mut entry = entry.map_err(not_packed(path))?;
         let name = entry_name(&entry)?;
         if name == MANIFEST {
             continue;
@@ -304,6 +298,24 @@ pub(crate) fn extract(path: &Path, into: &CheckedDir) -> anyhow::Result<()> {
         out.sync_all()?;
     }
     Ok(())
+}
+
+/// A failure of the tar reader, said as what it means here.
+///
+/// What the reader says of a file that is not an archive names the bytes it could not
+/// read, and those bytes are whatever the file held: printed, they are noise on the
+/// terminal and nothing a person can act on. Its own complaints are all of one kind;
+/// anything else is the disk, and is said as it is.
+fn not_packed(path: &Path) -> impl Fn(std::io::Error) -> anyhow::Error + '_ {
+    move |failed| match failed.kind() {
+        std::io::ErrorKind::Other
+        | std::io::ErrorKind::InvalidData
+        | std::io::ErrorKind::UnexpectedEof => anyhow::anyhow!(words!(
+            "archive-not-packed",
+            file = path.display().to_string()
+        )),
+        _ => anyhow::Error::new(failed).context(words!("archive-reading-the-archive")),
+    }
 }
 
 /// Open an archive to read it.
@@ -456,6 +468,32 @@ mod tests {
         let path = on_disk(home, rel);
         std::fs::create_dir_all(path.parent().expect("has a parent")).expect("makes dirs");
         std::fs::write(path, bytes).expect("writes");
+    }
+
+    #[test]
+    fn a_file_that_is_not_an_archive_is_said_to_be_none_and_none_of_its_bytes_are_echoed() {
+        // What the tar reader says of it names the bytes it could not read, and those
+        // are whatever the file held: on a terminal, noise.
+        let dir = scratch("junk");
+        std::fs::create_dir_all(&dir).expect("makes dirs");
+        let junk = dir.join("junk.bin");
+        let bytes: Vec<u8> = (0..3_000_u32)
+            .map(|n| u8::try_from((n * 7919) % 251).expect("fits"))
+            .collect();
+        for body in [bytes.as_slice(), b"hello, this is not a tar file at all\n"] {
+            std::fs::write(&junk, body).expect("writes");
+            let refused = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+                format!("{:#}", look(&junk).expect_err("not an archive"))
+            });
+            assert_eq!(
+                refused,
+                format!(
+                    "{} is not a packed node: it cannot be read as one",
+                    junk.display()
+                )
+            );
+        }
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

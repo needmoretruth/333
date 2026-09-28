@@ -19,6 +19,7 @@ archive-syncing = writing the archive to disk
 
 archive-opening = opening { $file }
 archive-reading-the-archive = reading the archive
+archive-not-packed = { $file } is not a packed node: it cannot be read as one
 archive-reading-the-manifest = reading the manifest
 archive-reading-the-seed = reading the seed
 archive-no-manifest = that file has no manifest, so it is not a packed node

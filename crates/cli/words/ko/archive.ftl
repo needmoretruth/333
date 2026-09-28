@@ -16,6 +16,7 @@ archive-syncing = 아카이브를 디스크에 쓰기
 
 archive-opening = { $file } 열기
 archive-reading-the-archive = 아카이브 읽기
+archive-not-packed = { $file }은 포장된 노드가 아닙니다. 포장된 노드로 읽을 수 없습니다
 archive-reading-the-manifest = 매니페스트 읽기
 archive-reading-the-seed = 시드 읽기
 archive-no-manifest = 그 파일에는 매니페스트가 없어서 포장된 노드가 아닙니다
