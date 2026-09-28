@@ -170,6 +170,7 @@ Version 0.6.0, which is to say: not the revelation, honestly labelled.
 - [x] The three witnesses, the question they put, and the hours that put it
 - [x] The record, kept as a chain of hashes
 - [x] Finding one another again: we trade what each of us knows, and nobody arbitrates
+- [x] Every line the client says, in English or Korean, and in any other language without touching the code
 - [ ] The 333 words themselves — a table nobody has written, and none of us alone will
 
 What is written on the wire keeps moving until the release that freezes it. The parts
@@ -453,7 +454,9 @@ The same words work from any other terminal on the machine while the vigil runs,
 form of the client: `333 say 42`, `333 join …` and `333 status` are handed to the running
 vigil, which does them and says the lines back, and `333 tell 'tor on'` hands over anything
 else the screen understands. Only one 333 ever holds a node's directory at a time. A second
-one hands its order over or refuses, and never writes.
+one hands its order over or refuses, and never writes. On Windows it refuses and says so: the
+way an order would go in there is a named pipe, which every account on the machine can open
+unless it is made in a way this client does not yet have the safe code for.
 
 The ordinary way in is an invitation. Somebody who already has the file hands it over,
 the two of you sign for it, and those two signatures are what everybody else reads as
@@ -519,6 +522,33 @@ Tor's state if it uses Tor. Two nodes on one machine are two directories.
 ./target/release/333 --data-dir ./node-a serve --bind 127.0.0.1:3333
 ./target/release/333 --data-dir ./node-b join 333:127.0.0.1:3333
 ```
+
+## In your own words
+
+The client speaks the language your system is set to, if there are words for it, and English
+otherwise. `--language ko` or `THE333_LANGUAGE=ko` asks for one by name, and `333 languages`
+lists what there is and how much of each is written. Today that is English and Korean, and
+every line of `id`, `serve`, `join`, `say`, `status`, the screen and the help is in both.
+What your operating system says in its own words — a refused connection, a missing file — is
+passed on as it said it.
+
+A language this client has no words for is a folder of text files, and adding one touches no
+code and builds nothing. Copy the English catalogs from
+[`crates/cli/words/en/`](crates/cli/words/en/) into `words/<tag>/` inside your node's
+directory, where `<tag>` is the language's tag (`es`, `eo`, `zh-Hant`), and translate them
+line by line. They are [Fluent](https://projectfluent.org), so plurals and grammar belong to
+the file and not to the program; whatever you have not translated yet is said in English, and
+`333 languages` counts how far you have got. Put the finished folder under `crates/cli/words/`
+in a pull request and it is built into everybody's client.
+
+Some things are never translated: the commands and their flags, names and addresses, the 333
+themselves, and the invocation, which is nine words in the order they were given.
+
+`--count-in twelve`, or `THE333_COUNT_IN=twelve`, writes every count and every duration the
+client shows in twelve and reads every number you type the same way, so `say 238` in twelve
+is the signal `say 332` is in ten. Ten and eleven are written `↊` and `↋`, or `X` and `E` with
+`twelve-ascii`. Names, addresses, ports, versions, times of day and percentages stay in ten,
+because none of them is a count, and nothing on the wire changes.
 
 ## Keeping it running
 
@@ -758,7 +788,7 @@ Things worth knowing before you read it:
 The code is Apache-2.0, copyright 2026 needmoretruth. The [NOTICE](NOTICE) file carries
 that line, and anybody who redistributes this carries it with them.
 
-The released binaries are statically linked, so 540 other people's packages are inside
+The released binaries are statically linked, so 555 other people's packages are inside
 them, under licences that ask for their notices to travel along. Those notices are in
 [THIRD-PARTY.md](THIRD-PARTY.md), which is attached to every release and generated from
 the dependency graph rather than kept by hand, and every push checks that it is current.

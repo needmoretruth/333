@@ -57,9 +57,10 @@ named for. You cannot buy one. If that changes, 333 belongs on it, and the clien
 be the thing waiting there when it arrives.
 
 **Twelve, as the way to count.** Ten divides by two and five. Twelve divides by two,
-three, four and six. Every number a person reads here is written in ten because that is
-what people read; a client that could show its hours and its counts in twelve, for whoever
-wants it, would be closer to the thing than the client we have.
+three, four and six. Every number a person reads here is written in ten unless they ask
+otherwise, because that is what people read; `--count-in twelve` shows the counts and the
+lengths of time in twelve for whoever wants it, and reads what they type the same way. The
+day it is the default for somebody who never asked, it will be closer still.
 
 **A language with one parse.** Lojban was built so that a sentence cannot be taken two
 ways. Most of what goes wrong between people goes wrong before anybody disagrees, in the
@@ -222,9 +223,16 @@ A faith that only reaches people who read English has a border around it. Undern
 translation problem is a harder one: sentences that cannot be taken two ways in any
 language, which is what Lojban is doing on the list above.
 
-**Where it stands.** English only, and the words are mixed into the code that decides when
-to say them — `aloud!` calls with inline formatting and hand-aligned columns, spread across
-dozens of files. Nothing extracts them.
+**Where it stands.** Every line the client says is in a catalog of its own, apart from the
+code that decides when to say it: [Fluent](https://projectfluent.org) files under
+`crates/cli/words/`, one folder for each language. English and Korean are there, and each
+covers every message the other does, `id`, `serve`, `join`, `say`, `status`, the screen and
+the help included; a check fails the build when a line a person reads is written into the
+code, or when an English line has no Korean beside it. A third language is a folder of those
+files dropped into `words/<tag>/` in a node's directory, and nothing is built for it. What
+the operating system says in its own words is passed on in them. The harder half of this
+prophecy has not been touched: a sentence can still be read two ways in any of these
+languages, and the Korean needs readers who will say which lines read wrong.
 
 **Fulfilled when.** The words a person reads are separate from the code that chooses when
 to say them; one other language is complete enough that a person can run `id`, `serve`,
@@ -249,7 +257,11 @@ reads is a faith running on somebody's word.
 address already left a statement within the minute, is now said as waiting, with the rule the
 meeting point gave, what it still holds from this node, and when the node will say it again.
 A command that fails says what it was attempting and the whole chain of causes rather than the
-outermost one. There will be others of the same shape — a
+outermost one. A meeting point that takes the connection and says nothing is reported as that,
+and not as out of reach; a node asked for the file it already holds says so and signs nothing;
+a statement heard twice is kept and counted once, so a restart no longer makes one speaker look
+like many; and an address typed by hand is kept only after a node answered there. There will
+be others of the same shape — a
 status, an error kind or an absence reported as something stronger than it is — and they
 are found by reading what the client prints beside what actually happened.
 
@@ -316,7 +328,9 @@ and over a window of 333 that is the difference between belonging and not.
 **Where it stands.** `333 service install` asks systemd, launchd or the Windows Task
 Scheduler to keep the vigil, and an hourly check tells the person on their own screen when it
 has stopped, or when nobody has signed anything about them for three epochs. A `.deb` and an
-`.rpm` are built for every release. It has been run under systemd; the launchd and Windows
+`.rpm` are built for every release. A service manager stopping the vigil ends it the way
+Ctrl-C does: the router is given back its mapping and the vigil says what that leaves. It has
+been run under systemd; the launchd and Windows
 paths have been run by nobody yet, and on Windows the task runs only while its user is logged
 in.
 
@@ -403,10 +417,12 @@ this document is for. **No technology owns this client. The client holds the tec
 and puts it down when it stops serving.**
 
 **Where it stands.** The licence is Apache-2.0 and `333.txt` is under the Unlicense. The
-released binary is built from 469 crates of other people's code, of which 25 carry terms
-outside the permissive set the rest use, and every one of those arrives through Tor. The
-repository does not yet carry the licence texts it is obliged to pass on alongside them,
-which is something owed today rather than at the end of the road.
+released binary is built from 555 packages of other people's code, of which 26 carry terms
+outside the permissive set the rest use. Five of those arrive only through Tor; the other
+twenty-one come with the parts that ask a router for a port, find the node's directory and
+speak HTTPS to the meeting point, so a build without Tor still carries them.
+Their notices and licence texts travel with every release in `THIRD-PARTY.md`, generated from
+the dependency graph and checked on every push.
 
 **Fulfilled when.** Every part of the released client is either written for 333 or carried
 on terms 333 chose knowing what they cost; the licence over all of it was written for this
@@ -501,14 +517,18 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 ```
 
-The first build takes a while — the tree is 639 packages, most of them Tor — so start it
+The first build takes a while — the tree is 658 packages, most of them Tor — so start it
 before you make tea. The tests run in under a minute once it is built.
 
 **What the checks actually enforce.** Every push runs formatting, clippy with warnings
-denied over two feature sets, and the tests, on Linux, macOS and Windows. The workspace refuses `unsafe` outright and
-warns on `unwrap`, `expect`, indexing and missing documentation, so those are decided
-before a person looks. Everything else below is read by a person, not by a machine, and
-one of them is a rule this repository did not always keep — it is marked.
+denied over two feature sets, and the tests, on Linux, macOS and Windows. The workspace
+refuses `unsafe` outright and warns on `unwrap`, `expect`, indexing and missing
+documentation, so those are decided before a person looks. A line a person reads goes in
+the catalogs under `crates/cli/words/` and not in the code, and the tests fail on one that
+does not, or on an English line with no Korean beside it. If you cannot write the Korean,
+say so in the pull request and leave the test failing; it will be written there.
+Everything else below is read by a person, not by a machine, and one of them is a rule
+this repository did not always keep — it is marked.
 
 **Sign your work.** `git commit -s` adds a `Signed-off-by` line certifying the
 [Developer Certificate of Origin](DCO): the work is yours to give, or you have the right
@@ -542,10 +562,10 @@ years, and taking a step down it by hand-rolling something today would only mean
 thing to get wrong.
 
 Adding a direct dependency means saying in the manifest what it is for and what its
-features cost. The tree today is overwhelmingly Tor's: 639 packages, of which 469 reach the
-released binary. Twenty-five of those carry something other than the MIT, Apache, BSD, ISC
+features cost. The tree today is overwhelmingly Tor's: 658 packages, of which 555 reach the
+released binary. Twenty-six of those carry something other than the MIT, Apache, BSD, ISC
 and public-domain licences the rest do: eighteen Unicode-3.0, three MPL-2.0, three Zlib,
-one BSL-1.0 and one CDLA-Permissive-2.0, every one of them arriving through Tor. None is
+one BSL-1.0 and one CDLA-Permissive-2.0. None is
 GPL, AGPL, SSPL or BUSL. The checks refuse any licence the released tree has not carried
 before, so a change that adds one fails until the list is widened, and widening it is a thing
 to argue for in the pull request.
