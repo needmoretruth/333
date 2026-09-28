@@ -301,6 +301,10 @@ fn process() -> &'static Words {
 /// Choose the language and the base, once, and say anything about the choice worth
 /// saying: a catalog that could not be read, a language asked for by name that has no
 /// words here, and that counts are in twelve if they are.
+///
+/// Said on the error stream, for every command. They are notices about how the client
+/// will speak and not what the command was asked for: `status --json` read by a
+/// program has to be the JSON and nothing ahead of it, in every language and base.
 pub(crate) fn install(language: Option<&str>, count_in: Option<Base>, root: &Path) {
     let env = |name: &str| std::env::var(name).ok().filter(|value| !value.is_empty());
     let asked = choose::asked(language, &env);
@@ -310,28 +314,33 @@ pub(crate) fn install(language: Option<&str>, count_in: Option<Base>, root: &Pat
     let (base, wrong_base) = choose::base(count_in, &env);
     let (words, problems) = Words::open(tag, base, Some(&beside));
     let _ = WORDS.set(words);
+    let notice = |line: String| {
+        use std::io::Write as _;
+        // Nowhere left to say it is not a reason to stop.
+        let _ = writeln!(std::io::stderr().lock(), "{line}");
+    };
     for problem in problems {
         match problem {
             catalog::Problem::Broken { file, line } => {
-                aloud_in!("words-broken", file = file, line = Arg::exact(line));
+                notice(words!("words-broken", file = file, line = Arg::exact(line)));
             }
             catalog::Problem::Unreadable { file, why } => {
-                aloud_in!("words-unreadable", file = file, why = why);
+                notice(words!("words-unreadable", file = file, why = why));
             }
         }
     }
     if asked.by_name && found.is_none() {
-        aloud_in!("words-no-catalog", tag = asked.tag);
+        notice(words!("words-no-catalog", tag = asked.tag));
     }
     if let Some(value) = wrong_base {
-        aloud_in!("words-count-in-unknown", value = value);
+        notice(words!("words-count-in-unknown", value = value));
     }
     if let Some((ten, eleven)) = base.past_nine() {
-        aloud_in!(
+        notice(words!(
             "words-counting-in-twelve",
             ten = ten.to_string(),
             eleven = eleven.to_string()
-        );
+        ));
     }
 }
 
