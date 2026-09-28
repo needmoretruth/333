@@ -1,0 +1,1511 @@
+==== -h
+One node of 333. It keeps the hours, answers when asked, and passes the file on.
+
+Usage: 333 [OPTIONS] <COMMAND>
+
+Commands:
+  id         Show this node's name, asking for one on first run
+  bootstrap  Begin a line of your own, when there is nobody to be given the file by
+  serve      Keep the vigil: answer whoever asks, until interrupted
+  say        Speak one of the 333, once in this epoch. What travels is the number
+  status     Show what this node has seen: how many of us are answering, where this node stands over the window, and how much of the silence is left if it has begun
+  join       Ask a node that has the file to hand it over. Write the file yourself and you hold a file: you are one of us from the moment somebody gives it to you and you both sign for it
+  languages  List the languages there are words for, and how much of each is written
+  ping       Knock on another node, and exchange one heartbeat with it
+  pack       Write this node into one file, to carry it to another machine
+  unpack     Put a packed node into this machine's node directory
+  moved      Say that this node's directory was moved or renamed, not copied
+  tell       Tell the vigil running in this directory something, in its screen's words
+  service    Keep the vigil through logouts and reboots, with this system's service manager
+  help       Print this message or the help of the given subcommand(s)
+
+Options:
+      --data-dir <DIR>
+          Directory holding everything this node owns: its name, and Tor's state if it uses Tor
+      --timeout <SECONDS>
+          Seconds to wait for any single step that talks to the network [default: 300]
+      --dangerously-trust-directory-permissions
+          Accept a directory that others on this machine can enter
+      --keep-everything
+          Keep every statement for ever, instead of the window standing is read over
+      --bridge <LINE>
+          A bridge line, for a network that blocks the ordinary way into Tor
+      --bridge-helper <PROGRAM>
+          The program that speaks an obfuscated bridge, by name or by path
+      --language <TAG>
+          The language to speak, as a tag: `ko`, `es`, `zh-Hant`
+      --count-in <BASE>
+          Count in ten, twelve, or twelve-ascii
+  -h, --help
+          Print help (see more with '--help')
+  -V, --version
+          Print version
+==== --help
+One node of 333. It keeps the hours, answers when asked, and passes the file on.
+
+Usage: 333 [OPTIONS] <COMMAND>
+
+Commands:
+  id         Show this node's name, asking for one on first run
+  bootstrap  Begin a line of your own, when there is nobody to be given the file by
+  serve      Keep the vigil: answer whoever asks, until interrupted
+  say        Speak one of the 333, once in this epoch. What travels is the number
+  status     Show what this node has seen: how many of us are answering, where this node stands over the window, and how much of the silence is left if it has begun
+  join       Ask a node that has the file to hand it over. Write the file yourself and you hold a file: you are one of us from the moment somebody gives it to you and you both sign for it
+  languages  List the languages there are words for, and how much of each is written
+  ping       Knock on another node, and exchange one heartbeat with it
+  pack       Write this node into one file, to carry it to another machine
+  unpack     Put a packed node into this machine's node directory
+  moved      Say that this node's directory was moved or renamed, not copied
+  tell       Tell the vigil running in this directory something, in its screen's words
+  service    Keep the vigil through logouts and reboots, with this system's service manager
+  help       Print this message or the help of the given subcommand(s)
+
+Options:
+      --data-dir <DIR>
+          Directory holding everything this node owns: its name, and Tor's state if it uses Tor
+
+      --timeout <SECONDS>
+          Seconds to wait for any single step that talks to the network.
+
+          A ceiling rather than a delay. A direct connection is done in milliseconds and fails on its own; this is sized for a Tor bootstrap, which is the one step here that can legitimately take minutes.
+
+          [default: 300]
+
+      --dangerously-trust-directory-permissions
+          Accept a directory that others on this machine can enter.
+
+          Both this client and arti refuse to start on a loosely permissioned directory, which is the right default: that directory holds the only copy of this node's name. The flag exists for scratch directories and containers with odd ownership, and it does what its name says.
+
+      --keep-everything
+          Keep every statement for ever, instead of the window standing is read over.
+
+          It confers nothing. Every statement carries its own signature and verifies the same wherever it was kept, so there is no archive of record and nobody becomes an archivist by doing this. It is for people who would rather the bytes still existed somewhere, which nothing here requires of anyone.
+
+      --bridge <LINE>
+          A bridge line, for a network that blocks the ordinary way into Tor.
+
+          Give it once for each bridge you were handed, exactly as it was handed to you. Nothing here fetches bridges for you: they are scarce and they are given out by people, slowly and on purpose, because a list that could simply be collected would simply be blocked. Without any of these Tor is reached the ordinary way, which is what almost everybody wants.
+
+      --bridge-helper <PROGRAM>
+          The program that speaks an obfuscated bridge, by name or by path.
+
+          Only needed when a bridge line asks for one, and only when it is not called `lyrebird` or is not on the path. It is not bundled: it is a separate program chasing a moving target, and a copy frozen inside this would be the wrong copy within a year while looking like the right one.
+
+      --language <TAG>
+          The language to speak, as a tag: `ko`, `es`, `zh-Hant`.
+
+          Without it, `THE333_LANGUAGE`, then the system's locale, then English. `333 languages` lists the languages there are words for, and a folder of catalogs in `<data-dir>/words/<tag>/` adds one without building anything. The 333 words themselves are never translated.
+
+      --count-in <BASE>
+          Count in ten, twelve, or twelve-ascii.
+
+          Every count shown is written in it, and every number typed is read in it: `say 238` in twelve is the same signal as `say 332` in ten. Names, addresses, ports and versions are never re-counted, and nothing on the wire changes. Twelve is written with ↊ and ↋, or with X and E where the terminal cannot show them. Without it, `THE333_COUNT_IN`, then ten.
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+  -V, --version
+          Print version
+==== id -h
+Show this node's name, asking for one on first run
+
+Usage: 333 id [OPTIONS]
+
+Options:
+      --data-dir <DIR>
+          Directory holding everything this node owns: its name, and Tor's state if it uses Tor
+      --timeout <SECONDS>
+          Seconds to wait for any single step that talks to the network [default: 300]
+      --dangerously-trust-directory-permissions
+          Accept a directory that others on this machine can enter
+      --keep-everything
+          Keep every statement for ever, instead of the window standing is read over
+      --bridge <LINE>
+          A bridge line, for a network that blocks the ordinary way into Tor
+      --bridge-helper <PROGRAM>
+          The program that speaks an obfuscated bridge, by name or by path
+      --language <TAG>
+          The language to speak, as a tag: `ko`, `es`, `zh-Hant`
+      --count-in <BASE>
+          Count in ten, twelve, or twelve-ascii
+  -h, --help
+          Print help (see more with '--help')
+==== id --help
+Show this node's name, asking for one on first run
+
+Usage: 333 id [OPTIONS]
+
+Options:
+      --data-dir <DIR>
+          Directory holding everything this node owns: its name, and Tor's state if it uses Tor
+
+      --timeout <SECONDS>
+          Seconds to wait for any single step that talks to the network.
+
+          A ceiling rather than a delay. A direct connection is done in milliseconds and fails on its own; this is sized for a Tor bootstrap, which is the one step here that can legitimately take minutes.
+
+          [default: 300]
+
+      --dangerously-trust-directory-permissions
+          Accept a directory that others on this machine can enter.
+
+          Both this client and arti refuse to start on a loosely permissioned directory, which is the right default: that directory holds the only copy of this node's name. The flag exists for scratch directories and containers with odd ownership, and it does what its name says.
+
+      --keep-everything
+          Keep every statement for ever, instead of the window standing is read over.
+
+          It confers nothing. Every statement carries its own signature and verifies the same wherever it was kept, so there is no archive of record and nobody becomes an archivist by doing this. It is for people who would rather the bytes still existed somewhere, which nothing here requires of anyone.
+
+      --bridge <LINE>
+          A bridge line, for a network that blocks the ordinary way into Tor.
+
+          Give it once for each bridge you were handed, exactly as it was handed to you. Nothing here fetches bridges for you: they are scarce and they are given out by people, slowly and on purpose, because a list that could simply be collected would simply be blocked. Without any of these Tor is reached the ordinary way, which is what almost everybody wants.
+
+      --bridge-helper <PROGRAM>
+          The program that speaks an obfuscated bridge, by name or by path.
+
+          Only needed when a bridge line asks for one, and only when it is not called `lyrebird` or is not on the path. It is not bundled: it is a separate program chasing a moving target, and a copy frozen inside this would be the wrong copy within a year while looking like the right one.
+
+      --language <TAG>
+          The language to speak, as a tag: `ko`, `es`, `zh-Hant`.
+
+          Without it, `THE333_LANGUAGE`, then the system's locale, then English. `333 languages` lists the languages there are words for, and a folder of catalogs in `<data-dir>/words/<tag>/` adds one without building anything. The 333 words themselves are never translated.
+
+      --count-in <BASE>
+          Count in ten, twelve, or twelve-ascii.
+
+          Every count shown is written in it, and every number typed is read in it: `say 238` in twelve is the same signal as `say 332` in ten. Names, addresses, ports and versions are never re-counted, and nothing on the wire changes. Twelve is written with ↊ and ↋, or with X and E where the terminal cannot show them. Without it, `THE333_COUNT_IN`, then ten.
+
+  -h, --help
+          Print help (see a summary with '-h')
+==== bootstrap -h
+Begin a line of your own, when there is nobody to be given the file by
+
+Usage: 333 bootstrap [OPTIONS]
+
+Options:
+      --data-dir <DIR>
+          Directory holding everything this node owns: its name, and Tor's state if it uses Tor
+      --meet <HOST>
+          Where to look for people before beginning on your own [default: the333.dev]
+      --anyway
+          Begin even though somebody is already there
+      --timeout <SECONDS>
+          Seconds to wait for any single step that talks to the network [default: 300]
+      --dangerously-trust-directory-permissions
+          Accept a directory that others on this machine can enter
+      --keep-everything
+          Keep every statement for ever, instead of the window standing is read over
+      --bridge <LINE>
+          A bridge line, for a network that blocks the ordinary way into Tor
+      --bridge-helper <PROGRAM>
+          The program that speaks an obfuscated bridge, by name or by path
+      --language <TAG>
+          The language to speak, as a tag: `ko`, `es`, `zh-Hant`
+      --count-in <BASE>
+          Count in ten, twelve, or twelve-ascii
+  -h, --help
+          Print help (see more with '--help')
+==== bootstrap --help
+Begin a line of your own, when there is nobody to be given the file by.
+
+The ordinary way in is an invitation from somebody who already has the file, and this is not that. It looks at the meeting point first, and if anybody is there it tells you to go and join them instead. If nobody is, it fetches the file, checks it against the hash this client carries, and writes it down. Your node is then the start of its own line and nobody signed for it, which anybody reading your record can see.
+
+Usage: 333 bootstrap [OPTIONS]
+
+Options:
+      --data-dir <DIR>
+          Directory holding everything this node owns: its name, and Tor's state if it uses Tor
+
+      --meet <HOST>
+          Where to look for people before beginning on your own
+
+          [default: the333.dev]
+
+      --anyway
+          Begin even though somebody is already there
+
+      --timeout <SECONDS>
+          Seconds to wait for any single step that talks to the network.
+
+          A ceiling rather than a delay. A direct connection is done in milliseconds and fails on its own; this is sized for a Tor bootstrap, which is the one step here that can legitimately take minutes.
+
+          [default: 300]
+
+      --dangerously-trust-directory-permissions
+          Accept a directory that others on this machine can enter.
+
+          Both this client and arti refuse to start on a loosely permissioned directory, which is the right default: that directory holds the only copy of this node's name. The flag exists for scratch directories and containers with odd ownership, and it does what its name says.
+
+      --keep-everything
+          Keep every statement for ever, instead of the window standing is read over.
+
+          It confers nothing. Every statement carries its own signature and verifies the same wherever it was kept, so there is no archive of record and nobody becomes an archivist by doing this. It is for people who would rather the bytes still existed somewhere, which nothing here requires of anyone.
+
+      --bridge <LINE>
+          A bridge line, for a network that blocks the ordinary way into Tor.
+
+          Give it once for each bridge you were handed, exactly as it was handed to you. Nothing here fetches bridges for you: they are scarce and they are given out by people, slowly and on purpose, because a list that could simply be collected would simply be blocked. Without any of these Tor is reached the ordinary way, which is what almost everybody wants.
+
+      --bridge-helper <PROGRAM>
+          The program that speaks an obfuscated bridge, by name or by path.
+
+          Only needed when a bridge line asks for one, and only when it is not called `lyrebird` or is not on the path. It is not bundled: it is a separate program chasing a moving target, and a copy frozen inside this would be the wrong copy within a year while looking like the right one.
+
+      --language <TAG>
+          The language to speak, as a tag: `ko`, `es`, `zh-Hant`.
+
+          Without it, `THE333_LANGUAGE`, then the system's locale, then English. `333 languages` lists the languages there are words for, and a folder of catalogs in `<data-dir>/words/<tag>/` adds one without building anything. The 333 words themselves are never translated.
+
+      --count-in <BASE>
+          Count in ten, twelve, or twelve-ascii.
+
+          Every count shown is written in it, and every number typed is read in it: `say 238` in twelve is the same signal as `say 332` in ten. Names, addresses, ports and versions are never re-counted, and nothing on the wire changes. Twelve is written with ↊ and ↋, or with X and E where the terminal cannot show them. Without it, `THE333_COUNT_IN`, then ten.
+
+  -h, --help
+          Print help (see a summary with '-h')
+==== serve -h
+Keep the vigil: answer whoever asks, until interrupted
+
+Usage: 333 serve [OPTIONS]
+
+Options:
+      --bind <ADDR:PORT>
+          Address and port to listen on [default: 0.0.0.0:3333]
+      --data-dir <DIR>
+          Directory holding everything this node owns: its name, and Tor's state if it uses Tor
+      --timeout <SECONDS>
+          Seconds to wait for any single step that talks to the network [default: 300]
+      --tor
+          Also raise an onion address, so others can reach this node without learning where it is. Waking Tor takes seconds to minutes
+      --dangerously-trust-directory-permissions
+          Accept a directory that others on this machine can enter
+      --no-direct
+          Do not open a socket at all. Only useful with --tor, and the only way to keep the vigil with your address nowhere on the wire
+      --announce <HOST:PORT>
+          The address to tell other nodes to reach this one at
+      --keep-everything
+          Keep every statement for ever, instead of the window standing is read over
+      --bridge <LINE>
+          A bridge line, for a network that blocks the ordinary way into Tor
+      --no-mdns
+          Do not say on the local network that this node is here
+      --bridge-helper <PROGRAM>
+          The program that speaks an obfuscated bridge, by name or by path
+      --no-router
+          Do not ask the router to send the port to this machine [alias: --no-upnp]
+      --language <TAG>
+          The language to speak, as a tag: `ko`, `es`, `zh-Hant`
+      --meet <HOST>
+          Where to look for nodes nobody introduced this one to [default: the333.dev]
+      --count-in <BASE>
+          Count in ten, twelve, or twelve-ascii
+      --no-meet
+          Do not use a meeting point at all
+      --plain
+          Say the lines instead of drawing the screen
+  -h, --help
+          Print help (see more with '--help')
+==== serve --help
+Keep the vigil: answer whoever asks, until interrupted.
+
+This is what a node does almost all of the time. It answers heartbeats and challenges, trades what it knows with whoever it can reach, and at every epoch boundary asks the ones it was drawn to ask. On a terminal it opens the screen.
+
+Usage: 333 serve [OPTIONS]
+
+Options:
+      --bind <ADDR:PORT>
+          Address and port to listen on
+
+          [default: 0.0.0.0:3333]
+
+      --data-dir <DIR>
+          Directory holding everything this node owns: its name, and Tor's state if it uses Tor
+
+      --timeout <SECONDS>
+          Seconds to wait for any single step that talks to the network.
+
+          A ceiling rather than a delay. A direct connection is done in milliseconds and fails on its own; this is sized for a Tor bootstrap, which is the one step here that can legitimately take minutes.
+
+          [default: 300]
+
+      --tor
+          Also raise an onion address, so others can reach this node without learning where it is. Waking Tor takes seconds to minutes
+
+      --dangerously-trust-directory-permissions
+          Accept a directory that others on this machine can enter.
+
+          Both this client and arti refuse to start on a loosely permissioned directory, which is the right default: that directory holds the only copy of this node's name. The flag exists for scratch directories and containers with odd ownership, and it does what its name says.
+
+      --no-direct
+          Do not open a socket at all. Only useful with --tor, and the only way to keep the vigil with your address nowhere on the wire
+
+      --announce <HOST:PORT>
+          The address to tell other nodes to reach this one at.
+
+          Needed when the socket cannot say: listening on every interface, or behind something that forwards a port. Without it a node on a wildcard bind can answer whoever finds it and can never be found.
+
+      --keep-everything
+          Keep every statement for ever, instead of the window standing is read over.
+
+          It confers nothing. Every statement carries its own signature and verifies the same wherever it was kept, so there is no archive of record and nobody becomes an archivist by doing this. It is for people who would rather the bytes still existed somewhere, which nothing here requires of anyone.
+
+      --bridge <LINE>
+          A bridge line, for a network that blocks the ordinary way into Tor.
+
+          Give it once for each bridge you were handed, exactly as it was handed to you. Nothing here fetches bridges for you: they are scarce and they are given out by people, slowly and on purpose, because a list that could simply be collected would simply be blocked. Without any of these Tor is reached the ordinary way, which is what almost everybody wants.
+
+      --no-mdns
+          Do not say on the local network that this node is here.
+
+          What goes out otherwise is that something on this machine speaks 333 and on which port — not this node's name — which is what a port scan of the same network would find anyway. It is how two nodes in one house find each other with nobody typing an invitation. A node listening only through Tor never does this at all.
+
+      --bridge-helper <PROGRAM>
+          The program that speaks an obfuscated bridge, by name or by path.
+
+          Only needed when a bridge line asks for one, and only when it is not called `lyrebird` or is not on the path. It is not bundled: it is a separate program chasing a moving target, and a copy frozen inside this would be the wrong copy within a year while looking like the right one.
+
+      --no-router
+          Do not ask the router to send the port to this machine.
+
+          Asking is what makes a socket on a home connection answer anybody: the router in front of it drops what nobody inside asked for until a program on the inside asks it not to, over UPnP-IGD, PCP or NAT-PMP, one of which most of them already speak. It is a real change to somebody's network, so it is said out loud when it is made and this refuses it outright. `--no-upnp` is the older name for the same thing, from when UPnP was all that was asked.
+
+          [alias: --no-upnp]
+
+      --language <TAG>
+          The language to speak, as a tag: `ko`, `es`, `zh-Hant`.
+
+          Without it, `THE333_LANGUAGE`, then the system's locale, then English. `333 languages` lists the languages there are words for, and a folder of catalogs in `<data-dir>/words/<tag>/` adds one without building anything. The 333 words themselves are never translated.
+
+      --meet <HOST>
+          Where to look for nodes nobody introduced this one to.
+
+          One fixed address holding signed statements about where nodes say they are. Everything read there is verified here, and nothing there is believed. It is the only way two machines on two networks meet without somebody handing over an invitation.
+
+          [default: the333.dev]
+
+      --count-in <BASE>
+          Count in ten, twelve, or twelve-ascii.
+
+          Every count shown is written in it, and every number typed is read in it: `say 238` in twelve is the same signal as `say 332` in ten. Names, addresses, ports and versions are never re-counted, and nothing on the wire changes. Twelve is written with ↊ and ↋, or with X and E where the terminal cannot show them. Without it, `THE333_COUNT_IN`, then ten.
+
+      --no-meet
+          Do not use a meeting point at all.
+
+          This node is then reachable by whoever was handed an invitation and by nodes on this network, and by nobody else.
+
+      --plain
+          Say the lines instead of drawing the screen.
+
+          The screen is what this client does on a terminal. Anywhere else — a pipe, a service manager's log, a file — it says the lines instead, and this flag asks for that on a terminal too.
+
+  -h, --help
+          Print help (see a summary with '-h')
+==== say -h
+Speak one of the 333, once in this epoch. What travels is the number
+
+Usage: 333 say [OPTIONS] <INDEX>
+
+Arguments:
+  <INDEX>  Which of them, from 0 to 332, typed in the base this counts in (--count-in). The words are not written yet
+
+Options:
+      --data-dir <DIR>
+          Directory holding everything this node owns: its name, and Tor's state if it uses Tor
+      --timeout <SECONDS>
+          Seconds to wait for any single step that talks to the network [default: 300]
+      --dangerously-trust-directory-permissions
+          Accept a directory that others on this machine can enter
+      --keep-everything
+          Keep every statement for ever, instead of the window standing is read over
+      --bridge <LINE>
+          A bridge line, for a network that blocks the ordinary way into Tor
+      --bridge-helper <PROGRAM>
+          The program that speaks an obfuscated bridge, by name or by path
+      --language <TAG>
+          The language to speak, as a tag: `ko`, `es`, `zh-Hant`
+      --count-in <BASE>
+          Count in ten, twelve, or twelve-ascii
+  -h, --help
+          Print help (see more with '--help')
+==== say --help
+Speak one of the 333, once in this epoch. What travels is the number
+
+Usage: 333 say [OPTIONS] <INDEX>
+
+Arguments:
+  <INDEX>
+          Which of them, from 0 to 332, typed in the base this counts in (--count-in). The words are not written yet
+
+Options:
+      --data-dir <DIR>
+          Directory holding everything this node owns: its name, and Tor's state if it uses Tor
+
+      --timeout <SECONDS>
+          Seconds to wait for any single step that talks to the network.
+
+          A ceiling rather than a delay. A direct connection is done in milliseconds and fails on its own; this is sized for a Tor bootstrap, which is the one step here that can legitimately take minutes.
+
+          [default: 300]
+
+      --dangerously-trust-directory-permissions
+          Accept a directory that others on this machine can enter.
+
+          Both this client and arti refuse to start on a loosely permissioned directory, which is the right default: that directory holds the only copy of this node's name. The flag exists for scratch directories and containers with odd ownership, and it does what its name says.
+
+      --keep-everything
+          Keep every statement for ever, instead of the window standing is read over.
+
+          It confers nothing. Every statement carries its own signature and verifies the same wherever it was kept, so there is no archive of record and nobody becomes an archivist by doing this. It is for people who would rather the bytes still existed somewhere, which nothing here requires of anyone.
+
+      --bridge <LINE>
+          A bridge line, for a network that blocks the ordinary way into Tor.
+
+          Give it once for each bridge you were handed, exactly as it was handed to you. Nothing here fetches bridges for you: they are scarce and they are given out by people, slowly and on purpose, because a list that could simply be collected would simply be blocked. Without any of these Tor is reached the ordinary way, which is what almost everybody wants.
+
+      --bridge-helper <PROGRAM>
+          The program that speaks an obfuscated bridge, by name or by path.
+
+          Only needed when a bridge line asks for one, and only when it is not called `lyrebird` or is not on the path. It is not bundled: it is a separate program chasing a moving target, and a copy frozen inside this would be the wrong copy within a year while looking like the right one.
+
+      --language <TAG>
+          The language to speak, as a tag: `ko`, `es`, `zh-Hant`.
+
+          Without it, `THE333_LANGUAGE`, then the system's locale, then English. `333 languages` lists the languages there are words for, and a folder of catalogs in `<data-dir>/words/<tag>/` adds one without building anything. The 333 words themselves are never translated.
+
+      --count-in <BASE>
+          Count in ten, twelve, or twelve-ascii.
+
+          Every count shown is written in it, and every number typed is read in it: `say 238` in twelve is the same signal as `say 332` in ten. Names, addresses, ports and versions are never re-counted, and nothing on the wire changes. Twelve is written with ↊ and ↋, or with X and E where the terminal cannot show them. Without it, `THE333_COUNT_IN`, then ten.
+
+  -h, --help
+          Print help (see a summary with '-h')
+==== status -h
+Show what this node has seen: how many of us are answering, where this node stands over the window, and how much of the silence is left if it has begun
+
+Usage: 333 status [OPTIONS]
+
+Options:
+      --data-dir <DIR>
+          Directory holding everything this node owns: its name, and Tor's state if it uses Tor
+      --sources
+          List every address this node holds: whose it is, where it was first heard of and when, and where it was heard of last. The addresses are printed; this is your own node's disk and nobody else's
+      --json
+          Say what this node observed as JSON, for a program to read. No address, onion address or port of any kind is in it
+      --timeout <SECONDS>
+          Seconds to wait for any single step that talks to the network [default: 300]
+      --dangerously-trust-directory-permissions
+          Accept a directory that others on this machine can enter
+      --keep-everything
+          Keep every statement for ever, instead of the window standing is read over
+      --bridge <LINE>
+          A bridge line, for a network that blocks the ordinary way into Tor
+      --bridge-helper <PROGRAM>
+          The program that speaks an obfuscated bridge, by name or by path
+      --language <TAG>
+          The language to speak, as a tag: `ko`, `es`, `zh-Hant`
+      --count-in <BASE>
+          Count in ten, twelve, or twelve-ascii
+  -h, --help
+          Print help (see more with '--help')
+==== status --help
+Show what this node has seen: how many of us are answering, where this node stands over the window, and how much of the silence is left if it has begun
+
+Usage: 333 status [OPTIONS]
+
+Options:
+      --data-dir <DIR>
+          Directory holding everything this node owns: its name, and Tor's state if it uses Tor
+
+      --sources
+          List every address this node holds: whose it is, where it was first heard of and when, and where it was heard of last. The addresses are printed; this is your own node's disk and nobody else's
+
+      --json
+          Say what this node observed as JSON, for a program to read. No address, onion address or port of any kind is in it
+
+      --timeout <SECONDS>
+          Seconds to wait for any single step that talks to the network.
+
+          A ceiling rather than a delay. A direct connection is done in milliseconds and fails on its own; this is sized for a Tor bootstrap, which is the one step here that can legitimately take minutes.
+
+          [default: 300]
+
+      --dangerously-trust-directory-permissions
+          Accept a directory that others on this machine can enter.
+
+          Both this client and arti refuse to start on a loosely permissioned directory, which is the right default: that directory holds the only copy of this node's name. The flag exists for scratch directories and containers with odd ownership, and it does what its name says.
+
+      --keep-everything
+          Keep every statement for ever, instead of the window standing is read over.
+
+          It confers nothing. Every statement carries its own signature and verifies the same wherever it was kept, so there is no archive of record and nobody becomes an archivist by doing this. It is for people who would rather the bytes still existed somewhere, which nothing here requires of anyone.
+
+      --bridge <LINE>
+          A bridge line, for a network that blocks the ordinary way into Tor.
+
+          Give it once for each bridge you were handed, exactly as it was handed to you. Nothing here fetches bridges for you: they are scarce and they are given out by people, slowly and on purpose, because a list that could simply be collected would simply be blocked. Without any of these Tor is reached the ordinary way, which is what almost everybody wants.
+
+      --bridge-helper <PROGRAM>
+          The program that speaks an obfuscated bridge, by name or by path.
+
+          Only needed when a bridge line asks for one, and only when it is not called `lyrebird` or is not on the path. It is not bundled: it is a separate program chasing a moving target, and a copy frozen inside this would be the wrong copy within a year while looking like the right one.
+
+      --language <TAG>
+          The language to speak, as a tag: `ko`, `es`, `zh-Hant`.
+
+          Without it, `THE333_LANGUAGE`, then the system's locale, then English. `333 languages` lists the languages there are words for, and a folder of catalogs in `<data-dir>/words/<tag>/` adds one without building anything. The 333 words themselves are never translated.
+
+      --count-in <BASE>
+          Count in ten, twelve, or twelve-ascii.
+
+          Every count shown is written in it, and every number typed is read in it: `say 238` in twelve is the same signal as `say 332` in ten. Names, addresses, ports and versions are never re-counted, and nothing on the wire changes. Twelve is written with ↊ and ↋, or with X and E where the terminal cannot show them. Without it, `THE333_COUNT_IN`, then ten.
+
+  -h, --help
+          Print help (see a summary with '-h')
+==== join -h
+Ask a node that has the file to hand it over. Write the file yourself and you hold a file: you are one of us from the moment somebody gives it to you and you both sign for it
+
+Usage: 333 join [OPTIONS] <ADDRESS>
+
+Arguments:
+  <ADDRESS>  An invitation (`333:host:port`) from somebody who already has it
+
+Options:
+      --data-dir <DIR>
+          Directory holding everything this node owns: its name, and Tor's state if it uses Tor
+      --timeout <SECONDS>
+          Seconds to wait for any single step that talks to the network [default: 300]
+      --dangerously-trust-directory-permissions
+          Accept a directory that others on this machine can enter
+      --keep-everything
+          Keep every statement for ever, instead of the window standing is read over
+      --bridge <LINE>
+          A bridge line, for a network that blocks the ordinary way into Tor
+      --bridge-helper <PROGRAM>
+          The program that speaks an obfuscated bridge, by name or by path
+      --language <TAG>
+          The language to speak, as a tag: `ko`, `es`, `zh-Hant`
+      --count-in <BASE>
+          Count in ten, twelve, or twelve-ascii
+  -h, --help
+          Print help (see more with '--help')
+==== join --help
+Ask a node that has the file to hand it over. Write the file yourself and you hold a file: you are one of us from the moment somebody gives it to you and you both sign for it
+
+Usage: 333 join [OPTIONS] <ADDRESS>
+
+Arguments:
+  <ADDRESS>
+          An invitation (`333:host:port`) from somebody who already has it
+
+Options:
+      --data-dir <DIR>
+          Directory holding everything this node owns: its name, and Tor's state if it uses Tor
+
+      --timeout <SECONDS>
+          Seconds to wait for any single step that talks to the network.
+
+          A ceiling rather than a delay. A direct connection is done in milliseconds and fails on its own; this is sized for a Tor bootstrap, which is the one step here that can legitimately take minutes.
+
+          [default: 300]
+
+      --dangerously-trust-directory-permissions
+          Accept a directory that others on this machine can enter.
+
+          Both this client and arti refuse to start on a loosely permissioned directory, which is the right default: that directory holds the only copy of this node's name. The flag exists for scratch directories and containers with odd ownership, and it does what its name says.
+
+      --keep-everything
+          Keep every statement for ever, instead of the window standing is read over.
+
+          It confers nothing. Every statement carries its own signature and verifies the same wherever it was kept, so there is no archive of record and nobody becomes an archivist by doing this. It is for people who would rather the bytes still existed somewhere, which nothing here requires of anyone.
+
+      --bridge <LINE>
+          A bridge line, for a network that blocks the ordinary way into Tor.
+
+          Give it once for each bridge you were handed, exactly as it was handed to you. Nothing here fetches bridges for you: they are scarce and they are given out by people, slowly and on purpose, because a list that could simply be collected would simply be blocked. Without any of these Tor is reached the ordinary way, which is what almost everybody wants.
+
+      --bridge-helper <PROGRAM>
+          The program that speaks an obfuscated bridge, by name or by path.
+
+          Only needed when a bridge line asks for one, and only when it is not called `lyrebird` or is not on the path. It is not bundled: it is a separate program chasing a moving target, and a copy frozen inside this would be the wrong copy within a year while looking like the right one.
+
+      --language <TAG>
+          The language to speak, as a tag: `ko`, `es`, `zh-Hant`.
+
+          Without it, `THE333_LANGUAGE`, then the system's locale, then English. `333 languages` lists the languages there are words for, and a folder of catalogs in `<data-dir>/words/<tag>/` adds one without building anything. The 333 words themselves are never translated.
+
+      --count-in <BASE>
+          Count in ten, twelve, or twelve-ascii.
+
+          Every count shown is written in it, and every number typed is read in it: `say 238` in twelve is the same signal as `say 332` in ten. Names, addresses, ports and versions are never re-counted, and nothing on the wire changes. Twelve is written with ↊ and ↋, or with X and E where the terminal cannot show them. Without it, `THE333_COUNT_IN`, then ten.
+
+  -h, --help
+          Print help (see a summary with '-h')
+==== languages -h
+List the languages there are words for, and how much of each is written
+
+Usage: 333 languages [OPTIONS]
+
+Options:
+      --data-dir <DIR>
+          Directory holding everything this node owns: its name, and Tor's state if it uses Tor
+      --timeout <SECONDS>
+          Seconds to wait for any single step that talks to the network [default: 300]
+      --dangerously-trust-directory-permissions
+          Accept a directory that others on this machine can enter
+      --keep-everything
+          Keep every statement for ever, instead of the window standing is read over
+      --bridge <LINE>
+          A bridge line, for a network that blocks the ordinary way into Tor
+      --bridge-helper <PROGRAM>
+          The program that speaks an obfuscated bridge, by name or by path
+      --language <TAG>
+          The language to speak, as a tag: `ko`, `es`, `zh-Hant`
+      --count-in <BASE>
+          Count in ten, twelve, or twelve-ascii
+  -h, --help
+          Print help (see more with '--help')
+==== languages --help
+List the languages there are words for, and how much of each is written
+
+Usage: 333 languages [OPTIONS]
+
+Options:
+      --data-dir <DIR>
+          Directory holding everything this node owns: its name, and Tor's state if it uses Tor
+
+      --timeout <SECONDS>
+          Seconds to wait for any single step that talks to the network.
+
+          A ceiling rather than a delay. A direct connection is done in milliseconds and fails on its own; this is sized for a Tor bootstrap, which is the one step here that can legitimately take minutes.
+
+          [default: 300]
+
+      --dangerously-trust-directory-permissions
+          Accept a directory that others on this machine can enter.
+
+          Both this client and arti refuse to start on a loosely permissioned directory, which is the right default: that directory holds the only copy of this node's name. The flag exists for scratch directories and containers with odd ownership, and it does what its name says.
+
+      --keep-everything
+          Keep every statement for ever, instead of the window standing is read over.
+
+          It confers nothing. Every statement carries its own signature and verifies the same wherever it was kept, so there is no archive of record and nobody becomes an archivist by doing this. It is for people who would rather the bytes still existed somewhere, which nothing here requires of anyone.
+
+      --bridge <LINE>
+          A bridge line, for a network that blocks the ordinary way into Tor.
+
+          Give it once for each bridge you were handed, exactly as it was handed to you. Nothing here fetches bridges for you: they are scarce and they are given out by people, slowly and on purpose, because a list that could simply be collected would simply be blocked. Without any of these Tor is reached the ordinary way, which is what almost everybody wants.
+
+      --bridge-helper <PROGRAM>
+          The program that speaks an obfuscated bridge, by name or by path.
+
+          Only needed when a bridge line asks for one, and only when it is not called `lyrebird` or is not on the path. It is not bundled: it is a separate program chasing a moving target, and a copy frozen inside this would be the wrong copy within a year while looking like the right one.
+
+      --language <TAG>
+          The language to speak, as a tag: `ko`, `es`, `zh-Hant`.
+
+          Without it, `THE333_LANGUAGE`, then the system's locale, then English. `333 languages` lists the languages there are words for, and a folder of catalogs in `<data-dir>/words/<tag>/` adds one without building anything. The 333 words themselves are never translated.
+
+      --count-in <BASE>
+          Count in ten, twelve, or twelve-ascii.
+
+          Every count shown is written in it, and every number typed is read in it: `say 238` in twelve is the same signal as `say 332` in ten. Names, addresses, ports and versions are never re-counted, and nothing on the wire changes. Twelve is written with ↊ and ↋, or with X and E where the terminal cannot show them. Without it, `THE333_COUNT_IN`, then ten.
+
+  -h, --help
+          Print help (see a summary with '-h')
+==== ping -h
+Knock on another node, and exchange one heartbeat with it
+
+Usage: 333 ping [OPTIONS] <ADDRESS>
+
+Arguments:
+  <ADDRESS>  An invitation (`333:host:port`), or an address typed by hand as `host`, `host:port`, `[::1]:port` or `something.onion`. An onion address is reached through Tor; everything else directly
+
+Options:
+      --data-dir <DIR>
+          Directory holding everything this node owns: its name, and Tor's state if it uses Tor
+      --timeout <SECONDS>
+          Seconds to wait for any single step that talks to the network [default: 300]
+      --dangerously-trust-directory-permissions
+          Accept a directory that others on this machine can enter
+      --keep-everything
+          Keep every statement for ever, instead of the window standing is read over
+      --bridge <LINE>
+          A bridge line, for a network that blocks the ordinary way into Tor
+      --bridge-helper <PROGRAM>
+          The program that speaks an obfuscated bridge, by name or by path
+      --language <TAG>
+          The language to speak, as a tag: `ko`, `es`, `zh-Hant`
+      --count-in <BASE>
+          Count in ten, twelve, or twelve-ascii
+  -h, --help
+          Print help (see more with '--help')
+==== ping --help
+Knock on another node, and exchange one heartbeat with it
+
+Usage: 333 ping [OPTIONS] <ADDRESS>
+
+Arguments:
+  <ADDRESS>
+          An invitation (`333:host:port`), or an address typed by hand as `host`, `host:port`, `[::1]:port` or `something.onion`. An onion address is reached through Tor; everything else directly
+
+Options:
+      --data-dir <DIR>
+          Directory holding everything this node owns: its name, and Tor's state if it uses Tor
+
+      --timeout <SECONDS>
+          Seconds to wait for any single step that talks to the network.
+
+          A ceiling rather than a delay. A direct connection is done in milliseconds and fails on its own; this is sized for a Tor bootstrap, which is the one step here that can legitimately take minutes.
+
+          [default: 300]
+
+      --dangerously-trust-directory-permissions
+          Accept a directory that others on this machine can enter.
+
+          Both this client and arti refuse to start on a loosely permissioned directory, which is the right default: that directory holds the only copy of this node's name. The flag exists for scratch directories and containers with odd ownership, and it does what its name says.
+
+      --keep-everything
+          Keep every statement for ever, instead of the window standing is read over.
+
+          It confers nothing. Every statement carries its own signature and verifies the same wherever it was kept, so there is no archive of record and nobody becomes an archivist by doing this. It is for people who would rather the bytes still existed somewhere, which nothing here requires of anyone.
+
+      --bridge <LINE>
+          A bridge line, for a network that blocks the ordinary way into Tor.
+
+          Give it once for each bridge you were handed, exactly as it was handed to you. Nothing here fetches bridges for you: they are scarce and they are given out by people, slowly and on purpose, because a list that could simply be collected would simply be blocked. Without any of these Tor is reached the ordinary way, which is what almost everybody wants.
+
+      --bridge-helper <PROGRAM>
+          The program that speaks an obfuscated bridge, by name or by path.
+
+          Only needed when a bridge line asks for one, and only when it is not called `lyrebird` or is not on the path. It is not bundled: it is a separate program chasing a moving target, and a copy frozen inside this would be the wrong copy within a year while looking like the right one.
+
+      --language <TAG>
+          The language to speak, as a tag: `ko`, `es`, `zh-Hant`.
+
+          Without it, `THE333_LANGUAGE`, then the system's locale, then English. `333 languages` lists the languages there are words for, and a folder of catalogs in `<data-dir>/words/<tag>/` adds one without building anything. The 333 words themselves are never translated.
+
+      --count-in <BASE>
+          Count in ten, twelve, or twelve-ascii.
+
+          Every count shown is written in it, and every number typed is read in it: `say 238` in twelve is the same signal as `say 332` in ten. Names, addresses, ports and versions are never re-counted, and nothing on the wire changes. Twelve is written with ↊ and ↋, or with X and E where the terminal cannot show them. Without it, `THE333_COUNT_IN`, then ten.
+
+  -h, --help
+          Print help (see a summary with '-h')
+==== pack -h
+Write this node into one file, to carry it to another machine
+
+Usage: 333 pack [OPTIONS] [FILE]
+
+Arguments:
+  [FILE]  The file to write. It must not exist yet
+
+Options:
+      --data-dir <DIR>
+          Directory holding everything this node owns: its name, and Tor's state if it uses Tor
+      --undo
+          Take back a packing here, for a move that was abandoned
+      --timeout <SECONDS>
+          Seconds to wait for any single step that talks to the network [default: 300]
+      --dangerously-trust-directory-permissions
+          Accept a directory that others on this machine can enter
+      --keep-everything
+          Keep every statement for ever, instead of the window standing is read over
+      --bridge <LINE>
+          A bridge line, for a network that blocks the ordinary way into Tor
+      --bridge-helper <PROGRAM>
+          The program that speaks an obfuscated bridge, by name or by path
+      --language <TAG>
+          The language to speak, as a tag: `ko`, `es`, `zh-Hant`
+      --count-in <BASE>
+          Count in ten, twelve, or twelve-ascii
+  -h, --help
+          Print help (see more with '--help')
+==== pack --help
+Write this node into one file, to carry it to another machine.
+
+Everything it is goes: its name, its record, what others signed about it, the file if it holds it, and the key to its onion address. Afterwards this directory refuses to act as it, because one name in two places is a node contradicting itself. The file is not encrypted: whoever holds it is this node, so carry it, unpack it, and delete it.
+
+Usage: 333 pack [OPTIONS] [FILE]
+
+Arguments:
+  [FILE]
+          The file to write. It must not exist yet
+
+Options:
+      --data-dir <DIR>
+          Directory holding everything this node owns: its name, and Tor's state if it uses Tor
+
+      --undo
+          Take back a packing here, for a move that was abandoned.
+
+          Only if the file was never unpacked anywhere: if it was, this makes two.
+
+      --timeout <SECONDS>
+          Seconds to wait for any single step that talks to the network.
+
+          A ceiling rather than a delay. A direct connection is done in milliseconds and fails on its own; this is sized for a Tor bootstrap, which is the one step here that can legitimately take minutes.
+
+          [default: 300]
+
+      --dangerously-trust-directory-permissions
+          Accept a directory that others on this machine can enter.
+
+          Both this client and arti refuse to start on a loosely permissioned directory, which is the right default: that directory holds the only copy of this node's name. The flag exists for scratch directories and containers with odd ownership, and it does what its name says.
+
+      --keep-everything
+          Keep every statement for ever, instead of the window standing is read over.
+
+          It confers nothing. Every statement carries its own signature and verifies the same wherever it was kept, so there is no archive of record and nobody becomes an archivist by doing this. It is for people who would rather the bytes still existed somewhere, which nothing here requires of anyone.
+
+      --bridge <LINE>
+          A bridge line, for a network that blocks the ordinary way into Tor.
+
+          Give it once for each bridge you were handed, exactly as it was handed to you. Nothing here fetches bridges for you: they are scarce and they are given out by people, slowly and on purpose, because a list that could simply be collected would simply be blocked. Without any of these Tor is reached the ordinary way, which is what almost everybody wants.
+
+      --bridge-helper <PROGRAM>
+          The program that speaks an obfuscated bridge, by name or by path.
+
+          Only needed when a bridge line asks for one, and only when it is not called `lyrebird` or is not on the path. It is not bundled: it is a separate program chasing a moving target, and a copy frozen inside this would be the wrong copy within a year while looking like the right one.
+
+      --language <TAG>
+          The language to speak, as a tag: `ko`, `es`, `zh-Hant`.
+
+          Without it, `THE333_LANGUAGE`, then the system's locale, then English. `333 languages` lists the languages there are words for, and a folder of catalogs in `<data-dir>/words/<tag>/` adds one without building anything. The 333 words themselves are never translated.
+
+      --count-in <BASE>
+          Count in ten, twelve, or twelve-ascii.
+
+          Every count shown is written in it, and every number typed is read in it: `say 238` in twelve is the same signal as `say 332` in ten. Names, addresses, ports and versions are never re-counted, and nothing on the wire changes. Twelve is written with ↊ and ↋, or with X and E where the terminal cannot show them. Without it, `THE333_COUNT_IN`, then ten.
+
+  -h, --help
+          Print help (see a summary with '-h')
+==== unpack -h
+Put a packed node into this machine's node directory
+
+Usage: 333 unpack [OPTIONS] <FILE>
+
+Arguments:
+  <FILE>  The file `333 pack` wrote
+
+Options:
+      --data-dir <DIR>
+          Directory holding everything this node owns: its name, and Tor's state if it uses Tor
+      --timeout <SECONDS>
+          Seconds to wait for any single step that talks to the network [default: 300]
+      --dangerously-trust-directory-permissions
+          Accept a directory that others on this machine can enter
+      --keep-everything
+          Keep every statement for ever, instead of the window standing is read over
+      --bridge <LINE>
+          A bridge line, for a network that blocks the ordinary way into Tor
+      --bridge-helper <PROGRAM>
+          The program that speaks an obfuscated bridge, by name or by path
+      --language <TAG>
+          The language to speak, as a tag: `ko`, `es`, `zh-Hant`
+      --count-in <BASE>
+          Count in ten, twelve, or twelve-ascii
+  -h, --help
+          Print help (see more with '--help')
+==== unpack --help
+Put a packed node into this machine's node directory.
+
+Refused where a node already lives, and it says what that node holds. Nothing is written until the file has been read through and its key and record check out.
+
+Usage: 333 unpack [OPTIONS] <FILE>
+
+Arguments:
+  <FILE>
+          The file `333 pack` wrote
+
+Options:
+      --data-dir <DIR>
+          Directory holding everything this node owns: its name, and Tor's state if it uses Tor
+
+      --timeout <SECONDS>
+          Seconds to wait for any single step that talks to the network.
+
+          A ceiling rather than a delay. A direct connection is done in milliseconds and fails on its own; this is sized for a Tor bootstrap, which is the one step here that can legitimately take minutes.
+
+          [default: 300]
+
+      --dangerously-trust-directory-permissions
+          Accept a directory that others on this machine can enter.
+
+          Both this client and arti refuse to start on a loosely permissioned directory, which is the right default: that directory holds the only copy of this node's name. The flag exists for scratch directories and containers with odd ownership, and it does what its name says.
+
+      --keep-everything
+          Keep every statement for ever, instead of the window standing is read over.
+
+          It confers nothing. Every statement carries its own signature and verifies the same wherever it was kept, so there is no archive of record and nobody becomes an archivist by doing this. It is for people who would rather the bytes still existed somewhere, which nothing here requires of anyone.
+
+      --bridge <LINE>
+          A bridge line, for a network that blocks the ordinary way into Tor.
+
+          Give it once for each bridge you were handed, exactly as it was handed to you. Nothing here fetches bridges for you: they are scarce and they are given out by people, slowly and on purpose, because a list that could simply be collected would simply be blocked. Without any of these Tor is reached the ordinary way, which is what almost everybody wants.
+
+      --bridge-helper <PROGRAM>
+          The program that speaks an obfuscated bridge, by name or by path.
+
+          Only needed when a bridge line asks for one, and only when it is not called `lyrebird` or is not on the path. It is not bundled: it is a separate program chasing a moving target, and a copy frozen inside this would be the wrong copy within a year while looking like the right one.
+
+      --language <TAG>
+          The language to speak, as a tag: `ko`, `es`, `zh-Hant`.
+
+          Without it, `THE333_LANGUAGE`, then the system's locale, then English. `333 languages` lists the languages there are words for, and a folder of catalogs in `<data-dir>/words/<tag>/` adds one without building anything. The 333 words themselves are never translated.
+
+      --count-in <BASE>
+          Count in ten, twelve, or twelve-ascii.
+
+          Every count shown is written in it, and every number typed is read in it: `say 238` in twelve is the same signal as `say 332` in ten. Names, addresses, ports and versions are never re-counted, and nothing on the wire changes. Twelve is written with ↊ and ↋, or with X and E where the terminal cannot show them. Without it, `THE333_COUNT_IN`, then ten.
+
+  -h, --help
+          Print help (see a summary with '-h')
+==== moved -h
+Say that this node's directory was moved or renamed, not copied
+
+Usage: 333 moved [OPTIONS]
+
+Options:
+      --data-dir <DIR>
+          Directory holding everything this node owns: its name, and Tor's state if it uses Tor
+      --timeout <SECONDS>
+          Seconds to wait for any single step that talks to the network [default: 300]
+      --dangerously-trust-directory-permissions
+          Accept a directory that others on this machine can enter
+      --keep-everything
+          Keep every statement for ever, instead of the window standing is read over
+      --bridge <LINE>
+          A bridge line, for a network that blocks the ordinary way into Tor
+      --bridge-helper <PROGRAM>
+          The program that speaks an obfuscated bridge, by name or by path
+      --language <TAG>
+          The language to speak, as a tag: `ko`, `es`, `zh-Hant`
+      --count-in <BASE>
+          Count in ten, twelve, or twelve-ascii
+  -h, --help
+          Print help (see more with '--help')
+==== moved --help
+Say that this node's directory was moved or renamed, not copied.
+
+A node that finds itself somewhere other than where it was says so on every run until this is typed, because a copy with the original still running is one name in two places, and from inside the directory the two look the same.
+
+Usage: 333 moved [OPTIONS]
+
+Options:
+      --data-dir <DIR>
+          Directory holding everything this node owns: its name, and Tor's state if it uses Tor
+
+      --timeout <SECONDS>
+          Seconds to wait for any single step that talks to the network.
+
+          A ceiling rather than a delay. A direct connection is done in milliseconds and fails on its own; this is sized for a Tor bootstrap, which is the one step here that can legitimately take minutes.
+
+          [default: 300]
+
+      --dangerously-trust-directory-permissions
+          Accept a directory that others on this machine can enter.
+
+          Both this client and arti refuse to start on a loosely permissioned directory, which is the right default: that directory holds the only copy of this node's name. The flag exists for scratch directories and containers with odd ownership, and it does what its name says.
+
+      --keep-everything
+          Keep every statement for ever, instead of the window standing is read over.
+
+          It confers nothing. Every statement carries its own signature and verifies the same wherever it was kept, so there is no archive of record and nobody becomes an archivist by doing this. It is for people who would rather the bytes still existed somewhere, which nothing here requires of anyone.
+
+      --bridge <LINE>
+          A bridge line, for a network that blocks the ordinary way into Tor.
+
+          Give it once for each bridge you were handed, exactly as it was handed to you. Nothing here fetches bridges for you: they are scarce and they are given out by people, slowly and on purpose, because a list that could simply be collected would simply be blocked. Without any of these Tor is reached the ordinary way, which is what almost everybody wants.
+
+      --bridge-helper <PROGRAM>
+          The program that speaks an obfuscated bridge, by name or by path.
+
+          Only needed when a bridge line asks for one, and only when it is not called `lyrebird` or is not on the path. It is not bundled: it is a separate program chasing a moving target, and a copy frozen inside this would be the wrong copy within a year while looking like the right one.
+
+      --language <TAG>
+          The language to speak, as a tag: `ko`, `es`, `zh-Hant`.
+
+          Without it, `THE333_LANGUAGE`, then the system's locale, then English. `333 languages` lists the languages there are words for, and a folder of catalogs in `<data-dir>/words/<tag>/` adds one without building anything. The 333 words themselves are never translated.
+
+      --count-in <BASE>
+          Count in ten, twelve, or twelve-ascii.
+
+          Every count shown is written in it, and every number typed is read in it: `say 238` in twelve is the same signal as `say 332` in ten. Names, addresses, ports and versions are never re-counted, and nothing on the wire changes. Twelve is written with ↊ and ↋, or with X and E where the terminal cannot show them. Without it, `THE333_COUNT_IN`, then ten.
+
+  -h, --help
+          Print help (see a summary with '-h')
+==== tell -h
+Tell the vigil running in this directory something, in its screen's words
+
+Usage: 333 tell [OPTIONS] <ORDER>...
+
+Arguments:
+  <ORDER>...  The order, as it would be typed into the screen
+
+Options:
+      --data-dir <DIR>
+          Directory holding everything this node owns: its name, and Tor's state if it uses Tor
+      --timeout <SECONDS>
+          Seconds to wait for any single step that talks to the network [default: 300]
+      --dangerously-trust-directory-permissions
+          Accept a directory that others on this machine can enter
+      --keep-everything
+          Keep every statement for ever, instead of the window standing is read over
+      --bridge <LINE>
+          A bridge line, for a network that blocks the ordinary way into Tor
+      --bridge-helper <PROGRAM>
+          The program that speaks an obfuscated bridge, by name or by path
+      --language <TAG>
+          The language to speak, as a tag: `ko`, `es`, `zh-Hant`
+      --count-in <BASE>
+          Count in ten, twelve, or twelve-ascii
+  -h, --help
+          Print help (see more with '--help')
+==== tell --help
+Tell the vigil running in this directory something, in its screen's words.
+
+`tor on`, `tor off`, `bridge <line>`, `helper <program>`, and every other word the screen takes after `:`. The vigil carries it out and what it says about it is printed here. `say`, `join`, `ping`, `bootstrap` and `status` are handed to a running vigil the same way without this.
+
+Usage: 333 tell [OPTIONS] <ORDER>...
+
+Arguments:
+  <ORDER>...
+          The order, as it would be typed into the screen
+
+Options:
+      --data-dir <DIR>
+          Directory holding everything this node owns: its name, and Tor's state if it uses Tor
+
+      --timeout <SECONDS>
+          Seconds to wait for any single step that talks to the network.
+
+          A ceiling rather than a delay. A direct connection is done in milliseconds and fails on its own; this is sized for a Tor bootstrap, which is the one step here that can legitimately take minutes.
+
+          [default: 300]
+
+      --dangerously-trust-directory-permissions
+          Accept a directory that others on this machine can enter.
+
+          Both this client and arti refuse to start on a loosely permissioned directory, which is the right default: that directory holds the only copy of this node's name. The flag exists for scratch directories and containers with odd ownership, and it does what its name says.
+
+      --keep-everything
+          Keep every statement for ever, instead of the window standing is read over.
+
+          It confers nothing. Every statement carries its own signature and verifies the same wherever it was kept, so there is no archive of record and nobody becomes an archivist by doing this. It is for people who would rather the bytes still existed somewhere, which nothing here requires of anyone.
+
+      --bridge <LINE>
+          A bridge line, for a network that blocks the ordinary way into Tor.
+
+          Give it once for each bridge you were handed, exactly as it was handed to you. Nothing here fetches bridges for you: they are scarce and they are given out by people, slowly and on purpose, because a list that could simply be collected would simply be blocked. Without any of these Tor is reached the ordinary way, which is what almost everybody wants.
+
+      --bridge-helper <PROGRAM>
+          The program that speaks an obfuscated bridge, by name or by path.
+
+          Only needed when a bridge line asks for one, and only when it is not called `lyrebird` or is not on the path. It is not bundled: it is a separate program chasing a moving target, and a copy frozen inside this would be the wrong copy within a year while looking like the right one.
+
+      --language <TAG>
+          The language to speak, as a tag: `ko`, `es`, `zh-Hant`.
+
+          Without it, `THE333_LANGUAGE`, then the system's locale, then English. `333 languages` lists the languages there are words for, and a folder of catalogs in `<data-dir>/words/<tag>/` adds one without building anything. The 333 words themselves are never translated.
+
+      --count-in <BASE>
+          Count in ten, twelve, or twelve-ascii.
+
+          Every count shown is written in it, and every number typed is read in it: `say 238` in twelve is the same signal as `say 332` in ten. Names, addresses, ports and versions are never re-counted, and nothing on the wire changes. Twelve is written with ↊ and ↋, or with X and E where the terminal cannot show them. Without it, `THE333_COUNT_IN`, then ten.
+
+  -h, --help
+          Print help (see a summary with '-h')
+==== service -h
+Keep the vigil through logouts and reboots, with this system's service manager
+
+Usage: 333 service [OPTIONS] <COMMAND>
+
+Commands:
+  install    Keep this node's vigil through logouts and reboots, with this system's own service manager
+  uninstall  Stop the vigil's service, and remove everything `service install` wrote
+  status     What the service manager says of the vigil, when the vigil last said it was awake, and the last things it said
+  check      Say so on this machine if the vigil is not being kept. The service runs this every hour; it says nothing when all is well
+  help       Print this message or the help of the given subcommand(s)
+
+Options:
+      --data-dir <DIR>
+          Directory holding everything this node owns: its name, and Tor's state if it uses Tor
+      --timeout <SECONDS>
+          Seconds to wait for any single step that talks to the network [default: 300]
+      --dangerously-trust-directory-permissions
+          Accept a directory that others on this machine can enter
+      --keep-everything
+          Keep every statement for ever, instead of the window standing is read over
+      --bridge <LINE>
+          A bridge line, for a network that blocks the ordinary way into Tor
+      --bridge-helper <PROGRAM>
+          The program that speaks an obfuscated bridge, by name or by path
+      --language <TAG>
+          The language to speak, as a tag: `ko`, `es`, `zh-Hant`
+      --count-in <BASE>
+          Count in ten, twelve, or twelve-ascii
+  -h, --help
+          Print help (see more with '--help')
+==== service --help
+Keep the vigil through logouts and reboots, with this system's service manager.
+
+Nothing is installed until you ask for it here, everything that is done is said as it is done, and `333 service uninstall` undoes it.
+
+Usage: 333 service [OPTIONS] <COMMAND>
+
+Commands:
+  install    Keep this node's vigil through logouts and reboots, with this system's own service manager
+  uninstall  Stop the vigil's service, and remove everything `service install` wrote
+  status     What the service manager says of the vigil, when the vigil last said it was awake, and the last things it said
+  check      Say so on this machine if the vigil is not being kept. The service runs this every hour; it says nothing when all is well
+  help       Print this message or the help of the given subcommand(s)
+
+Options:
+      --data-dir <DIR>
+          Directory holding everything this node owns: its name, and Tor's state if it uses Tor
+
+      --timeout <SECONDS>
+          Seconds to wait for any single step that talks to the network.
+
+          A ceiling rather than a delay. A direct connection is done in milliseconds and fails on its own; this is sized for a Tor bootstrap, which is the one step here that can legitimately take minutes.
+
+          [default: 300]
+
+      --dangerously-trust-directory-permissions
+          Accept a directory that others on this machine can enter.
+
+          Both this client and arti refuse to start on a loosely permissioned directory, which is the right default: that directory holds the only copy of this node's name. The flag exists for scratch directories and containers with odd ownership, and it does what its name says.
+
+      --keep-everything
+          Keep every statement for ever, instead of the window standing is read over.
+
+          It confers nothing. Every statement carries its own signature and verifies the same wherever it was kept, so there is no archive of record and nobody becomes an archivist by doing this. It is for people who would rather the bytes still existed somewhere, which nothing here requires of anyone.
+
+      --bridge <LINE>
+          A bridge line, for a network that blocks the ordinary way into Tor.
+
+          Give it once for each bridge you were handed, exactly as it was handed to you. Nothing here fetches bridges for you: they are scarce and they are given out by people, slowly and on purpose, because a list that could simply be collected would simply be blocked. Without any of these Tor is reached the ordinary way, which is what almost everybody wants.
+
+      --bridge-helper <PROGRAM>
+          The program that speaks an obfuscated bridge, by name or by path.
+
+          Only needed when a bridge line asks for one, and only when it is not called `lyrebird` or is not on the path. It is not bundled: it is a separate program chasing a moving target, and a copy frozen inside this would be the wrong copy within a year while looking like the right one.
+
+      --language <TAG>
+          The language to speak, as a tag: `ko`, `es`, `zh-Hant`.
+
+          Without it, `THE333_LANGUAGE`, then the system's locale, then English. `333 languages` lists the languages there are words for, and a folder of catalogs in `<data-dir>/words/<tag>/` adds one without building anything. The 333 words themselves are never translated.
+
+      --count-in <BASE>
+          Count in ten, twelve, or twelve-ascii.
+
+          Every count shown is written in it, and every number typed is read in it: `say 238` in twelve is the same signal as `say 332` in ten. Names, addresses, ports and versions are never re-counted, and nothing on the wire changes. Twelve is written with ↊ and ↋, or with X and E where the terminal cannot show them. Without it, `THE333_COUNT_IN`, then ten.
+
+  -h, --help
+          Print help (see a summary with '-h')
+==== service install -h
+Keep this node's vigil through logouts and reboots, with this system's own service manager
+
+Usage: 333 service install [OPTIONS] [SERVE FLAGS]...
+
+Arguments:
+  [SERVE FLAGS]...  The flags for `serve`, as you would type them after it
+
+Options:
+      --data-dir <DIR>
+          Directory holding everything this node owns: its name, and Tor's state if it uses Tor
+      --timeout <SECONDS>
+          Seconds to wait for any single step that talks to the network [default: 300]
+      --dangerously-trust-directory-permissions
+          Accept a directory that others on this machine can enter
+      --keep-everything
+          Keep every statement for ever, instead of the window standing is read over
+      --bridge <LINE>
+          A bridge line, for a network that blocks the ordinary way into Tor
+      --bridge-helper <PROGRAM>
+          The program that speaks an obfuscated bridge, by name or by path
+      --language <TAG>
+          The language to speak, as a tag: `ko`, `es`, `zh-Hant`
+      --count-in <BASE>
+          Count in ten, twelve, or twelve-ascii
+  -h, --help
+          Print help (see more with '--help')
+==== service install --help
+Keep this node's vigil through logouts and reboots, with this system's own service manager.
+
+Give it the flags you would give `serve`: the service runs `serve` with exactly those, for this node's directory, and an hourly check beside it says so on this machine when the vigil stops. Every file it writes and every command it runs is said as it happens, and `333 service uninstall` undoes all of it.
+
+Usage: 333 service install [OPTIONS] [SERVE FLAGS]...
+
+Arguments:
+  [SERVE FLAGS]...
+          The flags for `serve`, as you would type them after it
+
+Options:
+      --data-dir <DIR>
+          Directory holding everything this node owns: its name, and Tor's state if it uses Tor
+
+      --timeout <SECONDS>
+          Seconds to wait for any single step that talks to the network.
+
+          A ceiling rather than a delay. A direct connection is done in milliseconds and fails on its own; this is sized for a Tor bootstrap, which is the one step here that can legitimately take minutes.
+
+          [default: 300]
+
+      --dangerously-trust-directory-permissions
+          Accept a directory that others on this machine can enter.
+
+          Both this client and arti refuse to start on a loosely permissioned directory, which is the right default: that directory holds the only copy of this node's name. The flag exists for scratch directories and containers with odd ownership, and it does what its name says.
+
+      --keep-everything
+          Keep every statement for ever, instead of the window standing is read over.
+
+          It confers nothing. Every statement carries its own signature and verifies the same wherever it was kept, so there is no archive of record and nobody becomes an archivist by doing this. It is for people who would rather the bytes still existed somewhere, which nothing here requires of anyone.
+
+      --bridge <LINE>
+          A bridge line, for a network that blocks the ordinary way into Tor.
+
+          Give it once for each bridge you were handed, exactly as it was handed to you. Nothing here fetches bridges for you: they are scarce and they are given out by people, slowly and on purpose, because a list that could simply be collected would simply be blocked. Without any of these Tor is reached the ordinary way, which is what almost everybody wants.
+
+      --bridge-helper <PROGRAM>
+          The program that speaks an obfuscated bridge, by name or by path.
+
+          Only needed when a bridge line asks for one, and only when it is not called `lyrebird` or is not on the path. It is not bundled: it is a separate program chasing a moving target, and a copy frozen inside this would be the wrong copy within a year while looking like the right one.
+
+      --language <TAG>
+          The language to speak, as a tag: `ko`, `es`, `zh-Hant`.
+
+          Without it, `THE333_LANGUAGE`, then the system's locale, then English. `333 languages` lists the languages there are words for, and a folder of catalogs in `<data-dir>/words/<tag>/` adds one without building anything. The 333 words themselves are never translated.
+
+      --count-in <BASE>
+          Count in ten, twelve, or twelve-ascii.
+
+          Every count shown is written in it, and every number typed is read in it: `say 238` in twelve is the same signal as `say 332` in ten. Names, addresses, ports and versions are never re-counted, and nothing on the wire changes. Twelve is written with ↊ and ↋, or with X and E where the terminal cannot show them. Without it, `THE333_COUNT_IN`, then ten.
+
+  -h, --help
+          Print help (see a summary with '-h')
+==== service uninstall -h
+Stop the vigil's service, and remove everything `service install` wrote
+
+Usage: 333 service uninstall [OPTIONS]
+
+Options:
+      --data-dir <DIR>
+          Directory holding everything this node owns: its name, and Tor's state if it uses Tor
+      --timeout <SECONDS>
+          Seconds to wait for any single step that talks to the network [default: 300]
+      --dangerously-trust-directory-permissions
+          Accept a directory that others on this machine can enter
+      --keep-everything
+          Keep every statement for ever, instead of the window standing is read over
+      --bridge <LINE>
+          A bridge line, for a network that blocks the ordinary way into Tor
+      --bridge-helper <PROGRAM>
+          The program that speaks an obfuscated bridge, by name or by path
+      --language <TAG>
+          The language to speak, as a tag: `ko`, `es`, `zh-Hant`
+      --count-in <BASE>
+          Count in ten, twelve, or twelve-ascii
+  -h, --help
+          Print help (see more with '--help')
+==== service uninstall --help
+Stop the vigil's service, and remove everything `service install` wrote
+
+Usage: 333 service uninstall [OPTIONS]
+
+Options:
+      --data-dir <DIR>
+          Directory holding everything this node owns: its name, and Tor's state if it uses Tor
+
+      --timeout <SECONDS>
+          Seconds to wait for any single step that talks to the network.
+
+          A ceiling rather than a delay. A direct connection is done in milliseconds and fails on its own; this is sized for a Tor bootstrap, which is the one step here that can legitimately take minutes.
+
+          [default: 300]
+
+      --dangerously-trust-directory-permissions
+          Accept a directory that others on this machine can enter.
+
+          Both this client and arti refuse to start on a loosely permissioned directory, which is the right default: that directory holds the only copy of this node's name. The flag exists for scratch directories and containers with odd ownership, and it does what its name says.
+
+      --keep-everything
+          Keep every statement for ever, instead of the window standing is read over.
+
+          It confers nothing. Every statement carries its own signature and verifies the same wherever it was kept, so there is no archive of record and nobody becomes an archivist by doing this. It is for people who would rather the bytes still existed somewhere, which nothing here requires of anyone.
+
+      --bridge <LINE>
+          A bridge line, for a network that blocks the ordinary way into Tor.
+
+          Give it once for each bridge you were handed, exactly as it was handed to you. Nothing here fetches bridges for you: they are scarce and they are given out by people, slowly and on purpose, because a list that could simply be collected would simply be blocked. Without any of these Tor is reached the ordinary way, which is what almost everybody wants.
+
+      --bridge-helper <PROGRAM>
+          The program that speaks an obfuscated bridge, by name or by path.
+
+          Only needed when a bridge line asks for one, and only when it is not called `lyrebird` or is not on the path. It is not bundled: it is a separate program chasing a moving target, and a copy frozen inside this would be the wrong copy within a year while looking like the right one.
+
+      --language <TAG>
+          The language to speak, as a tag: `ko`, `es`, `zh-Hant`.
+
+          Without it, `THE333_LANGUAGE`, then the system's locale, then English. `333 languages` lists the languages there are words for, and a folder of catalogs in `<data-dir>/words/<tag>/` adds one without building anything. The 333 words themselves are never translated.
+
+      --count-in <BASE>
+          Count in ten, twelve, or twelve-ascii.
+
+          Every count shown is written in it, and every number typed is read in it: `say 238` in twelve is the same signal as `say 332` in ten. Names, addresses, ports and versions are never re-counted, and nothing on the wire changes. Twelve is written with ↊ and ↋, or with X and E where the terminal cannot show them. Without it, `THE333_COUNT_IN`, then ten.
+
+  -h, --help
+          Print help (see a summary with '-h')
+==== service status -h
+What the service manager says of the vigil, when the vigil last said it was awake, and the last things it said
+
+Usage: 333 service status [OPTIONS]
+
+Options:
+      --data-dir <DIR>
+          Directory holding everything this node owns: its name, and Tor's state if it uses Tor
+      --timeout <SECONDS>
+          Seconds to wait for any single step that talks to the network [default: 300]
+      --dangerously-trust-directory-permissions
+          Accept a directory that others on this machine can enter
+      --keep-everything
+          Keep every statement for ever, instead of the window standing is read over
+      --bridge <LINE>
+          A bridge line, for a network that blocks the ordinary way into Tor
+      --bridge-helper <PROGRAM>
+          The program that speaks an obfuscated bridge, by name or by path
+      --language <TAG>
+          The language to speak, as a tag: `ko`, `es`, `zh-Hant`
+      --count-in <BASE>
+          Count in ten, twelve, or twelve-ascii
+  -h, --help
+          Print help (see more with '--help')
+==== service status --help
+What the service manager says of the vigil, when the vigil last said it was awake, and the last things it said
+
+Usage: 333 service status [OPTIONS]
+
+Options:
+      --data-dir <DIR>
+          Directory holding everything this node owns: its name, and Tor's state if it uses Tor
+
+      --timeout <SECONDS>
+          Seconds to wait for any single step that talks to the network.
+
+          A ceiling rather than a delay. A direct connection is done in milliseconds and fails on its own; this is sized for a Tor bootstrap, which is the one step here that can legitimately take minutes.
+
+          [default: 300]
+
+      --dangerously-trust-directory-permissions
+          Accept a directory that others on this machine can enter.
+
+          Both this client and arti refuse to start on a loosely permissioned directory, which is the right default: that directory holds the only copy of this node's name. The flag exists for scratch directories and containers with odd ownership, and it does what its name says.
+
+      --keep-everything
+          Keep every statement for ever, instead of the window standing is read over.
+
+          It confers nothing. Every statement carries its own signature and verifies the same wherever it was kept, so there is no archive of record and nobody becomes an archivist by doing this. It is for people who would rather the bytes still existed somewhere, which nothing here requires of anyone.
+
+      --bridge <LINE>
+          A bridge line, for a network that blocks the ordinary way into Tor.
+
+          Give it once for each bridge you were handed, exactly as it was handed to you. Nothing here fetches bridges for you: they are scarce and they are given out by people, slowly and on purpose, because a list that could simply be collected would simply be blocked. Without any of these Tor is reached the ordinary way, which is what almost everybody wants.
+
+      --bridge-helper <PROGRAM>
+          The program that speaks an obfuscated bridge, by name or by path.
+
+          Only needed when a bridge line asks for one, and only when it is not called `lyrebird` or is not on the path. It is not bundled: it is a separate program chasing a moving target, and a copy frozen inside this would be the wrong copy within a year while looking like the right one.
+
+      --language <TAG>
+          The language to speak, as a tag: `ko`, `es`, `zh-Hant`.
+
+          Without it, `THE333_LANGUAGE`, then the system's locale, then English. `333 languages` lists the languages there are words for, and a folder of catalogs in `<data-dir>/words/<tag>/` adds one without building anything. The 333 words themselves are never translated.
+
+      --count-in <BASE>
+          Count in ten, twelve, or twelve-ascii.
+
+          Every count shown is written in it, and every number typed is read in it: `say 238` in twelve is the same signal as `say 332` in ten. Names, addresses, ports and versions are never re-counted, and nothing on the wire changes. Twelve is written with ↊ and ↋, or with X and E where the terminal cannot show them. Without it, `THE333_COUNT_IN`, then ten.
+
+  -h, --help
+          Print help (see a summary with '-h')
+==== service check -h
+Say so on this machine if the vigil is not being kept. The service runs this every hour; it says nothing when all is well
+
+Usage: 333 service check [OPTIONS]
+
+Options:
+      --data-dir <DIR>
+          Directory holding everything this node owns: its name, and Tor's state if it uses Tor
+      --timeout <SECONDS>
+          Seconds to wait for any single step that talks to the network [default: 300]
+      --dangerously-trust-directory-permissions
+          Accept a directory that others on this machine can enter
+      --keep-everything
+          Keep every statement for ever, instead of the window standing is read over
+      --bridge <LINE>
+          A bridge line, for a network that blocks the ordinary way into Tor
+      --bridge-helper <PROGRAM>
+          The program that speaks an obfuscated bridge, by name or by path
+      --language <TAG>
+          The language to speak, as a tag: `ko`, `es`, `zh-Hant`
+      --count-in <BASE>
+          Count in ten, twelve, or twelve-ascii
+  -h, --help
+          Print help (see more with '--help')
+==== service check --help
+Say so on this machine if the vigil is not being kept. The service runs this every hour; it says nothing when all is well
+
+Usage: 333 service check [OPTIONS]
+
+Options:
+      --data-dir <DIR>
+          Directory holding everything this node owns: its name, and Tor's state if it uses Tor
+
+      --timeout <SECONDS>
+          Seconds to wait for any single step that talks to the network.
+
+          A ceiling rather than a delay. A direct connection is done in milliseconds and fails on its own; this is sized for a Tor bootstrap, which is the one step here that can legitimately take minutes.
+
+          [default: 300]
+
+      --dangerously-trust-directory-permissions
+          Accept a directory that others on this machine can enter.
+
+          Both this client and arti refuse to start on a loosely permissioned directory, which is the right default: that directory holds the only copy of this node's name. The flag exists for scratch directories and containers with odd ownership, and it does what its name says.
+
+      --keep-everything
+          Keep every statement for ever, instead of the window standing is read over.
+
+          It confers nothing. Every statement carries its own signature and verifies the same wherever it was kept, so there is no archive of record and nobody becomes an archivist by doing this. It is for people who would rather the bytes still existed somewhere, which nothing here requires of anyone.
+
+      --bridge <LINE>
+          A bridge line, for a network that blocks the ordinary way into Tor.
+
+          Give it once for each bridge you were handed, exactly as it was handed to you. Nothing here fetches bridges for you: they are scarce and they are given out by people, slowly and on purpose, because a list that could simply be collected would simply be blocked. Without any of these Tor is reached the ordinary way, which is what almost everybody wants.
+
+      --bridge-helper <PROGRAM>
+          The program that speaks an obfuscated bridge, by name or by path.
+
+          Only needed when a bridge line asks for one, and only when it is not called `lyrebird` or is not on the path. It is not bundled: it is a separate program chasing a moving target, and a copy frozen inside this would be the wrong copy within a year while looking like the right one.
+
+      --language <TAG>
+          The language to speak, as a tag: `ko`, `es`, `zh-Hant`.
+
+          Without it, `THE333_LANGUAGE`, then the system's locale, then English. `333 languages` lists the languages there are words for, and a folder of catalogs in `<data-dir>/words/<tag>/` adds one without building anything. The 333 words themselves are never translated.
+
+      --count-in <BASE>
+          Count in ten, twelve, or twelve-ascii.
+
+          Every count shown is written in it, and every number typed is read in it: `say 238` in twelve is the same signal as `say 332` in ten. Names, addresses, ports and versions are never re-counted, and nothing on the wire changes. Twelve is written with ↊ and ↋, or with X and E where the terminal cannot show them. Without it, `THE333_COUNT_IN`, then ten.
+
+  -h, --help
+          Print help (see a summary with '-h')
+==== help help
+Print this message or the help of the given subcommand(s)
+
+Usage: 333 help [COMMAND]...
+
+Arguments:
+  [COMMAND]...  Print help for the subcommand(s)

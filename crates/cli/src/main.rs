@@ -39,6 +39,7 @@ mod control;
 mod dial;
 mod dwelling;
 mod failed;
+mod help;
 mod identity_file;
 mod named;
 mod node;
@@ -52,8 +53,6 @@ mod version;
 use std::io::Write as _;
 use std::process::ExitCode;
 use std::time::Duration;
-
-use clap::Parser as _;
 
 use claim::Taken;
 use commands::Common;
@@ -90,7 +89,7 @@ async fn run() -> anyhow::Result<ExitCode> {
         )
         .init();
 
-    let cli = Cli::parse();
+    let cli = typed::read();
     let common = Common {
         paths: cli
             .data_dir

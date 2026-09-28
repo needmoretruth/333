@@ -3,282 +3,219 @@
 //! Beside `main` rather than in it, so that the words and flags are one file and what
 //! is done with them is another. `service install` reads its flags through [`Cli`] as
 //! well, so a flag `serve` takes is one `service` carries without a copy of it.
+//!
+//! READ TWICE WHEN IT IS REFUSED. The words a person reads are chosen from what the
+//! command line asks for, so they cannot be chosen before it is read. A line that
+//! reads is read once and the words chosen from it. A line clap refuses, `--help`
+//! and `--version` among them, has no reading to choose from: the language, the base
+//! and the directory are picked out of it by hand, the words chosen from those, and
+//! the line read again with them, so that the refusal or the help is in those words.
 
+use std::ffi::OsString;
 use std::net::SocketAddr;
 use std::path::PathBuf;
+use std::sync::OnceLock;
 
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory as _, FromArgMatches as _, Parser, Subcommand};
 
 use crate::commands;
 use crate::commands::elsewhere::Wanted;
-use crate::version;
+use crate::paths::NodePaths;
 use crate::words;
+use crate::words::count::Base;
 use n333_net::PeerAddress;
 
-/// One node of the 333 network.
+// What each command and flag is for is not written here: clap would show it in
+// English whoever asked. It is in the catalogs, `help-<command>-<flag>` in
+// `words/<tag>/help.ftl`, and put in once the words are chosen (`crate::help`).
+
+// The command line, as clap reads it.
 #[derive(Debug, Parser)]
-#[command(
-    name = "333",
-    version,
-    long_version = version::long(),
-    about = "One node of 333. It keeps the hours, answers when asked, and passes the file on."
-)]
+#[command(name = "333", version, about = "help-about")]
 pub(crate) struct Cli {
-    /// Directory holding everything this node owns: its name, and Tor's state if it
-    /// uses Tor.
-    #[arg(long, global = true, value_name = "DIR")]
+    #[arg(long, global = true, value_name = "DIR", help = "help-data-dir")]
     pub(crate) data_dir: Option<PathBuf>,
 
-    /// Seconds to wait for any single step that talks to the network.
-    ///
-    /// A ceiling rather than a delay. A direct connection is done in milliseconds
-    /// and fails on its own; this is sized for a Tor bootstrap, which is the one
-    /// step here that can legitimately take minutes.
-    #[arg(long, global = true, default_value_t = 300, value_name = "SECONDS")]
+    #[arg(
+        long,
+        global = true,
+        default_value_t = 300,
+        value_name = "SECONDS",
+        help = "help-timeout",
+        long_help = "help-timeout-long"
+    )]
     pub(crate) timeout: u64,
 
-    /// Accept a directory that others on this machine can enter.
-    ///
-    /// Both this client and arti refuse to start on a loosely permissioned
-    /// directory, which is the right default: that directory holds the only copy of
-    /// this node's name. The flag exists for scratch directories and containers with
-    /// odd ownership, and it does what its name says.
-    #[arg(long, global = true)]
+    #[arg(
+        long,
+        global = true,
+        help = "help-dangerously-trust-directory-permissions",
+        long_help = "help-dangerously-trust-directory-permissions-long"
+    )]
     pub(crate) dangerously_trust_directory_permissions: bool,
 
-    /// Keep every statement for ever, instead of the window standing is read over.
-    ///
-    /// It confers nothing. Every statement carries its own signature and verifies the
-    /// same wherever it was kept, so there is no archive of record and nobody becomes
-    /// an archivist by doing this. It is for people who would rather the bytes still
-    /// existed somewhere, which nothing here requires of anyone.
-    #[arg(long, global = true)]
+    #[arg(
+        long,
+        global = true,
+        help = "help-keep-everything",
+        long_help = "help-keep-everything-long"
+    )]
     pub(crate) keep_everything: bool,
 
-    /// A bridge line, for a network that blocks the ordinary way into Tor.
-    ///
-    /// Give it once for each bridge you were handed, exactly as it was handed to you.
-    /// Nothing here fetches bridges for you: they are scarce and they are given out by
-    /// people, slowly and on purpose, because a list that could simply be collected
-    /// would simply be blocked. Without any of these Tor is reached the ordinary way,
-    /// which is what almost everybody wants.
-    #[arg(long = "bridge", global = true, value_name = "LINE")]
+    #[arg(
+        long = "bridge",
+        global = true,
+        value_name = "LINE",
+        help = "help-bridges",
+        long_help = "help-bridges-long"
+    )]
     pub(crate) bridges: Vec<String>,
 
-    /// The program that speaks an obfuscated bridge, by name or by path.
-    ///
-    /// Only needed when a bridge line asks for one, and only when it is not called
-    /// `lyrebird` or is not on the path. It is not bundled: it is a separate program
-    /// chasing a moving target, and a copy frozen inside this would be the wrong copy
-    /// within a year while looking like the right one.
-    #[arg(long, global = true, value_name = "PROGRAM")]
+    #[arg(
+        long,
+        global = true,
+        value_name = "PROGRAM",
+        help = "help-bridge-helper",
+        long_help = "help-bridge-helper-long"
+    )]
     pub(crate) bridge_helper: Option<String>,
 
-    /// The language to speak, as a tag: `ko`, `es`, `zh-Hant`.
-    ///
-    /// Without it, `THE333_LANGUAGE`, then the system's locale, then English.
-    /// `333 languages` lists the languages there are words for, and a folder of
-    /// catalogs in `<data-dir>/words/<tag>/` adds one without building anything.
-    /// The 333 words themselves are never translated.
-    #[arg(long, global = true, value_name = "TAG")]
+    #[arg(
+        long,
+        global = true,
+        value_name = "TAG",
+        help = "help-language",
+        long_help = "help-language-long"
+    )]
     pub(crate) language: Option<String>,
 
-    /// Count in ten, twelve, or twelve-ascii.
-    ///
-    /// Every count shown is written in it, and every number typed is read in it:
-    /// `say 238` in twelve is the same signal as `say 332` in ten. Names, addresses,
-    /// ports and versions are never re-counted, and nothing on the wire changes.
-    /// Twelve is written with ↊ and ↋, or with X and E where the terminal cannot show
-    /// them. Without it, `THE333_COUNT_IN`, then ten.
-    #[arg(long, global = true, value_name = "BASE", value_parser = words::count::Base::named)]
+    #[arg(long, global = true, value_name = "BASE", value_parser = words::count::Base::named, help = "help-count-in", long_help = "help-count-in-long")]
     pub(crate) count_in: Option<words::count::Base>,
 
     #[command(subcommand)]
     pub(crate) command: Command,
 }
 
+// The commands, as clap reads them.
 #[derive(Debug, Subcommand)]
 pub(crate) enum Command {
-    /// Show this node's name, asking for one on first run.
+    #[command(about = "help-id")]
     Id,
-    /// Begin a line of your own, when there is nobody to be given the file by.
-    ///
-    /// The ordinary way in is an invitation from somebody who already has the file, and
-    /// this is not that. It looks at the meeting point first, and if anybody is there it
-    /// tells you to go and join them instead. If nobody is, it fetches the file, checks
-    /// it against the hash this client carries, and writes it down. Your node is then
-    /// the start of its own line and nobody signed for it, which anybody reading your
-    /// record can see.
+    #[command(about = "help-bootstrap", long_about = "help-bootstrap-long")]
     Bootstrap {
-        /// Where to look for people before beginning on your own.
-        #[arg(long, default_value = n333_net::meeting::THE_PLACE, value_name = "HOST")]
+        #[arg(long, default_value = n333_net::meeting::THE_PLACE, value_name = "HOST", help = "help-bootstrap-meet")]
         meet: String,
 
-        /// Begin even though somebody is already there.
-        #[arg(long)]
+        #[arg(long, help = "help-bootstrap-anyway")]
         anyway: bool,
     },
 
-    /// Keep the vigil: answer whoever asks, until interrupted.
-    ///
-    /// This is what a node does almost all of the time. It answers heartbeats and
-    /// challenges, trades what it knows with whoever it can reach, and at every epoch
-    /// boundary asks the ones it was drawn to ask. On a terminal it opens the screen.
+    #[command(about = "help-serve", long_about = "help-serve-long")]
     Serve {
-        /// Address and port to listen on.
-        #[arg(long, default_value_t = default_bind(), value_name = "ADDR:PORT")]
+        #[arg(long, default_value_t = default_bind(), value_name = "ADDR:PORT", help = "help-serve-bind")]
         bind: SocketAddr,
 
-        /// Also raise an onion address, so others can reach this node without
-        /// learning where it is. Waking Tor takes seconds to minutes.
-        #[arg(long)]
+        #[arg(long, help = "help-serve-tor")]
         tor: bool,
 
-        /// Do not open a socket at all. Only useful with --tor, and the only way to
-        /// keep the vigil with your address nowhere on the wire.
-        #[arg(long)]
+        #[arg(long, help = "help-serve-no-direct")]
         no_direct: bool,
 
-        /// The address to tell other nodes to reach this one at.
-        ///
-        /// Needed when the socket cannot say: listening on every interface, or behind
-        /// something that forwards a port. Without it a node on a wildcard bind can
-        /// answer whoever finds it and can never be found.
-        #[arg(long, value_name = "HOST:PORT")]
+        #[arg(
+            long,
+            value_name = "HOST:PORT",
+            help = "help-serve-announce",
+            long_help = "help-serve-announce-long"
+        )]
         announce: Option<PeerAddress>,
 
-        /// Do not say on the local network that this node is here.
-        ///
-        /// What goes out otherwise is that something on this machine speaks 333 and
-        /// on which port — not this node's name — which is what a port scan of the
-        /// same network would find anyway. It is how two nodes in one house find each
-        /// other with nobody typing an invitation. A node listening only through Tor
-        /// never does this at all.
-        #[arg(long)]
+        #[arg(
+            long,
+            help = "help-serve-no-mdns",
+            long_help = "help-serve-no-mdns-long"
+        )]
         no_mdns: bool,
 
-        /// Do not ask the router to send the port to this machine.
-        ///
-        /// Asking is what makes a socket on a home connection answer anybody: the
-        /// router in front of it drops what nobody inside asked for until a program on
-        /// the inside asks it not to, over UPnP-IGD, PCP or NAT-PMP, one of which most
-        /// of them already speak. It is a real change to somebody's network, so it is
-        /// said out loud when it is made and this refuses it outright. `--no-upnp` is
-        /// the older name for the same thing, from when UPnP was all that was asked.
-        #[arg(long, visible_alias = "no-upnp")]
+        #[arg(
+            long,
+            visible_alias = "no-upnp",
+            help = "help-serve-no-router",
+            long_help = "help-serve-no-router-long"
+        )]
         no_router: bool,
 
-        /// Where to look for nodes nobody introduced this one to.
-        ///
-        /// One fixed address holding signed statements about where nodes say they
-        /// are. Everything read there is verified here, and nothing there is
-        /// believed. It is the only way two machines on two networks meet without
-        /// somebody handing over an invitation.
-        #[arg(long, default_value = n333_net::meeting::THE_PLACE, value_name = "HOST")]
+        #[arg(long, default_value = n333_net::meeting::THE_PLACE, value_name = "HOST", help = "help-serve-meet", long_help = "help-serve-meet-long")]
         meet: String,
 
-        /// Do not use a meeting point at all.
-        ///
-        /// This node is then reachable by whoever was handed an invitation and by
-        /// nodes on this network, and by nobody else.
-        #[arg(long)]
+        #[arg(
+            long,
+            help = "help-serve-no-meet",
+            long_help = "help-serve-no-meet-long"
+        )]
         no_meet: bool,
 
-        /// Say the lines instead of drawing the screen.
-        ///
-        /// The screen is what this client does on a terminal. Anywhere else — a pipe,
-        /// a service manager's log, a file — it says the lines instead, and this flag
-        /// asks for that on a terminal too.
-        #[arg(long)]
+        #[arg(long, help = "help-serve-plain", long_help = "help-serve-plain-long")]
         plain: bool,
     },
-    /// Speak one of the 333, once in this epoch. What travels is the number.
+    #[command(about = "help-say")]
     Say {
-        /// Which of them, from 0 to 332, typed in the base this counts in
-        /// (--count-in). The words are not written yet.
-        #[arg(value_name = "INDEX")]
+        #[arg(value_name = "INDEX", help = "help-say-index")]
         index: String,
     },
-    /// Show what this node has seen: how many of us are answering, where this node
-    /// stands over the window, and how much of the silence is left if it has begun.
+    #[command(about = "help-status")]
     Status {
-        /// List every address this node holds: whose it is, where it was first heard
-        /// of and when, and where it was heard of last. The addresses are printed;
-        /// this is your own node's disk and nobody else's.
-        #[arg(long)]
+        #[arg(long, help = "help-status-sources")]
         sources: bool,
-        /// Say what this node observed as JSON, for a program to read. No address,
-        /// onion address or port of any kind is in it.
-        #[arg(long, conflicts_with = "sources")]
+        #[arg(long, conflicts_with = "sources", help = "help-status-json")]
         json: bool,
     },
-    /// Ask a node that has the file to hand it over. Write the file yourself and you
-    /// hold a file: you are one of us from the moment somebody gives it to
-    /// you and you both sign for it.
+    #[command(about = "help-join")]
     Join {
-        /// An invitation (`333:host:port`) from somebody who already has it.
-        #[arg(value_parser = n333_net::invite::address_or_invite)]
+        #[arg(value_parser = n333_net::invite::address_or_invite, help = "help-join-address")]
         address: PeerAddress,
     },
-    /// List the languages there are words for, and how much of each is written.
+    #[command(about = "help-languages")]
     Languages,
-    /// Knock on another node, and exchange one heartbeat with it.
+    #[command(about = "help-ping")]
     Ping {
-        /// An invitation (`333:host:port`), or an address typed by hand as `host`,
-        /// `host:port`, `[::1]:port` or `something.onion`. An onion address is
-        /// reached through Tor; everything else directly.
-        #[arg(value_parser = n333_net::invite::address_or_invite)]
+        #[arg(value_parser = n333_net::invite::address_or_invite, help = "help-ping-address")]
         address: PeerAddress,
     },
-    /// Write this node into one file, to carry it to another machine.
-    ///
-    /// Everything it is goes: its name, its record, what others signed about it, the
-    /// file if it holds it, and the key to its onion address. Afterwards this
-    /// directory refuses to act as it, because one name in two places is a node
-    /// contradicting itself. The file is not encrypted: whoever holds it is this node,
-    /// so carry it, unpack it, and delete it.
+    #[command(about = "help-pack", long_about = "help-pack-long")]
     Pack {
-        /// The file to write. It must not exist yet.
-        #[arg(value_name = "FILE", required_unless_present = "undo")]
+        #[arg(
+            value_name = "FILE",
+            required_unless_present = "undo",
+            help = "help-pack-file"
+        )]
         file: Option<PathBuf>,
 
-        /// Take back a packing here, for a move that was abandoned.
-        ///
-        /// Only if the file was never unpacked anywhere: if it was, this makes two.
-        #[arg(long, conflicts_with = "file")]
+        #[arg(
+            long,
+            conflicts_with = "file",
+            help = "help-pack-undo",
+            long_help = "help-pack-undo-long"
+        )]
         undo: bool,
     },
-    /// Put a packed node into this machine's node directory.
-    ///
-    /// Refused where a node already lives, and it says what that node holds. Nothing
-    /// is written until the file has been read through and its key and record check
-    /// out.
+    #[command(about = "help-unpack", long_about = "help-unpack-long")]
     Unpack {
-        /// The file `333 pack` wrote.
-        #[arg(value_name = "FILE")]
+        #[arg(value_name = "FILE", help = "help-unpack-file")]
         file: PathBuf,
     },
-    /// Say that this node's directory was moved or renamed, not copied.
-    ///
-    /// A node that finds itself somewhere other than where it was says so on every
-    /// run until this is typed, because a copy with the original still running is one
-    /// name in two places, and from inside the directory the two look the same.
+    #[command(about = "help-moved", long_about = "help-moved-long")]
     Moved,
-    /// Tell the vigil running in this directory something, in its screen's words.
-    ///
-    /// `tor on`, `tor off`, `bridge <line>`, `helper <program>`, and every other word
-    /// the screen takes after `:`. The vigil carries it out and what it says about it
-    /// is printed here. `say`, `join`, `ping`, `bootstrap` and `status` are handed to a
-    /// running vigil the same way without this.
+    #[command(about = "help-tell", long_about = "help-tell-long")]
     Tell {
-        /// The order, as it would be typed into the screen.
-        #[arg(required = true, trailing_var_arg = true, allow_hyphen_values = true)]
+        #[arg(
+            required = true,
+            trailing_var_arg = true,
+            allow_hyphen_values = true,
+            help = "help-tell-order"
+        )]
         order: Vec<String>,
     },
-    /// Keep the vigil through logouts and reboots, with this system's service manager.
-    ///
-    /// Nothing is installed until you ask for it here, everything that is done is said
-    /// as it is done, and `333 service uninstall` undoes it.
+    #[command(about = "help-service", long_about = "help-service-long")]
     Service {
         #[command(subcommand)]
         order: commands::service::Order,
@@ -291,10 +228,10 @@ impl Command {
         match self {
             Self::Id => Wanted::Name,
             Self::Serve { .. } => Wanted::Vigil,
-            Self::Bootstrap { meet, .. } if meet != n333_net::meeting::THE_PLACE => Wanted::Kept(
-                "it looks for people only where it always does.\n\
-                 \x20        Leave --meet out, or run this when it has stopped.",
-            ),
+            Self::Bootstrap { meet, .. } if meet != n333_net::meeting::THE_PLACE => {
+                static WHY: OnceLock<String> = OnceLock::new();
+                kept(&WHY, || words!("typed-kept-meet"))
+            }
             Self::Bootstrap { anyway: true, .. } => Wanted::Order("bootstrap anyway".to_owned()),
             Self::Bootstrap { anyway: false, .. } => Wanted::Order("bootstrap".to_owned()),
             Self::Say { index } => Wanted::Order(format!("say {index}")),
@@ -305,27 +242,239 @@ impl Command {
             Self::Join { address } => Wanted::Order(format!("join {address}")),
             Self::Ping { address } => Wanted::Order(format!("ping {address}")),
             Self::Tell { order } => Wanted::Order(order.join(" ")),
-            Self::Pack { .. } => Wanted::Kept(
-                "a node is packed only while nothing is keeping it. Nothing was\n\
-                 \x20        written. Stop the vigil, then pack it.",
-            ),
-            Self::Moved => Wanted::Kept(
-                "where a node lives is said while nothing is keeping it. Stop the\n\
-                 \x20        vigil, then run this again.",
-            ),
+            Self::Pack { .. } => {
+                static WHY: OnceLock<String> = OnceLock::new();
+                kept(&WHY, || words!("typed-kept-pack"))
+            }
+            Self::Moved => {
+                static WHY: OnceLock<String> = OnceLock::new();
+                kept(&WHY, || words!("typed-kept-moved"))
+            }
             // Never asked: `unpack` takes the directory itself, and refuses on its own.
             Self::Unpack { .. } => Wanted::Kept(commands::unpack::KEPT),
             // Never asked: `languages` reads the catalogs, not the node, and is dispatched
             // before the directory is taken.
-            Self::Languages => Wanted::Kept("it reads the catalogs, not the vigil."),
+            Self::Languages => {
+                static WHY: OnceLock<String> = OnceLock::new();
+                kept(&WHY, || words!("typed-kept-languages"))
+            }
             // Never asked: `service` is dispatched before the directory is taken, because
             // it asks the service manager and reads the awake stamp and nothing else.
-            Self::Service { .. } => Wanted::Kept("it asks the service manager, not the vigil."),
+            Self::Service { .. } => {
+                static WHY: OnceLock<String> = OnceLock::new();
+                kept(&WHY, || words!("typed-kept-service"))
+            }
         }
+    }
+}
+
+/// Why a command cannot be handed to a running vigil.
+///
+/// Said once, in the words this process speaks, and kept for the life of the process,
+/// which is as long as the reason is ever read.
+fn kept(cell: &'static OnceLock<String>, why: impl FnOnce() -> String) -> Wanted {
+    Wanted::Kept(cell.get_or_init(why))
+}
+
+/// Read this process's command line, or say why it cannot be read — or the help or the
+/// version it asked for — in the words it asked for, and exit as clap would.
+pub(crate) fn read() -> Cli {
+    let args: Vec<OsString> = std::env::args_os().collect();
+    let first = match Cli::try_parse_from(&args) {
+        Ok(cli) => return cli,
+        Err(first) => first,
+    };
+    let asked = Asked::from(&args);
+    let home = asked
+        .data_dir
+        .map_or_else(NodePaths::default_home, NodePaths::at);
+    words::install(asked.language.as_deref(), asked.count_in, home.root());
+    match parse_from(args) {
+        Err(refused) => refused.exit(),
+        // Read the second time with only the words changed, it cannot read; if it
+        // somehow does, the first refusal is the one there is.
+        Ok(_) => first.exit(),
+    }
+}
+
+/// Read a command line with every word a person reads in the words this process speaks.
+///
+/// # Errors
+/// What clap refuses, and `--help` and `--version`, which clap answers the same way.
+pub(crate) fn parse_from(args: Vec<OsString>) -> Result<Cli, Refusal> {
+    let mut command = crate::help::spoken(Cli::command());
+    let mut matches = command.try_get_matches_from_mut(args).map_err(Refusal)?;
+    Cli::from_arg_matches_mut(&mut matches).map_err(|e| Refusal(e.format(&mut command)))
+}
+
+/// A command line clap would not read, or the help or the version it was asked for.
+#[derive(Debug)]
+pub(crate) struct Refusal(clap::Error);
+
+impl Refusal {
+    /// Say it in the words this process speaks, and exit with clap's code.
+    pub(crate) fn exit(self) -> ! {
+        if words::current()
+            .tag()
+            .eq_ignore_ascii_case(words::catalog::ENGLISH)
+        {
+            self.0.exit()
+        }
+        self.0.apply::<crate::help::refused::Spoken>().exit()
+    }
+
+    /// What [`Refusal::exit`] would print, without the colours.
+    #[cfg(test)]
+    pub(crate) fn rendered(self) -> String {
+        if words::current()
+            .tag()
+            .eq_ignore_ascii_case(words::catalog::ENGLISH)
+        {
+            return self.0.render().to_string();
+        }
+        self.0
+            .apply::<crate::help::refused::Spoken>()
+            .render()
+            .to_string()
+    }
+}
+
+/// What a command line asks to be read in and where its node is, picked out by hand
+/// from one clap refused.
+#[derive(Debug, Default, PartialEq, Eq)]
+struct Asked {
+    /// `--language`.
+    language: Option<String>,
+    /// `--count-in`, if it names a base.
+    count_in: Option<Base>,
+    /// `--data-dir`, where a folder of catalogs beside the node may be.
+    data_dir: Option<PathBuf>,
+}
+
+impl Asked {
+    /// Every `--language`, `--count-in` and `--data-dir` before a `--`, the last of
+    /// each winning, as clap would have it; given as `--flag value` or `--flag=value`.
+    fn from(args: &[OsString]) -> Self {
+        let mut asked = Self::default();
+        let mut words = args.iter().skip(1).map(|arg| arg.to_string_lossy());
+        while let Some(word) = words.next() {
+            if word == "--" {
+                break;
+            }
+            let (flag, given) = match word.split_once('=') {
+                Some((flag, value)) => (flag.to_owned(), Some(value.to_owned())),
+                None => (word.into_owned(), None),
+            };
+            if !["--language", "--count-in", "--data-dir"].contains(&flag.as_str()) {
+                continue;
+            }
+            let Some(value) = given.or_else(|| words.next().map(|value| value.into_owned())) else {
+                break;
+            };
+            match flag.as_str() {
+                "--language" => asked.language = Some(value),
+                "--count-in" => asked.count_in = Base::named(&value).ok(),
+                _ => asked.data_dir = Some(PathBuf::from(value)),
+            }
+        }
+        asked
     }
 }
 
 /// Listen on every interface, on the port peers expect.
 pub(crate) fn default_bind() -> SocketAddr {
     SocketAddr::from(([0, 0, 0, 0], n333_net::DEFAULT_PORT))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::words::layout::{COLUMN, line, where_the_words_begin};
+
+    fn reason(tag: &str, key: &str) -> String {
+        words::speaking(tag, Base::Ten, || match key {
+            "typed-kept-meet" => words!("typed-kept-meet"),
+            "typed-kept-pack" => words!("typed-kept-pack"),
+            "typed-kept-moved" => words!("typed-kept-moved"),
+            "typed-kept-languages" => words!("typed-kept-languages"),
+            _ => words!("typed-kept-service"),
+        })
+    }
+
+    #[test]
+    fn in_english_every_reason_a_vigil_is_not_handed_a_command_is_what_it_was() {
+        // The column is the line's to give: each is said after a keyword and "is
+        // keeping the vigil here, and", and its second line lines up under the first.
+        for (key, before) in [
+            (
+                "typed-kept-meet",
+                "it looks for people only where it always does.\n\
+                 \x20        Leave --meet out, or run this when it has stopped.",
+            ),
+            (
+                "typed-kept-pack",
+                "a node is packed only while nothing is keeping it. Nothing was\n\
+                 \x20        written. Stop the vigil, then pack it.",
+            ),
+            (
+                "typed-kept-moved",
+                "where a node lives is said while nothing is keeping it. Stop the\n\
+                 \x20        vigil, then run this again.",
+            ),
+            (
+                "typed-kept-languages",
+                "it reads the catalogs, not the vigil.",
+            ),
+            (
+                "typed-kept-service",
+                "it asks the service manager, not the vigil.",
+            ),
+        ] {
+            let now = reason("en", key);
+            assert_eq!(now, before.replace("\n\x20        ", "\n"), "{key}");
+            let said = line("busy", &format!("x is keeping the vigil here, and\n{now}"));
+            assert_eq!(
+                said,
+                format!("busy     x is keeping the vigil here, and\n\x20        {before}")
+            );
+        }
+    }
+
+    #[test]
+    fn in_korean_a_reason_keeps_the_column_it_is_said_in() {
+        let why = reason("ko", "typed-kept-pack");
+        let said = line(
+            "사용중",
+            &format!("누군가 여기서 철야를 지키고 있으며,\n{why}"),
+        );
+        let mut lines = said.lines();
+        assert_eq!(where_the_words_begin(lines.next().unwrap()), COLUMN);
+        for one in lines {
+            assert_eq!(
+                one.chars().take_while(|c| *c == ' ').count(),
+                COLUMN,
+                "{said}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_refused_line_is_read_for_its_language_base_and_directory_by_hand() {
+        let args = |line: &str| -> Vec<OsString> { line.split(' ').map(OsString::from).collect() };
+        let asked = Asked::from(&args(
+            "333 --bogus --language=ko serve --count-in twelve --data-dir /tmp/n --language es",
+        ));
+        assert_eq!(
+            asked,
+            Asked {
+                language: Some("es".to_owned()),
+                count_in: Some(Base::Twelve),
+                data_dir: Some(PathBuf::from("/tmp/n")),
+            }
+        );
+        let after_the_end = Asked::from(&args("333 tell -- --language ko"));
+        assert_eq!(after_the_end, Asked::default());
+        let unfinished = Asked::from(&args("333 --count-in nine --language"));
+        assert_eq!(unfinished, Asked::default());
+    }
 }

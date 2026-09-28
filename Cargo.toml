@@ -76,7 +76,10 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "signa
 # turns on a feature of it.
 tokio-util = { version = "0.7", features = ["compat"] }
 anyhow = "1"
-clap = { version = "4", features = ["derive"] }
+# `string` lets the words of `--help` be ones read at run time, from the catalogs,
+# rather than only ones written into the program: without it clap takes a heading
+# or a version only as a string that lives for ever. No crate is added.
+clap = { version = "4", features = ["derive", "string"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 

@@ -40,32 +40,34 @@ use schtasks as manager;
 #[cfg(target_os = "linux")]
 use systemd as manager;
 
-/// What `333 service` can be asked to do.
+// What `333 service` can be asked to do.
+//
+// What each is for is in the catalogs, under the key each names (`crate::help`).
 #[derive(Debug, clap::Subcommand)]
 pub(crate) enum Order {
-    /// Keep this node's vigil through logouts and reboots, with this system's own
-    /// service manager.
-    ///
-    /// Give it the flags you would give `serve`: the service runs `serve` with exactly
-    /// those, for this node's directory, and an hourly check beside it says so on this
-    /// machine when the vigil stops. Every file it writes and every command it runs is
-    /// said as it happens, and `333 service uninstall` undoes all of it.
+    // Keep this node's vigil through logouts and reboots.
+    #[command(
+        about = "help-service-install",
+        long_about = "help-service-install-long"
+    )]
     Install {
-        /// The flags for `serve`, as you would type them after it.
+        // The flags for `serve`, as they would be typed after it.
         #[arg(
             trailing_var_arg = true,
             allow_hyphen_values = true,
-            value_name = "SERVE FLAGS"
+            value_name = "SERVE FLAGS",
+            help = "help-service-install-flags"
         )]
         flags: Vec<String>,
     },
-    /// Stop the vigil's service, and remove everything `service install` wrote.
+    // Stop the vigil's service, and remove everything install wrote.
+    #[command(about = "help-service-uninstall")]
     Uninstall,
-    /// What the service manager says of the vigil, when the vigil last said it was
-    /// awake, and the last things it said.
+    // What the service manager says of the vigil.
+    #[command(about = "help-service-status")]
     Status,
-    /// Say so on this machine if the vigil is not being kept. The service runs this
-    /// every hour; it says nothing when all is well.
+    // Say so on this machine if the vigil is not being kept.
+    #[command(about = "help-service-check")]
     Check,
 }
 

@@ -11,7 +11,6 @@
 use std::path::PathBuf;
 
 use anyhow::bail;
-use clap::Parser as _;
 
 use crate::commands::Common;
 use crate::paths::NodePaths;
@@ -41,8 +40,8 @@ pub(crate) struct Vigil {
 /// install --data-dir X --tor` mean the same thing.
 ///
 /// # Errors
-/// Fails the way `serve` would fail on the same flags.
-pub(crate) fn read(common: &Common, flags: &[String]) -> Result<crate::Cli, clap::Error> {
+/// Fails the way `serve` would fail on the same flags, in the same words.
+pub(crate) fn read(common: &Common, flags: &[String]) -> Result<crate::Cli, crate::typed::Refusal> {
     let mut argv = vec!["333".to_owned()];
     if common.paths.root() != NodePaths::default_home().root() {
         argv.push("--data-dir".to_owned());
@@ -72,7 +71,7 @@ pub(crate) fn read(common: &Common, flags: &[String]) -> Result<crate::Cli, clap
     }
     argv.push("serve".to_owned());
     argv.extend(flags.iter().cloned());
-    crate::Cli::try_parse_from(argv)
+    crate::typed::parse_from(argv.into_iter().map(std::ffi::OsString::from).collect())
 }
 
 /// Write a read command line back out in full, as a service will run it.
@@ -191,6 +190,8 @@ fn spoken(language: Option<String>, count_in: Option<Base>) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use std::sync::{Arc, Mutex};
+
+    use clap::Parser as _;
     use std::time::Duration;
 
     use super::*;
