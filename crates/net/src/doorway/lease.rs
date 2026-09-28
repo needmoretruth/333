@@ -245,9 +245,23 @@ mod tests {
 
     impl FakeRouter {
         async fn answering(answer: fn(&[u8]) -> Option<Vec<u8>>) -> Self {
-            let socket = tokio::net::UdpSocket::bind((Ipv4Addr::LOCALHOST, crab_nat::GATEWAY_PORT))
-                .await
-                .expect("port 5351 on loopback is free");
+            // The router of the test before this one lets go of the port when its
+            // runtime winds down, which can be a moment after its turn has ended.
+            let deadline = Instant::now() + Duration::from_secs(5);
+            let socket = loop {
+                let bound =
+                    tokio::net::UdpSocket::bind((Ipv4Addr::LOCALHOST, crab_nat::GATEWAY_PORT))
+                        .await;
+                match bound {
+                    Err(e)
+                        if e.kind() == std::io::ErrorKind::AddrInUse
+                            && Instant::now() < deadline =>
+                    {
+                        tokio::time::sleep(Duration::from_millis(10)).await;
+                    }
+                    other => break other.expect("port 5351 on loopback is free"),
+                }
+            };
             let heard = Arc::new(Mutex::new(Vec::new()));
             let keeping = Arc::clone(&heard);
             let task = tokio::spawn(async move {
