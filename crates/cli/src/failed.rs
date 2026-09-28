@@ -45,22 +45,17 @@ pub(crate) fn is_our_own(error: &anyhow::Error) -> bool {
 ///
 /// Every refusal `say` gives is a sentence of its own, so it follows the keyword as it
 /// is; only a failure of this node's own record is not a refusal. Said by the vigil,
-/// for an order typed into its screen or handed to it from another terminal.
+/// for an order typed into its screen or handed to it from another terminal, and laid
+/// out as [`said`] lays out a failure: every line of it in the column its first line's
+/// words begin in, whatever column the sentence was broken for.
 pub(crate) fn not_said(error: &anyhow::Error) -> String {
-    let text = chain(error);
-    let mut lines = text.splitn(2, '\n');
-    let first = lines.next().unwrap_or_default();
-    let mut said = if is_our_own(error) {
-        words!("failed-failed", why = first)
+    let why = chain(error);
+    let said = if is_our_own(error) {
+        words!("failed-failed", why = why)
     } else {
-        words!("failed-refused", why = first)
+        words!("failed-refused", why = why)
     };
-    // What a refusal says after its first line follows as the refusal wrote it.
-    if let Some(rest) = lines.next() {
-        said.push('\n');
-        said.push_str(rest);
-    }
-    said
+    in_one_column(&said)
 }
 
 /// Every sentence of a failure, outermost first, joined the way `{:#}` joins them, with
@@ -112,7 +107,7 @@ mod tests {
     use anyhow::Context as _;
 
     #[test]
-    fn in_english_a_refusal_the_vigil_says_is_exactly_what_it_said_before() {
+    fn a_refusal_the_vigil_says_keeps_every_line_in_the_words_column() {
         let refusal = anyhow::anyhow!(
             "you already said #3 in epoch 9. One each, and saying it again would\n\
              not replace it."
@@ -124,8 +119,34 @@ mod tests {
         });
         assert_eq!(
             said,
-            [format!("refused  {refusal:#}"), format!("failed   {own:#}"),]
+            [
+                "refused  you already said #3 in epoch 9. One each, and saying it again would\n\
+                 \x20        not replace it."
+                    .to_owned(),
+                format!("failed   {own:#}"),
+            ]
         );
+    }
+
+    #[test]
+    fn in_korean_a_refusal_of_several_lines_keeps_the_column_too() {
+        use crate::words::layout::{COLUMN, where_the_words_begin};
+        for tag in ["ko", "en"] {
+            let said = crate::words::speaking(tag, crate::words::count::Base::Ten, || {
+                let already = words!("say-already", index = 3_u16, epoch = 9_u64);
+                let joined = words!("say-not-joined");
+                [already, joined].map(|why| not_said(&anyhow::anyhow!(why)))
+            });
+            for refusal in said {
+                let mut lines = refusal.lines();
+                let first = lines.next().unwrap();
+                assert_eq!(where_the_words_begin(first), COLUMN, "{refusal}");
+                for line in lines {
+                    let spaces = line.chars().take_while(|c| *c == ' ').count();
+                    assert_eq!(spaces, COLUMN, "{refusal}");
+                }
+            }
+        }
     }
 
     #[test]

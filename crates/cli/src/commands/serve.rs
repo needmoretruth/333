@@ -274,15 +274,11 @@ fn the_screen(plain: bool) -> Option<tokio::sync::mpsc::UnboundedReceiver<String
 /// What is true the moment this node stops answering.
 ///
 /// Printed rather than said, because by the time this runs the screen has given the
-/// terminal back and there is nobody left listening to what the node says. Dropped if
-/// nobody reads standard output any more: a vigil piped into `head` has nobody to tell.
+/// terminal back and there is nobody left listening to what the node says; laid out
+/// for the terminal as a line said to it would be. Dropped if nobody reads standard
+/// output any more: a vigil piped into `head` has nobody to tell.
 fn farewell(on_a_roll: bool) {
-    use std::io::Write as _;
-    let _ = writeln!(
-        std::io::stdout().lock(),
-        "{}",
-        said_at_the_end(Epoch::now(), on_a_roll)
-    );
+    crate::aloud::printed(&said_at_the_end(Epoch::now(), on_a_roll));
 }
 
 /// The farewell's words, for the epoch it is said in.

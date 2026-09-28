@@ -23,8 +23,8 @@ use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Padding, Paragraph};
 
-use super::Saying;
 use super::watch::Watch;
+use super::{Heard, Saying};
 use unicode_width::UnicodeWidthStr as _;
 
 use crate::commands::hours::to_the_boundary;
@@ -42,7 +42,7 @@ const APART: u16 = 34;
 const TOO_NARROW: u16 = 62;
 
 /// Draw everything.
-pub(super) fn everything(frame: &mut Frame<'_>, watch: &Watch, log: &[String], saying: &Saying) {
+pub(super) fn everything(frame: &mut Frame<'_>, watch: &Watch, log: &[Heard], saying: &Saying) {
     let twelve = counting_in_twelve();
     let refused = bottom::refused(saying, frame.area().width);
     let [top, counting, middle, bottom] = Layout::vertical([
@@ -391,7 +391,10 @@ mod tests {
                 Saying::Typing(typed("tor sideways", Some("that wants on or off after it"))),
             ]
         };
-        let log = ["12:00:00  witness  이 노드에 대해 서명된 것이 없습니다".to_owned()];
+        let log = [crate::screen::Heard {
+            at: "12:00:00".to_owned(),
+            said: "증언     이 노드에 대해 서명된 것이 없습니다\n         두 번째 줄".to_owned(),
+        }];
         for (tag, base) in [("en", Base::Ten), ("ko", Base::Twelve)] {
             crate::words::speaking(tag, base, || {
                 for width in [0, 1, 2, 5, 12, 30, 47, 48, 61, 62, 63, 100, 200, 400] {

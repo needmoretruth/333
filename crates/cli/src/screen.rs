@@ -15,15 +15,16 @@
 //! the lines, not a drawing, and the Light build is compiled without any of this.
 
 mod draw;
+mod keyboard;
 mod watch;
 
 use std::io::IsTerminal as _;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
 
-use ratatui::crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers};
-use tokio::sync::mpsc::{UnboundedReceiver, unbounded_channel};
+use ratatui::crossterm::event::{KeyCode, KeyEventKind, KeyModifiers};
+use tokio::sync::mpsc::UnboundedReceiver;
 
 use n333_core::Epoch;
 use n333_core::signal::SIGNAL_COUNT;
@@ -31,6 +32,7 @@ use n333_core::signal::SIGNAL_COUNT;
 use crate::node::Node;
 use crate::orders::Order;
 use crate::words::Arg;
+use keyboard::{Typed, read_keys};
 use watch::Watch;
 
 /// How often everything is read off the disk again.
@@ -39,11 +41,8 @@ use watch::Watch;
 /// its time answering its own screen would be a node that answers nothing else.
 const READ_AGAIN: Duration = Duration::from_secs(10);
 
-/// How many lines of the vigil are kept to scroll back through.
+/// How many things the vigil said are kept to scroll back through.
 const REMEMBERED: usize = 500;
-
-/// How long the key reader waits before looking again at whether it should stop.
-const KEY_POLL: Duration = Duration::from_millis(120);
 
 /// What the person at the keyboard is in the middle of.
 pub(super) enum Saying {
@@ -55,6 +54,17 @@ pub(super) enum Saying {
     Typing(Entry),
     /// Reading every key and every order word, until any key is pressed.
     Keys,
+}
+
+/// One thing the vigil said, and the time of day it arrived.
+///
+/// Kept whole rather than as the lines it came in: how it is broken into lines is the
+/// pane's to decide, at whatever width the pane is when it is drawn.
+pub(super) struct Heard {
+    /// When it arrived, as a clock shows it.
+    pub(super) at: String,
+    /// What was said, every line of it.
+    pub(super) said: String,
 }
 
 /// A line being typed, and why the last try at it was refused, if it was.
@@ -114,7 +124,7 @@ async fn draw_until_they_leave(
     orders: &tokio::sync::mpsc::UnboundedSender<Order>,
 ) -> anyhow::Result<()> {
     let (mut keys, reading) = read_keys();
-    let mut log: Vec<String> = Vec::new();
+    let mut log: Vec<Heard> = Vec::new();
     let mut saying = Saying::Nothing;
     let mut watch = Watch::of(node, Epoch::now()).await?;
     let mut read_at = Instant::now();
@@ -314,20 +324,20 @@ async fn say_it(node: &Arc<Node>, index: u16) -> String {
     }
 }
 
-/// Keep what was said, stamped with the hour it arrived, and forget the oldest.
+/// Keep what was said, stamped with the time it arrived, and forget the oldest.
 ///
-/// The hour is on the first line only. Everything said in more than one line is one
-/// thing said, and stamping each line of it would make one sentence look like four
-/// things happening at once.
-fn remember(log: &mut Vec<String>, said: &str) {
-    let mut lines = said.split('\n').filter(|line| !line.trim().is_empty());
-    let Some(first) = lines.next() else {
+/// One stamp for all of it. Everything said in more than one line is one thing said,
+/// and stamping each line of it would make one sentence look like four things
+/// happening at once.
+fn remember(log: &mut Vec<Heard>, said: &str) {
+    if said.trim().is_empty() {
         return;
-    };
-    let seconds = n333_core::epoch::unix_now_seconds();
-    let at = stamp(seconds);
-    log.push(format!("{at}  {first}"));
-    log.extend(lines.map(|line| format!("          {}", line.trim_start())));
+    }
+    let at = stamp(n333_core::epoch::unix_now_seconds());
+    log.push(Heard {
+        at,
+        said: said.to_owned(),
+    });
     if log.len() > REMEMBERED {
         log.drain(..log.len() - REMEMBERED);
     }
@@ -346,60 +356,6 @@ fn stamp(seconds: u64) -> String {
         minutes = clock(seconds / 60 % 60),
         seconds = clock(seconds % 60)
     )
-}
-
-/// What the keyboard gave, or why it gave nothing.
-enum Typed {
-    /// A key.
-    Key(event::KeyEvent),
-    /// One key could not be read. The next may be.
-    Unreadable(String),
-    /// The keyboard cannot be read any more.
-    Gone(String),
-}
-
-/// How many keys in a row may fail to be read before the keyboard is taken to be gone.
-///
-/// Three: once is a key, twice may be chance, and a reader that went on past that
-/// would fill the pane with the same line as fast as it could fail.
-const UNREADABLE_IN_A_ROW: usize = 3;
-
-/// Read the keyboard on a thread of its own, because reading it blocks.
-///
-/// The flag is how it is stopped: a thread left polling a terminal after this program
-/// has finished with it eats the keystrokes meant for whatever runs next. A key that
-/// could not be read is said rather than skipped, so that a keyboard which has stopped
-/// working is not mistaken for a person who has stopped typing.
-fn read_keys() -> (UnboundedReceiver<Typed>, Arc<AtomicBool>) {
-    let (sender, receiver) = unbounded_channel();
-    let reading = Arc::new(AtomicBool::new(true));
-    let stop = Arc::clone(&reading);
-    std::thread::spawn(move || {
-        let mut failed = 0;
-        while stop.load(Ordering::Relaxed) {
-            let typed = match event::poll(KEY_POLL) {
-                Ok(true) => match event::read() {
-                    Ok(Event::Key(key)) => Typed::Key(key),
-                    Ok(_) => continue,
-                    Err(e) if failed + 1 < UNREADABLE_IN_A_ROW => {
-                        failed += 1;
-                        Typed::Unreadable(e.to_string())
-                    }
-                    Err(e) => Typed::Gone(e.to_string()),
-                },
-                Ok(false) => continue,
-                Err(e) => Typed::Gone(e.to_string()),
-            };
-            if matches!(typed, Typed::Key(_)) {
-                failed = 0;
-            }
-            let gone = matches!(typed, Typed::Gone(_));
-            if sender.send(typed).is_err() || gone {
-                return;
-            }
-        }
-    });
-    (receiver, reading)
 }
 
 #[cfg(test)]

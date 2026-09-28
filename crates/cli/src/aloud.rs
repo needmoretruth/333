@@ -16,6 +16,12 @@
 //! When the screen is gone the send fails and the line is lost, which is correct: the
 //! screen is gone.
 //!
+//! LAID OUT FOR WHERE IT IS READ. A line said to a terminal is laid out again for that
+//! terminal's width, so a sentence the catalog broke for its own file does not break
+//! mid-sentence on a terminal narrower or wider than that; a line said anywhere else —
+//! a pipe, a file, a service manager's log — goes as it was said, because whatever
+//! reads it there has no width, and a log is read by searching it.
+//!
 //! WHOEVER ASKED HEARS THE ANSWER. An order handed over from another terminal is
 //! carried out on a task that knows who asked, and every line said on that task goes
 //! to them as well as to the vigil. Only those lines: the person who typed `333 say 7`
@@ -49,7 +55,27 @@ pub(crate) fn say(line: std::fmt::Arguments<'_>) {
         Some(screen) => {
             let _ = screen.send(line);
         }
-        None => aloud_to(&mut std::io::stdout().lock(), &line),
+        None => printed(&line),
+    }
+}
+
+/// Write one thing said straight to standard output, laid out for the terminal when
+/// it is one.
+///
+/// For what is said once the screen has given the terminal back, as well as for
+/// everything said when there never was a screen.
+pub(crate) fn printed(line: &str) {
+    let out = std::io::stdout();
+    let width = terminal_size::terminal_size_of(&out).map(|(width, _)| usize::from(width.0));
+    aloud_to(&mut out.lock(), &laid_for(line, width));
+}
+
+/// A line as it is written where it is read: laid out again for a terminal of this
+/// width, or as it was said where there is no terminal.
+fn laid_for(line: &str, width: Option<usize>) -> std::borrow::Cow<'_, str> {
+    match width {
+        Some(width) => crate::words::layout::fold(line, width).join("\n").into(),
+        None => line.into(),
     }
 }
 
@@ -146,6 +172,24 @@ mod tests {
         fn flush(&mut self) -> std::io::Result<()> {
             Err(std::io::ErrorKind::BrokenPipe.into())
         }
+    }
+
+    #[test]
+    fn a_line_said_to_a_terminal_is_laid_out_for_it_and_anywhere_else_is_not() {
+        let said = "hand     an invitation names a place, not a person. it swears to nothing;\n\
+                    \x20        whoever answers there proves themselves by holding a key.";
+        assert_eq!(
+            laid_for(said, None),
+            said,
+            "a log keeps the lines as they were said"
+        );
+        assert_eq!(
+            laid_for(said, Some(48)),
+            "hand     an invitation names a place, not a\n\
+             \x20        person. it swears to nothing; whoever\n\
+             \x20        answers there proves themselves by\n\
+             \x20        holding a key."
+        );
     }
 
     #[test]

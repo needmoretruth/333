@@ -291,7 +291,7 @@ fn what_was_said(
             words!(
                 "hours-meeting-did-not-reach",
                 place = place,
-                why = crate::failed::net::meeting(&e)
+                why = crate::failed::net::meeting(e)
             ),
             None,
         ),
@@ -299,7 +299,7 @@ fn what_was_said(
             words!(
                 "hours-meeting-not-taken",
                 place = place,
-                why = crate::failed::net::meeting(&e)
+                why = crate::failed::net::meeting(e)
             ),
             None,
         ),

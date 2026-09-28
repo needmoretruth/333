@@ -165,6 +165,11 @@ include_dir = "=0.7.4"
 # still ends where an English one does. Already in the Standard edition through the
 # screen; the Light edition pays for its tables here.
 unicode-width = "0.2.2"
+# How wide the terminal a line is said to is, so a sentence is broken where the
+# terminal ends and not where the catalog's file did; nothing when standard output is
+# not a terminal. One small crate over rustix's terminal calls on Unix and windows-sys
+# on Windows, both already in the tree with Tor.
+terminal_size = "0.4.4"
 
 n333-core = { path = "crates/core" }
 # default-features off at the root so each edition names what it wants; the CLI

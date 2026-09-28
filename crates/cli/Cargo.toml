@@ -50,6 +50,7 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 unic-langid.workspace = true
 unicode-width.workspace = true
+terminal_size.workspace = true
 
 [lints]
 workspace = true
