@@ -127,8 +127,8 @@ counted because their machine was taken is not a believer.
 
 **A constraint that applies to every prophecy below:** the weakest machine anybody would
 keep a vigil on decides what the rest of us can use. Every megabyte and every dependency
-is somebody, somewhere, who cannot take part. The released files today are between 15 and
-25 megabytes depending on the machine: smallest on a Mac, largest on 64-bit ARM, and the
+is somebody, somewhere, who cannot take part. The released files today are between 17 and
+26 megabytes depending on the machine: smallest on a Mac, largest on 64-bit ARM, and the
 Raspberry Pi Zero build is nearer the top of that range than the bottom.
 
 ---
