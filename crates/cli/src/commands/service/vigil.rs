@@ -228,6 +228,15 @@ mod tests {
         }
     }
 
+    /// The node directory the service is written with: `/srv/node` as this system makes
+    /// it absolute, which on Windows puts a drive in front of it.
+    fn srv() -> String {
+        std::path::absolute("/srv/node")
+            .unwrap()
+            .display()
+            .to_string()
+    }
+
     fn vigil(common: &Common, flags: &[&str]) -> Vigil {
         let flags: Vec<String> = flags.iter().map(|flag| (*flag).to_owned()).collect();
         write(read(common, &flags).unwrap(), PathBuf::from("/usr/bin/333")).unwrap()
@@ -240,12 +249,12 @@ mod tests {
             &common("/srv/node", &[bridge]),
             &["--tor", "--no-meet", "--bind", "0.0.0.0:43333"],
         );
-        assert_eq!(vigil.node, PathBuf::from("/srv/node"));
+        assert_eq!(vigil.node, PathBuf::from(srv()));
         assert_eq!(
             vigil.serve,
             [
                 "--data-dir",
-                "/srv/node",
+                &srv(),
                 "--bridge",
                 bridge,
                 "serve",
@@ -256,7 +265,7 @@ mod tests {
                 "--no-meet"
             ]
         );
-        assert_eq!(vigil.check, ["--data-dir", "/srv/node", "service", "check"]);
+        assert_eq!(vigil.check, ["--data-dir", &srv(), "service", "check"]);
     }
 
     #[test]
@@ -291,7 +300,7 @@ mod tests {
             crate::words::speaking("ko", Base::Twelve, || vigil(&common("/srv/node", &[]), &[]));
         let shared = [
             "--data-dir",
-            "/srv/node",
+            &srv(),
             "--language",
             "ko",
             "--count-in",
@@ -308,7 +317,7 @@ mod tests {
         });
         assert_eq!(
             given.serve[..4],
-            ["--data-dir", "/srv/node", "--count-in", "twelve-ascii"]
+            ["--data-dir", &srv(), "--count-in", "twelve-ascii"]
         );
     }
 
@@ -316,7 +325,7 @@ mod tests {
     fn a_service_in_english_and_ten_carries_neither() {
         let plain =
             crate::words::speaking("en", Base::Ten, || vigil(&common("/srv/node", &[]), &[]));
-        assert_eq!(plain.serve, ["--data-dir", "/srv/node", "serve", "--plain"]);
+        assert_eq!(plain.serve, ["--data-dir", &srv(), "serve", "--plain"]);
     }
 
     #[test]
