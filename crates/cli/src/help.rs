@@ -112,10 +112,34 @@ fn own(arg: Arg, helping: bool) -> Arg {
     }
 }
 
+/// The keys whose words are about the screen, and the words said instead in an
+/// edition built without one. Said there, "instead of drawing the screen" and "in its
+/// screen's words" describe a thing the person does not have.
+const WITHOUT_THE_SCREEN: [(&str, &str); 6] = [
+    ("help-serve-long", "help-serve-long-light"),
+    ("help-serve-plain", "help-serve-plain-light"),
+    ("help-serve-plain-long", "help-serve-plain-long-light"),
+    ("help-tell", "help-tell-light"),
+    ("help-tell-long", "help-tell-long-light"),
+    ("help-tell-order", "help-tell-order-light"),
+];
+
+/// The key whose words are true of this build.
+fn in_this_edition(key: &str, screen: bool) -> &str {
+    if screen {
+        return key;
+    }
+    WITHOUT_THE_SCREEN
+        .iter()
+        .find(|(with, _)| *with == key)
+        .map_or(key, |(_, without)| without)
+}
+
 /// One message, as clap shows it. The one key that is given something is the one
 /// that counts: which of the 333 there are is a count, written in the base this counts
 /// in, like the index it asks for.
 fn said(key: &str) -> String {
+    let key = in_this_edition(key, cfg!(feature = "screen"));
     let text = if key == "help-say-index" {
         words!("help-say-index", last = n333_core::signal::SIGNAL_COUNT - 1)
     } else {

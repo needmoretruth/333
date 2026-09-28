@@ -77,7 +77,11 @@ mod unix {
             aloud_in!("serve-told-cannot", why = words!("serve-told-not-private"));
             return None;
         };
-        aloud_in!("serve-told-taking");
+        if cfg!(feature = "screen") {
+            aloud_in!("serve-told-taking");
+        } else {
+            aloud_in!("serve-told-taking-light");
+        }
         tokio::spawn(take_orders(listener, owner, asks));
         Some(told)
     }

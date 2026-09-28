@@ -14,6 +14,11 @@ serve-told-taking = from any terminal on this machine, in the screen's words:
     This vigil carries them out and answers there.
     .keyword = orders
 
+serve-told-taking-light = from any terminal on this machine:
+    `333 say 7`, `333 join <invitation>`, `333 tell 'tor on'`.
+    This vigil carries them out and answers there.
+    .keyword = orders
+
 serve-told-old-socket = an old socket is in the way and stays there: { $why }
     .keyword = orders
 

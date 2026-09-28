@@ -135,3 +135,19 @@ fn every_help_key_the_definition_names_is_one_english_has() {
     }
     assert!(unsaid.is_empty(), "{unsaid:?}");
 }
+
+#[test]
+fn an_edition_without_the_screen_is_told_nothing_about_one() {
+    for (with, _) in super::WITHOUT_THE_SCREEN {
+        let without = super::in_this_edition(with, false);
+        assert_ne!(without, with);
+        assert_eq!(super::in_this_edition(with, true), with);
+        for tag in ["en", "ko"] {
+            let said = crate::words::speaking(tag, Base::Ten, || crate::words::text(without, &[]));
+            assert_ne!(said, without, "{tag} has no words for {without}");
+            for about in ["the screen", "screen's", "화면을", "화면의", "화면에"] {
+                assert!(!said.contains(about), "{tag} {without}: {said}");
+            }
+        }
+    }
+}

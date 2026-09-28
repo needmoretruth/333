@@ -14,6 +14,11 @@ serve-told-taking = 이 기계의 어느 터미널에서든, 화면에서 쓰는
     이 철야가 그것을 수행하고 그 터미널에 답합니다.
     .keyword = 명령
 
+serve-told-taking-light = 이 기계의 어느 터미널에서든:
+    `333 say 7`, `333 join <invitation>`, `333 tell 'tor on'`.
+    이 철야가 그것을 수행하고 그 터미널에 답합니다.
+    .keyword = 명령
+
 serve-told-old-socket = 옛 소켓이 자리를 막고 있고 그대로 남습니다: { $why }
     .keyword = 명령
 

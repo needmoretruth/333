@@ -51,3 +51,7 @@ serve-carrying-not-an-address = { $typed }은(는) 주소가 아닙니다: { $wh
 serve-carrying-cannot-end = 다른 터미널은 이 철야를 끝낼 수 없습니다. 철야는 시작한 곳에서
     끝납니다. 화면에서 `q`, Ctrl-C, 또는 철야를 지키는 서비스 관리자로.
     .keyword = 거부
+
+serve-carrying-cannot-end-light = 다른 터미널은 이 철야를 끝낼 수 없습니다. 철야는 시작한
+    곳에서 끝납니다. 그곳의 Ctrl-C, 또는 철야를 지키는 서비스 관리자로.
+    .keyword = 거부

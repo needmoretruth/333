@@ -27,6 +27,13 @@ help-serve-long = Keep the vigil: answer whoever asks, until interrupted.
     every epoch boundary asks the ones it was drawn to ask. On a terminal
     it opens the screen.
 
+help-serve-long-light = Keep the vigil: answer whoever asks, until interrupted.
+
+    This is what a node does almost all of the time. It answers heartbeats
+    and challenges, trades what it knows with whoever it can reach, and at
+    every epoch boundary asks the ones it was drawn to ask. It says what it
+    does in lines, one at a time.
+
 help-say = Speak one of the 333, once in this epoch. What travels is the number
 
 help-status = Show what this node has seen: how many of us are answering, where this
@@ -75,6 +82,14 @@ help-tell-long = Tell the vigil running in this directory something, in its scre
     what it says about it is printed here. `say`, `join`, `ping`,
     `bootstrap` and `status` are handed to a running vigil the same way
     without this.
+
+help-tell-light = Tell the vigil running in this directory to do something
+help-tell-long-light = Tell the vigil running in this directory to do something.
+
+    `tor on`, `tor off`, `bridge <line>` and `helper <program>`. The vigil
+    carries it out and what it says about it is printed here. `say`,
+    `join`, `ping`, `bootstrap` and `status` are handed to a running vigil
+    the same way without this.
 
 help-service = Keep the vigil through logouts and reboots, with this system's service
     manager
@@ -226,6 +241,12 @@ help-serve-plain-long = Say the lines instead of drawing the screen.
     pipe, a service manager's log, a file — it says the lines instead, and
     this flag asks for that on a terminal too.
 
+help-serve-plain-light = Say the lines, which this edition always does
+help-serve-plain-long-light = Say the lines, which this edition always does.
+
+    This edition has no screen. The flag is taken so that one command line
+    keeps a vigil the same way in either edition.
+
 help-say-index = Which of them, from 0 to { $last }, typed in the base this counts in
     (--count-in). The words are not written yet
 
@@ -253,6 +274,8 @@ help-pack-undo-long = Take back a packing here, for a move that was abandoned.
 help-unpack-file = The file `333 pack` wrote
 
 help-tell-order = The order, as it would be typed into the screen
+
+help-tell-order-light = The order, as `tor on` or `bridge <line>` is written
 
 help-service-install-flags = The flags for `serve`, as you would type them after it
 

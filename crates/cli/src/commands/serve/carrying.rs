@@ -331,7 +331,11 @@ fn readable(typed: &str) -> Option<PeerAddress> {
 
 /// Leaving is the screen's, and it never sends it here. Anybody else is refused.
 fn leave() -> bool {
-    aloud_in!("serve-carrying-cannot-end");
+    if cfg!(feature = "screen") {
+        aloud_in!("serve-carrying-cannot-end");
+    } else {
+        aloud_in!("serve-carrying-cannot-end-light");
+    }
     false
 }
 

@@ -53,3 +53,7 @@ serve-carrying-not-an-address = { $typed } is not an address: { $why }
 serve-carrying-cannot-end = another terminal cannot end this vigil. It ends where it was started:
     `q` in its screen, Ctrl-C, or the service manager that keeps it.
     .keyword = refused
+
+serve-carrying-cannot-end-light = another terminal cannot end this vigil. It ends where it was
+    started: Ctrl-C there, or the service manager that keeps it.
+    .keyword = refused
