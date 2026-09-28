@@ -4,12 +4,13 @@
 //! standard input. Run as the real program, because what failed here was how the parts
 //! of `serve` end together, which no test of one part can see.
 
+// The directory permissions the vigil insists on are set here the Unix way.
+#![cfg(unix)]
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
-#[cfg(unix)]
 #[test]
 fn a_plain_vigil_with_nobody_watching_keeps_going_and_says_it_is_awake() {
     use std::os::unix::fs::PermissionsExt as _;

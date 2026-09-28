@@ -474,10 +474,13 @@ mod tests {
         let refused = load_or_create(&strict(), &home).expect_err("refuses");
         let said = crate::failed::said(&refused);
         assert!(said.starts_with("failed   making "), "{said}");
+        // The check names the directory as the system resolves it: on macOS the temporary
+        // directory sits behind a link, and the command to run is for where it really is.
+        let resolved = std::fs::canonicalize(&home).expect("resolves");
         assert!(
             said.contains(&format!(
                 "\n         Fix it with: chmod 700 {}\n",
-                home.display()
+                resolved.display()
             )),
             "{said}"
         );
