@@ -66,6 +66,12 @@ pub(crate) async fn speak(node: &Node, index: u16) -> anyhow::Result<()> {
         ));
     };
     if node.joined_in().await.is_none() {
+        // Holding the file is not being handed it. A node that began its own line, or
+        // had the file put in its directory, holds it with nobody's signature beside
+        // its own, and is on no roll for what it says to be counted on.
+        if node.subject().await.is_some() {
+            bail!(words!("say-given-by-nobody"));
+        }
         bail!(words!("say-not-joined"));
     }
 
@@ -111,6 +117,7 @@ mod tests {
                 index = 400_u16
             ),
             words!("say-not-joined"),
+            words!("say-given-by-nobody"),
             words!("say-already", index = 12_u16, epoch = 89_612_u64),
             words!("say-said", index = 7_u16, epoch = 89_612_u64),
             words!(
@@ -131,6 +138,9 @@ mod tests {
                 "there are 333 of them, numbered 0 to 332. There is no 400.",
                 "nobody has handed you the file, so there is nobody to say it to and\n\
                  nobody who would count it. `333 join` is the whole of it.",
+                "you hold the file, and nobody handed it to you, so you are on nobody's\n\
+                 roll and nobody would count what you say. Only a node somebody handed\n\
+                 the file to may speak: hand it on, and whoever you hand it to can.",
                 "you already said #12 in epoch 89612. One each, and saying it again would\n\
                  not replace it: the first thing a node says is the thing it said.",
                 "said     #7 in epoch 89612",
@@ -149,15 +159,15 @@ mod tests {
     #[test]
     fn in_twelve_the_index_and_the_epoch_are_counts() {
         let lines = crate::words::speaking("en", Base::Twelve, lines);
-        assert_eq!(lines[3], "said     #7 in epoch 43\u{218A}38", "89612");
-        assert!(lines[4].contains("one of 239 things"), "{}", lines[4]);
-        assert!(lines[4].contains("no 23\u{218A}th"), "{}", lines[4]);
+        assert_eq!(lines[4], "said     #7 in epoch 43\u{218A}38", "89612");
+        assert!(lines[5].contains("one of 239 things"), "{}", lines[5]);
+        assert!(lines[5].contains("no 23\u{218A}th"), "{}", lines[5]);
     }
 
     #[test]
     fn in_korean_the_said_lines_begin_their_words_in_the_same_column() {
         let lines = crate::words::speaking("ko", Base::Ten, lines);
-        for line in lines.get(3..).unwrap_or_default() {
+        for line in lines.get(4..).unwrap_or_default() {
             let mut rows = line.split('\n');
             let first = rows.next().unwrap_or_default();
             assert_eq!(where_the_words_begin(first), COLUMN, "{first:?}");

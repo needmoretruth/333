@@ -72,3 +72,9 @@ status-yourself-standing = Present in { $present } of the { $counted } epochs yo
     ""}a year
     away and an hour away read exactly the same too, and cost exactly as {
     ""}little.
+
+status-yourself-given-by-nobody = You hold the file, and nobody handed it to you, so you are on nobody's
+    roll. Nobody goes out to ask a node on no roll, and nobody counts what
+    it says, which is why `333 say` is refused. What you can do is hand the
+    file on: whoever you hand it to is admitted, with both of you signing,
+    and is counted from then.

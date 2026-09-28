@@ -18,6 +18,11 @@ pub(super) async fn this_node(
     now: Epoch,
 ) -> anyhow::Result<()> {
     let Some(joined) = node.joined_in().await else {
+        // Holding the file is not being handed it, and what to do about it differs.
+        if node.subject().await.is_some() {
+            writeln!(out, "{}", words!("status-yourself-given-by-nobody"))?;
+            return Ok(());
+        }
         let place = crate::commands::THE_PLACE;
         writeln!(
             out,

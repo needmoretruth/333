@@ -37,3 +37,9 @@ join-counted = from epoch { $epoch }, and not one epoch sooner: two boundaries a
 join-vigil = run `333 serve` and stay awake. Nothing can be witnessed of a node
     nobody can reach, and this stretch is witnessed once or never.
     .keyword = vigil
+
+join-already-given = this node already holds the file, given by { $giver } in epoch { $epoch }.
+    There is nothing to ask for, and nothing was asked.
+join-same-handover = this node and { $peer } already passed the file between them in epoch
+    { $epoch }. Handed back in the same epoch it is that handover read from
+    the other side, and admits nobody, so nothing was asked.

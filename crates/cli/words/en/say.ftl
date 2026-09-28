@@ -25,3 +25,7 @@ say-goes-out = It goes out to everyone this node reaches, and they pass it on.
     when there is one it will be the same table for all of us,
     untranslated.
     .keyword = {""}
+
+say-given-by-nobody = you hold the file, and nobody handed it to you, so you are on nobody's
+    roll and nobody would count what you say. Only a node somebody handed
+    the file to may speak: hand it on, and whoever you hand it to can.

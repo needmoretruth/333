@@ -11,9 +11,9 @@
 
 use std::time::Duration;
 
-use anyhow::Context as _;
-use n333_core::Epoch;
+use anyhow::{Context as _, bail};
 use n333_core::enrollment;
+use n333_core::{Epoch, NodeId};
 
 use crate::commands::{Common, describe};
 use crate::dial::Dialer;
@@ -39,14 +39,27 @@ pub(crate) async fn run(common: &Common, address: &n333_net::PeerAddress) -> any
 /// a second time inside it would be a second writer to files it is writing.
 ///
 /// # Errors
-/// Fails if the peer cannot be reached, it will not hand the file over, or what it
-/// hands over is not the file.
+/// Fails if this node already holds the file somebody handed it, if the peer cannot be
+/// reached, if the peer is the one this node handed the file to in this epoch, if it
+/// will not hand the file over, or if what it hands over is not the file.
 pub(crate) async fn ask(
     node: &Node,
     dialer: &Dialer,
     timeout: Duration,
     address: &n333_net::PeerAddress,
 ) -> anyhow::Result<()> {
+    // Asked again, a node that holds the file somebody handed it would be handed it
+    // again, both sides would sign, and nothing would change: a member keeps the
+    // admission that came first.
+    if node.subject().await.is_some()
+        && let Some(given) = node.lineage().await.into_iter().next()
+    {
+        bail!(words!(
+            "join-already-given",
+            giver = NodeId::from_public_key(&given.sponsor).to_string(),
+            epoch = given.received_in.0
+        ));
+    }
     let typed = address.to_string();
     aloud_in!("join-knocking", address = &typed);
 
@@ -70,7 +83,15 @@ pub(crate) async fn ask(
         // would be knocked on for nothing.
         node.given_by_hand(&typed, Some(exchange.peer.node_id))
             .await?;
-        n333_net::handover::ask(&mut stream, node.identity(), Epoch::now())
+        let now = Epoch::now();
+        if node.handed_with(&exchange.peer.heartbeat.sender, now).await {
+            bail!(words!(
+                "join-same-handover",
+                peer = exchange.peer.node_id.to_string(),
+                epoch = now.0
+            ));
+        }
+        n333_net::handover::ask(&mut stream, node.identity(), now)
             .await
             .with_context(|| words!("join-asking"))
     };
@@ -157,6 +178,17 @@ mod tests {
                 ),
                 (words!("join-exchanging"), "exchanging heartbeats"),
                 (words!("join-asking"), "asking for the file"),
+                (
+                    words!("join-already-given", giver = "333def", epoch = 89_612_u64),
+                    "this node already holds the file, given by 333def in epoch 89612.\n\
+                     There is nothing to ask for, and nothing was asked.",
+                ),
+                (
+                    words!("join-same-handover", peer = "333def", epoch = 89_620_u64),
+                    "this node and 333def already passed the file between them in epoch\n\
+                     89620. Handed back in the same epoch it is that handover read from\n\
+                     the other side, and admits nobody, so nothing was asked.",
+                ),
                 (
                     words!("join-no-answer", address = AT, seconds = 30_u64),
                     "no answer from 127.0.0.1:3333 after 30 s",

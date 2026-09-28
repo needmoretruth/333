@@ -15,7 +15,9 @@
 use std::path::Path;
 
 use anyhow::Context as _;
+use n333_core::Epoch;
 use n333_core::roll::{Admissions, Read, Roll};
+use n333_core::transfer::{self, Half};
 use n333_store::Once;
 
 /// Every admission this node has kept.
@@ -79,6 +81,25 @@ impl Admitted {
     /// Every admission held, each once, for passing on.
     pub(crate) fn frames(&self) -> &[Vec<u8>] {
         &self.frames
+    }
+
+    /// Is there a half here of a handover between `one` and `other` in `epoch`, in
+    /// either direction?
+    ///
+    /// A handover is named by who signed, whom they named and when, and not by which
+    /// way the file went. So the file handed back between the same two in the same
+    /// epoch is the same handover read from the other side, and admits nobody.
+    pub(crate) fn between(&self, one: &[u8; 32], other: &[u8; 32], epoch: Epoch) -> bool {
+        self.frames.iter().any(|frame| {
+            [Half::Gave, Half::Received].into_iter().any(|half| {
+                transfer::open(frame, half).is_ok_and(|signed| {
+                    let record = signed.record;
+                    record.epoch == epoch.0
+                        && ((record.author == *one && record.counterparty == *other)
+                            || (record.author == *other && record.counterparty == *one))
+                })
+            })
+        })
     }
 }
 
@@ -162,5 +183,23 @@ mod tests {
         assert_eq!(again.frames().len(), 2);
         assert_eq!(read.admitted, 1);
         assert_eq!(again.roll(), held.roll());
+    }
+
+    #[test]
+    fn the_file_handed_back_between_two_in_the_same_epoch_is_the_same_handover() {
+        // What a founder ran into, joining the node it had just handed the file to.
+        let path = scratch("between");
+        let (mut held, _) = Admitted::open(&path).expect("opens");
+        held.keep(&admission(1, 2)).expect("keeps");
+        let key = |seed: u8| Identity::from_seed(&[seed; 32]).public_key();
+        assert!(held.between(&key(2), &key(1), Epoch(100)));
+        assert!(held.between(&key(1), &key(2), Epoch(100)));
+        assert!(!held.between(&key(1), &key(2), Epoch(101)));
+        assert!(!held.between(&key(1), &key(3), Epoch(100)));
+
+        let before = held.roll().len();
+        held.keep(&admission(2, 1)).expect("keeps");
+        assert_eq!(held.roll().len(), before, "and it admits nobody");
+        let _ = std::fs::remove_dir_all(path.parent().expect("has a parent"));
     }
 }

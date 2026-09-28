@@ -226,6 +226,16 @@ impl Node {
             .member(&key)
             .map(|member| member.received_in)
     }
+
+    /// Has the file passed between this node and `peer` in `epoch`, either way?
+    ///
+    /// Asked before `join` asks `peer` for it: handed back in the same epoch it would
+    /// be the same handover, both sides would sign it again, and nobody would be
+    /// admitted.
+    pub(crate) async fn handed_with(&self, peer: &[u8; 32], epoch: Epoch) -> bool {
+        let me = self.identity.public_key();
+        self.state.lock().await.admissions.between(&me, peer, epoch)
+    }
 }
 
 /// Could anything said about this epoch still change what anybody writes down?
