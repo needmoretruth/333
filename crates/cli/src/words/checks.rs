@@ -5,6 +5,8 @@
 //! placeholder printed as `{$name}`, or a translation nobody's code ever asks for.
 //! Each of those is a test here rather than something a reviewer has to notice.
 
+mod built;
+
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
@@ -237,6 +239,78 @@ fn every_translation_says_only_what_english_says_and_asks_for_the_same_things() 
             assert_eq!(&shape, wanted, "{tag}: {key} in {file}");
         }
     }
+}
+
+#[test]
+fn every_english_line_has_its_korean_beside_it() {
+    let english = messages(&catalog::built_in(ENGLISH));
+    let korean = messages(&catalog::built_in("ko"));
+    let missing: Vec<&str> = english
+        .iter()
+        .filter(|(key, (_, shape))| {
+            korean
+                .get(*key)
+                .is_none_or(|(_, said)| said.attributes != shape.attributes)
+        })
+        .map(|(key, _)| key.as_str())
+        .collect();
+    assert!(
+        missing.is_empty(),
+        "no Korean, or Korean without the same attributes, for: {}.\n\
+         A Korean translation is expected alongside every new English line, in the \
+         file of the same name under words/ko/.",
+        missing.join(", ")
+    );
+}
+
+/// Words that stay in Rust on purpose: the file, the opening, and why. None do: what
+/// a program reads (a unit file, a receipt, `status --json`) is not handed to any of
+/// these, and everything a person reads belongs in a catalog.
+const LEFT_IN_RUST: &[(&str, &str, &str)] = &[];
+
+#[test]
+fn nothing_a_person_reads_is_left_written_in_rust() {
+    let mut files = Vec::new();
+    let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    rust_files(&src, &mut files);
+    let read: Vec<(PathBuf, built::Built)> = files
+        .into_iter()
+        .map(|file| {
+            let code = built::built(&std::fs::read_to_string(&file).unwrap());
+            (file, code)
+        })
+        .collect();
+    let for_tests: BTreeSet<PathBuf> = read
+        .iter()
+        .flat_map(|(file, code)| {
+            code.test_modules
+                .iter()
+                .map(|name| built::module_file(file, name))
+        })
+        .collect();
+    assert!(for_tests.iter().all(|file| file.exists()), "{for_tests:?}");
+    let mut left = Vec::new();
+    for (file, code) in &read {
+        if for_tests.contains(file) {
+            continue;
+        }
+        let name = file.strip_prefix(&src).unwrap().display().to_string();
+        for (line, opening) in built::said_in_rust(code) {
+            let excused = LEFT_IN_RUST
+                .iter()
+                .any(|(at, what, _)| *at == name && *what == opening);
+            if !excused {
+                left.push(format!("{name}:{line}: {opening}"));
+            }
+        }
+    }
+    assert!(
+        left.is_empty(),
+        "words a person reads are still written in Rust. Give each a key in the \
+         catalog named for its file, under words/en/ with its Korean under words/ko/, \
+         and say it with words! or aloud_in!:\n{}",
+        left.join("\n")
+    );
 }
 
 #[test]
