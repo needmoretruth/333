@@ -164,9 +164,11 @@ impl Carrier {
         };
         let asked =
             crate::commands::join::ask(&self.node, &self.dialer, self.common.timeout, &address);
+        // As `333 join` says it: a refusal is not a knock that went unheard, and what it
+        // names as the next step is the next step here too.
         asked
             .await
-            .map_err(|e| aloud_in!("serve-carrying-unheard", why = crate::failed::chain(&e)))
+            .map_err(|e| crate::aloud::line(&crate::failed::said(&e)))
             .is_ok()
     }
 
