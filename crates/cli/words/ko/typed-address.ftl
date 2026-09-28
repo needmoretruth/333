@@ -16,5 +16,5 @@ typed-address-bad-port = { $port }는 포트가 아닙니다. 포트는 1부터 
 typed-address-unclosed = {"["}로 여는 주소는 ]로 닫아야 합니다
 typed-address-scheme = { $scheme }://는 웹 주소에 붙는 것이고, 여기의 주소에는 붙지 않습니다
 typed-address-not-a-host = "{ $host }"는 호스트 이름도 IP 주소도 아닙니다
-typed-address-not-an-onion = { $host }는 onion 주소가 아닙니다. onion 주소는 .onion 앞에 글자와
+typed-address-not-an-onion = { $host }는 어니언 주소가 아닙니다. 어니언 주소는 .onion 앞에 글자와
     숫자 { $letters }개가 옵니다

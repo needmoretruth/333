@@ -29,7 +29,7 @@ commands-unseen = 어느 에포크에서도 이 노드에 대해 서명된 것�
     세는 것은 뒤의 것뿐입니다. 묻도록 뽑힌 이가 이 노드에 닿아야
     합니다. 원인은 둘입니다. 포트 3333을 이 기계로 보내지 않는
     공유기, 그리고 아무에게도 알려 주지 않은 주소. `serve --tor`는
-    둘 다 필요 없습니다. onion 주소는 어떤 공유기 뒤에서도 닿을
+    둘 다 필요 없습니다. 어니언 주소는 어떤 공유기 뒤에서도 닿을
     수 있고, 이 클라이언트는 이미 Tor를 가지고 있습니다.
     .keyword = 미관측
 
@@ -84,15 +84,15 @@ commands-minutes-and-seconds = { $minutes }분 { $seconds }초
 commands-seconds = { $seconds }초
 
 
-commands-waking = Tor. 보이지 않는 길이 열리려면 시간이 걸립니다.
+commands-waking = 토르. 보이지 않는 길이 열리려면 시간이 걸립니다.
     .keyword = 깨움
 
-commands-waking-through = Tor, 브리지 { $bridges }개를 거쳐서. 보이지 않는 길이 열리려면
+commands-waking-through = 토르, 브리지 { $bridges }개를 거쳐서. 보이지 않는 길이 열리려면
     시간이 걸립니다.
     .keyword = 깨움
 
-commands-no-tor = { $seconds }초가 지나도록 Tor 연결이 없습니다
-commands-starting-tor = Tor 클라이언트 시작하기
+commands-no-tor = { $seconds }초가 지나도록 토르 연결이 없습니다
+commands-starting-tor = 토르 클라이언트 시작하기
 
 commands-signed-giving = 당신이 말했습니다: 에포크 { $epoch }에 당신에게 파일을 건넸습니다.
     상대가 말했습니다: 에포크 { $epoch }에 당신에게서 파일을 받았습니다.

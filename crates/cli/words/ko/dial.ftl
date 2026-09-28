@@ -19,4 +19,4 @@ dial-unwoken = Tor가 시작하지 않았습니다: { $why }
     .keyword = 못깨움
 
 dial-connecting = { $address }에 연결하기
-dial-without-tor = 이 클라이언트는 Tor 없이 빌드되어 { $address }에 닿을 수 없습니다
+dial-without-tor = 이 클라이언트는 토르 없이 빌드되어 { $address }에 닿을 수 없습니다
