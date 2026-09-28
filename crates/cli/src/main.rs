@@ -152,6 +152,15 @@ async fn run() -> anyhow::Result<ExitCode> {
         return commands::unpack::run(&common, file).await;
     }
 
+    // Before the directory is taken, which would make it: a command that only reads a
+    // node, pointed at a directory with none, says so and makes nothing.
+    cli.command.needs_a_node_in(common.paths.root())?;
+    // Nobody keeps a vigil in a directory that is not there, and there is nothing to
+    // take.
+    if matches!(cli.command, Command::Tell { .. }) && !common.paths.root().exists() {
+        return Ok(commands::elsewhere::nobody_to_tell());
+    }
+
     // Before anything in the directory is read, and held until this process exits.
     let _claim = match claim::take(&common.mistrust(), common.paths.root())? {
         Taken::Ours(claim) => claim,

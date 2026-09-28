@@ -26,6 +26,7 @@ use crate::words::count::Base;
 use n333_net::PeerAddress;
 
 pub(crate) mod address;
+mod node;
 
 // What each command and flag is for is not written here: clap would show it in
 // English whoever asked. It is in the catalogs, `help-<command>-<flag>` in
