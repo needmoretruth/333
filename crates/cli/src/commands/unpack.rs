@@ -76,7 +76,7 @@ pub(crate) async fn run(common: &Common, file: &Path) -> anyhow::Result<ExitCode
     }
 
     let staged = Staging::beside(common, target)?;
-    let Taken::Ours(_staged_claim) = claim::take(&common.mistrust(), &staged.path)? else {
+    let Taken::Ours(staged_claim) = claim::take(&common.mistrust(), &staged.path)? else {
         bail!(words!("unpack-taken"));
     };
     archive::extract(file, &staged.dir)?;
@@ -86,9 +86,16 @@ pub(crate) async fn run(common: &Common, file: &Path) -> anyhow::Result<ExitCode
     // Let go of the empty destination, whose lock file is the one thing in it, so that
     // it can be removed and the staged node, still held, renamed into its place.
     drop(held);
+    // Windows will not rename a directory while a file inside it is open, and the lock
+    // is one; there it is let go of for the rename and taken again straight after.
+    #[cfg(not(unix))]
+    drop(staged_claim);
     staged.put_in_place()?;
+    #[cfg(not(unix))]
+    let staged_claim = claim::take(&common.mistrust(), target)?;
 
     say_it_is_here(target, file, &name, epochs, &looked.manifest.created);
+    drop(staged_claim);
     Ok(ExitCode::SUCCESS)
 }
 
