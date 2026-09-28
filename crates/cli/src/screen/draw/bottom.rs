@@ -84,7 +84,7 @@ pub(super) fn the_silence<'a>(watch: &'a Watch, width: u16) -> Paragraph<'a> {
 
 /// The order words, as they are typed. The command line's own, in every language.
 const ORDER_WORDS: &str =
-    "ping · join · bootstrap · say · tor on · tor off · bridge · status · quit";
+    "ping · join · bootstrap · say · tor on · tor off · bridge · helper · status · quit";
 
 /// How wide the long form of the verdict is, to know whether it fits.
 fn wide_verdict(watch: &Watch) -> String {

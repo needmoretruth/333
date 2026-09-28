@@ -102,8 +102,19 @@ fn row(keys: &str, does: &str, typed: usize, beside: usize) -> Vec<Line<'static>
     lines
 }
 
-/// A box of this size in the middle of `area`, or all of `area` when it is smaller.
+/// How few columns may be left beside the box before it takes the whole width: fewer,
+/// and what shows beside it is a pane's border and a letter or two of its lines,
+/// which reads as the box being drawn in the wrong place.
+const SLIVER: u16 = 12;
+
+/// A box of this size in the middle of `area`, all of `area` when it is smaller, and
+/// the whole width when it would leave only a sliver beside it.
 fn centred(area: Rect, width: u16, height: u16) -> Rect {
+    let width = if area.width.saturating_sub(width) < SLIVER {
+        area.width
+    } else {
+        width
+    };
     let (width, height) = (width.min(area.width), height.min(area.height));
     Rect {
         x: area.x + (area.width - width) / 2,

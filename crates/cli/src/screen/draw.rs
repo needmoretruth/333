@@ -278,7 +278,7 @@ mod tests {
         );
         assert_eq!(
             rows(Saying::Typing(typed("pi", None)))[19],
-            " : pi\u{258f}   ping · join · bootstrap · say · tor on · tor off · bridge · status · quit"
+            " : pi\u{258f}   ping · join · bootstrap · say · tor on · tor off · bridge · helper · status · quit"
         );
     }
 
@@ -348,6 +348,28 @@ mod tests {
             "any key closes this",
         ] {
             assert!(shown.contains(typed), "{typed} is missing from\n{shown}");
+        }
+    }
+
+    #[test]
+    fn the_box_of_keys_leaves_no_pane_border_showing_beside_it() {
+        // Where the box is nearly as wide as the screen; on a wider one it stands in
+        // the middle with the panes whole on either side of it.
+        for (width, height) in [(48, 20), (50, 20), (58, 24)] {
+            let rows =
+                crate::words::speaking("en", Base::Ten, || drawn(width, height, &Saying::Keys));
+            let at = rows.iter().position(|row| row.contains(" keys ")).unwrap();
+            let opened = &rows[at];
+            let right = opened.trim_end().chars().last().unwrap();
+            assert_eq!(right, '\u{2510}', "{width}x{height}: {opened}");
+            for row in &rows[at + 1..at + 4] {
+                let beside = row.trim_end();
+                assert!(beside.ends_with('\u{2502}'), "{width}x{height}: {row}");
+                assert!(
+                    !beside.ends_with("\u{2502}\u{2502}") && !beside.ends_with("\u{2502}\u{2510}"),
+                    "a pane's border beside the box at {width}x{height}: {row}"
+                );
+            }
         }
     }
 
