@@ -24,6 +24,13 @@ tokio::task_local! {
 /// Kept for the life of the process, and bounded: a tag is matched against the
 /// catalogs there are before anything is read, so there is at most one entry for each
 /// language there are words for in each of the three bases.
+#[cfg_attr(
+    all(not(unix), not(test)),
+    expect(
+        dead_code,
+        reason = "orders are handed over only through a Unix socket"
+    )
+)]
 static OPENED: Mutex<Vec<&'static Words>> = Mutex::new(Vec::new());
 
 /// The words of whoever asked for this task's work, if somebody did.
@@ -36,6 +43,13 @@ pub(super) fn here() -> Option<&'static Words> {
 /// Either one missing, or naming nothing there are words or a base for, is the
 /// process's own: an order from a client that does not say how it reads is answered
 /// the way it always was.
+#[cfg_attr(
+    all(not(unix), not(test)),
+    expect(
+        dead_code,
+        reason = "orders are handed over only through a Unix socket"
+    )
+)]
 pub(crate) fn asked_for(language: Option<&str>, count_in: Option<&str>) -> &'static Words {
     let own = super::process();
     let beside = own.beside.as_deref();
@@ -68,6 +82,13 @@ pub(crate) async fn spoken_in<F: Future>(words: &'static Words, work: F) -> F::O
 }
 
 /// [`spoken_in`], for work that does not wait on anything.
+#[cfg_attr(
+    all(not(unix), not(test)),
+    expect(
+        dead_code,
+        reason = "orders are handed over only through a Unix socket"
+    )
+)]
 pub(crate) fn spoken_now<T>(words: &'static Words, work: impl FnOnce() -> T) -> T {
     SPOKEN.sync_scope(words, work)
 }

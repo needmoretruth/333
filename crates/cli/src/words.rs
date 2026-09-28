@@ -87,6 +87,13 @@ pub(crate) struct Words {
     english: Bundle,
     /// The node's own folder of catalogs these were read with, to read another
     /// language the same way for whoever asks in one.
+    #[cfg_attr(
+        all(not(unix), not(test)),
+        expect(
+            dead_code,
+            reason = "orders are handed over only through a Unix socket"
+        )
+    )]
     beside: Option<PathBuf>,
 }
 
