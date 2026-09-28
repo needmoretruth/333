@@ -62,6 +62,21 @@ pub enum AddressError {
     /// An IPv6 literal was opened with `[` and never closed.
     #[error("an address starting with '[' must contain a matching ']'")]
     UnclosedBracket,
+    /// It begins with a scheme, as a web address does. Carries the scheme.
+    ///
+    /// Refused rather than read as a host: `http://node.example` read as a host is a
+    /// name no resolver has, and a node given one knocks there for as long as it keeps it.
+    #[error("{0}:// belongs to a web address, and an address here is host:port")]
+    Scheme(String),
+    /// The host is neither a name nor an IP address. Carries the host.
+    #[error("{0:?} is not a host name or an IP address")]
+    NotAHost(String),
+    /// It ends in `.onion` and is not a version 3 onion address. Carries the host.
+    ///
+    /// Version 3 is the only one Tor still reaches. Anything else ending in `.onion`
+    /// would start Tor for a place it can never open.
+    #[error("{0:?} is not an onion address: one is 56 letters and digits, then .onion")]
+    NotAnOnion(String),
 }
 
 impl PeerAddress {
@@ -141,16 +156,24 @@ impl FromStr for PeerAddress {
     /// and the same with a `.onion` host. A bare IPv6 literal is recognised by
     /// holding more than one colon, which is why the bracketed form exists at all:
     /// without brackets there is no way to tell `::1:3333` apart from a port.
+    ///
+    /// The host has to be one: a name, an IP address, or a version 3 onion address.
+    /// Anything else is refused here rather than kept and knocked on, since nothing
+    /// could ever answer at it.
     fn from_str(text: &str) -> Result<Self, Self::Err> {
         let text = text.trim();
         if text.is_empty() {
             return Err(AddressError::Empty);
+        }
+        if let Some((scheme, _)) = text.split_once("://") {
+            return Err(AddressError::Scheme(scheme.to_ascii_lowercase()));
         }
         let (host, port) = split_host_and_port(text)?;
         if host.is_empty() {
             return Err(AddressError::Empty);
         }
         let host = host.to_ascii_lowercase();
+        check_host(&host)?;
         if host.ends_with(ONION_SUFFIX) {
             Ok(Self::Onion {
                 port: port.unwrap_or(ONION_PORT),
@@ -163,6 +186,58 @@ impl FromStr for PeerAddress {
             })
         }
     }
+}
+
+/// Refuse a host that no resolver and no Tor client could ever find.
+fn check_host(host: &str) -> Result<(), AddressError> {
+    if host.contains(':') {
+        return host
+            .parse::<std::net::Ipv6Addr>()
+            .map(|_| ())
+            .map_err(|_| AddressError::NotAHost(host.to_owned()));
+    }
+    if let Some(name) = host.strip_suffix(ONION_SUFFIX) {
+        return if is_a_v3_onion(name) {
+            Ok(())
+        } else {
+            Err(AddressError::NotAnOnion(host.to_owned()))
+        };
+    }
+    if host.parse::<std::net::Ipv4Addr>().is_ok() || is_a_name(host) {
+        Ok(())
+    } else {
+        Err(AddressError::NotAHost(host.to_owned()))
+    }
+}
+
+/// Is this what goes before `.onion` in a version 3 address?
+///
+/// Fifty-six characters of base32: a 32-byte key, a 2-byte checksum and the version
+/// byte, 3, whose last five bits are always written `d`. The checksum is Tor's to
+/// check when it dials; this is the shape, which is what a typo breaks.
+fn is_a_v3_onion(name: &str) -> bool {
+    name.len() == 56
+        && name.ends_with('d')
+        && name
+            .bytes()
+            .all(|b| b.is_ascii_lowercase() || (b'2'..=b'7').contains(&b))
+}
+
+/// Is this a host name: dot-separated labels of letters, digits, hyphens and
+/// underscores, none empty and none starting or ending with a hyphen?
+///
+/// Underscores are not in the standard and are in plenty of machines' names on a
+/// local network, where a resolver finds them.
+fn is_a_name(host: &str) -> bool {
+    host.len() <= 253
+        && host.split('.').all(|label| {
+            (1..=63).contains(&label.len())
+                && !label.starts_with('-')
+                && !label.ends_with('-')
+                && label
+                    .bytes()
+                    .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
+        })
 }
 
 /// Split an address into its host and its port, if it names one.
@@ -221,6 +296,9 @@ impl fmt::Display for PeerAddress {
 mod tests {
     use super::*;
 
+    /// A version 3 onion address, as Tor writes one.
+    const ONION: &str = "qprbghv6box5b5hx5ud7hcuzorklavqfdug3xacgnrm3c2bvjhnei3id.onion";
+
     fn parse(text: &str) -> PeerAddress {
         text.parse().expect("a readable address")
     }
@@ -273,7 +351,7 @@ mod tests {
             "8.8.8.8:3333",
             "[2606:4700:4700::1111]:3333",
             "node.example.org:3333",
-            "abcdefghij.onion",
+            ONION,
         ] {
             assert!(
                 parse(reachable).worth_telling_a_stranger(),
@@ -284,18 +362,18 @@ mod tests {
 
     #[test]
     fn an_onion_host_is_reached_through_tor() {
-        let address = parse("abcdefghij.onion");
+        let address = parse(ONION);
         assert!(address.needs_tor());
         assert_eq!(address.port(), ONION_PORT);
-        assert!(parse("abcdefghij.onion:333").needs_tor());
+        assert!(parse(&format!("{ONION}:333")).needs_tor());
     }
 
     #[test]
     fn each_kind_has_its_own_default_port() {
         assert_eq!(parse("node.example").port(), DEFAULT_PORT);
-        assert_eq!(parse("abcdefghij.onion").port(), ONION_PORT);
+        assert_eq!(parse(ONION).port(), ONION_PORT);
         assert_eq!(parse("node.example:9").port(), 9);
-        assert_eq!(parse("abcdefghij.onion:9").port(), 9);
+        assert_eq!(parse(&format!("{ONION}:9")).port(), 9);
     }
 
     #[test]
@@ -317,15 +395,12 @@ mod tests {
             assert_eq!(parse(text).to_string(), text);
             assert_eq!(parse(&parse(text).to_string()), parse(text));
         }
-        assert_eq!(
-            parse("abcdefghij.onion").to_string(),
-            "abcdefghij.onion:333"
-        );
+        assert_eq!(parse(ONION).to_string(), format!("{ONION}:333"));
     }
 
     #[test]
     fn the_suffix_is_recognised_whatever_case_it_is_typed_in() {
-        assert!(parse("ABCDEFGHIJ.ONION").needs_tor());
+        assert!(parse(&ONION.to_uppercase()).needs_tor());
         assert_eq!(parse("Node.Example").host(), "node.example");
     }
 
@@ -366,5 +441,39 @@ mod tests {
             Err(AddressError::UnclosedBracket)
         );
         assert_eq!(":3333".parse::<PeerAddress>(), Err(AddressError::Empty));
+    }
+
+    #[test]
+    fn what_no_resolver_or_tor_could_find_is_refused_before_anybody_knocks() {
+        // Each of these used to be read as a host, kept, and knocked on for good.
+        assert_eq!(
+            "http://127.0.0.1:43331".parse::<PeerAddress>(),
+            Err(AddressError::Scheme("http".into()))
+        );
+        assert_eq!(
+            "334:127.0.0.1:43331".parse::<PeerAddress>(),
+            Err(AddressError::NotAHost("334:127.0.0.1:43331".into())),
+            "more than one colon is an IPv6 address or nothing"
+        );
+        assert_eq!(
+            "not an address".parse::<PeerAddress>(),
+            Err(AddressError::NotAHost("not an address".into()))
+        );
+        assert_eq!(
+            "-node.example".parse::<PeerAddress>(),
+            Err(AddressError::NotAHost("-node.example".into()))
+        );
+        assert_eq!(
+            "abc.onion:3333".parse::<PeerAddress>(),
+            Err(AddressError::NotAnOnion("abc.onion".into()))
+        );
+        let one_short = &ONION[1..];
+        assert!(matches!(
+            one_short.parse::<PeerAddress>(),
+            Err(AddressError::NotAnOnion(_))
+        ));
+        // A name with an underscore is a machine on somebody's own network.
+        assert_eq!(parse("my_node.lan").host(), "my_node.lan");
+        assert_eq!(parse("localhost").port(), DEFAULT_PORT);
     }
 }

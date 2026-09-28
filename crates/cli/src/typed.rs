@@ -25,6 +25,8 @@ use crate::words;
 use crate::words::count::Base;
 use n333_net::PeerAddress;
 
+pub(crate) mod address;
+
 // What each command and flag is for is not written here: clap would show it in
 // English whoever asked. It is in the catalogs, `help-<command>-<flag>` in
 // `words/<tag>/help.ftl`, and put in once the words are chosen (`crate::help`).
@@ -112,7 +114,7 @@ pub(crate) enum Command {
 
     #[command(about = "help-serve", long_about = "help-serve-long")]
     Serve {
-        #[arg(long, default_value_t = default_bind(), value_name = "ADDR:PORT", help = "help-serve-bind")]
+        #[arg(long, default_value_t = default_bind(), value_name = "ADDR:PORT", value_parser = address::bind, help = "help-serve-bind")]
         bind: SocketAddr,
 
         #[arg(long, help = "help-serve-tor")]
@@ -124,6 +126,7 @@ pub(crate) enum Command {
         #[arg(
             long,
             value_name = "HOST:PORT",
+            value_parser = address::announced,
             help = "help-serve-announce",
             long_help = "help-serve-announce-long"
         )]
@@ -171,14 +174,14 @@ pub(crate) enum Command {
     },
     #[command(about = "help-join")]
     Join {
-        #[arg(value_parser = n333_net::invite::address_or_invite, help = "help-join-address")]
+        #[arg(value_parser = address::typed, help = "help-join-address")]
         address: PeerAddress,
     },
     #[command(about = "help-languages")]
     Languages,
     #[command(about = "help-ping")]
     Ping {
-        #[arg(value_parser = n333_net::invite::address_or_invite, help = "help-ping-address")]
+        #[arg(value_parser = address::typed, help = "help-ping-address")]
         address: PeerAddress,
     },
     #[command(about = "help-pack", long_about = "help-pack-long")]

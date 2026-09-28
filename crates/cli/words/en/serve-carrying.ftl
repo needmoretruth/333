@@ -1,8 +1,5 @@
 ### `333 serve`: carrying out what the vigil was told, from its screen or another terminal.
 
-serve-carrying-not-written-down = writing down the address: { $why }
-    .keyword = failed
-
 serve-carrying-not-written-who = writing down who answered: { $why }
     .keyword = failed
 

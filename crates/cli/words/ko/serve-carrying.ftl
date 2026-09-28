@@ -1,8 +1,5 @@
 ### `333 serve`: 화면이나 다른 터미널에서 철야가 받은 명령을 수행하기.
 
-serve-carrying-not-written-down = 주소를 적는 중: { $why }
-    .keyword = 실패
-
 serve-carrying-not-written-who = 누가 답했는지 적는 중: { $why }
     .keyword = 실패
 

@@ -6,7 +6,6 @@ ping-name = { $name }
 ping-knocking = { $address }
     .keyword = knocking
 
-ping-writing-the-address = writing down the address
 ping-writing-who-answered = writing down who answered
 ping-knocking-on = knocking on { $address }
 ping-unfinished = { $address } took the connection and did not finish the exchange within { $seconds } s

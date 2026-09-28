@@ -47,9 +47,6 @@ pub(crate) async fn ask(
     timeout: Duration,
     address: &n333_net::PeerAddress,
 ) -> anyhow::Result<()> {
-    // Kept whether or not anybody answers: it is an address this node was given, and
-    // the vigil goes on knocking there once it runs.
-    node.given_by_hand(&address.to_string(), None).await?;
     let typed = address.to_string();
     aloud_in!("join-knocking", address = &typed);
 
@@ -68,8 +65,11 @@ pub(crate) async fn ask(
             .await
             .with_context(|| words!("join-exchanging"))?;
         crate::aloud::line(&describe(&exchange));
-        node.answered_at(&address.to_string(), exchange.peer.node_id)
-            .await;
+        // Kept once somebody answered there with a key, and not before: the vigil
+        // knocks on every address this node was given, and one nobody answers at
+        // would be knocked on for nothing.
+        node.given_by_hand(&typed, Some(exchange.peer.node_id))
+            .await?;
         n333_net::handover::ask(&mut stream, node.identity(), Epoch::now())
             .await
             .with_context(|| words!("join-asking"))

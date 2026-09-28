@@ -71,6 +71,13 @@ pub enum InviteError {
         /// The invitation this address should have been written as.
         canonical: String,
     },
+    /// An address behind a number that is not the tag, as `334:node.example:3333`.
+    /// Carries the number.
+    ///
+    /// Read as an address, the whole of it is a host nobody has, and a node given
+    /// one would knock there for as long as it kept it.
+    #[error("an invitation starts with `{PREFIX}`, not `{0}:`")]
+    WrongPrefix(String),
 }
 
 /// An invitation, already checked.
@@ -144,10 +151,25 @@ impl fmt::Display for Invite {
 /// Fails if a string tagged as an invitation is not a canonical one, or if what
 /// remains is not an address at all.
 pub fn address_or_invite(text: &str) -> Result<PeerAddress, InviteError> {
-    if text.trim().starts_with(PREFIX) {
+    let text = text.trim();
+    if text.starts_with(PREFIX) {
         return text.parse::<Invite>().map(Invite::into_address);
     }
-    Ok(text.trim().parse::<PeerAddress>()?)
+    match text.parse::<PeerAddress>() {
+        Ok(address) => Ok(address),
+        Err(refused @ AddressError::NotAHost(_)) => {
+            Err(wrong_prefix(text).unwrap_or_else(|| refused.into()))
+        }
+        Err(refused) => Err(refused.into()),
+    }
+}
+
+/// The number in front, if `text` is an address behind a number that is not the tag.
+fn wrong_prefix(text: &str) -> Option<InviteError> {
+    let (number, rest) = text.split_once(':')?;
+    let is_a_number = !number.is_empty() && number.bytes().all(|b| b.is_ascii_digit());
+    (is_a_number && rest.parse::<PeerAddress>().is_ok())
+        .then(|| InviteError::WrongPrefix(number.to_owned()))
 }
 
 #[cfg(test)]
@@ -294,5 +316,22 @@ mod tests {
                 canonical: "333:node.example:3333".into()
             })
         );
+    }
+
+    #[test]
+    fn an_address_behind_the_wrong_number_is_refused_as_the_wrong_tag() {
+        assert_eq!(
+            address_or_invite("334:127.0.0.1:43331"),
+            Err(InviteError::WrongPrefix("334".into()))
+        );
+        assert_eq!(
+            address_or_invite("333:http://127.0.0.1:43331"),
+            Err(AddressError::Scheme("http".into()).into())
+        );
+        assert_eq!(
+            address_or_invite("not an address"),
+            Err(AddressError::NotAHost("not an address".into()).into())
+        );
+        assert!(address_or_invite("2001:db8::1").is_ok(), "an IPv6 address");
     }
 }

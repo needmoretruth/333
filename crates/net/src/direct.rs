@@ -141,7 +141,9 @@ mod tests {
     async fn an_onion_address_is_refused_here_rather_than_resolved() {
         // Handing it to the resolver would tell a DNS server which onion address
         // this node was about to visit.
-        let address: PeerAddress = "abcdefghij.onion".parse().expect("a readable address");
+        let address: PeerAddress = "qprbghv6box5b5hx5ud7hcuzorklavqfdug3xacgnrm3c2bvjhnei3id.onion"
+            .parse()
+            .expect("a readable address");
         let refused = connect(&address).await.expect_err("refuses");
         assert!(matches!(refused, Error::NeedsTor(_)), "{refused}");
     }

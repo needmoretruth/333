@@ -8,7 +8,6 @@ ping-name = { $name }
 ping-knocking = { $address }
     .keyword = 노크
 
-ping-writing-the-address = 주소 기록
 ping-writing-who-answered = 답한 이 기록
 ping-knocking-on = { $address }에 노크
 ping-unfinished = { $address } 쪽이 연결을 받고도 { $seconds }초 안에 교환을 끝내지 않았습니다

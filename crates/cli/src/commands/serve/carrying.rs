@@ -132,12 +132,7 @@ impl Carrier {
         let Some(address) = readable(address) else {
             return false;
         };
-        // Into the running node as well as onto the disk, so that the next round
-        // knocks there rather than the one after the vigil next reads the disk.
         let typed = address.to_string();
-        if let Err(e) = self.node.given_by_hand(&typed, None).await {
-            aloud_in!("serve-carrying-not-written-down", why = format!("{e:#}"));
-        }
         let knocked = crate::commands::ping::knock(
             self.node.identity(),
             &self.dialer,
@@ -145,6 +140,9 @@ impl Carrier {
             &address,
         );
         match knocked.await {
+            // Into the running node as well as onto the disk, so that the next round
+            // knocks there; and only once it answered with a key, since the vigil knocks
+            // on every address it was given.
             Ok(answered) => {
                 if let Err(e) = self.node.given_by_hand(&typed, Some(answered)).await {
                     aloud_in!("serve-carrying-not-written-who", why = format!("{e:#}"));
@@ -326,14 +324,8 @@ impl Carrier {
 
 /// Read what was typed as an address, or say why it is not one.
 fn readable(typed: &str) -> Option<PeerAddress> {
-    n333_net::invite::address_or_invite(typed)
-        .map_err(|e| {
-            aloud_in!(
-                "serve-carrying-not-an-address",
-                typed = typed,
-                why = e.to_string()
-            )
-        })
+    crate::typed::address::typed(typed)
+        .map_err(|why| aloud_in!("serve-carrying-not-an-address", typed = typed, why = why))
         .ok()
 }
 
@@ -360,10 +352,6 @@ mod tests {
     fn in_english_every_moved_line_says_exactly_what_it_said_before() {
         let pairs = crate::words::speaking("en", crate::words::count::Base::Ten, || {
             [
-                (
-                    words!("serve-carrying-not-written-down", why = "disk full"),
-                    "failed   writing down the address: disk full",
-                ),
                 (
                     words!("serve-carrying-not-written-who", why = "disk full"),
                     "failed   writing down who answered: disk full",

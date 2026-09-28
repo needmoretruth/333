@@ -179,7 +179,14 @@ impl Node {
             );
         }
         everywhere.extend(self.found.lock().await.iter().cloned());
-        everywhere.into_iter().collect()
+        // What an earlier build kept without reading it — `http://…`, `abc.onion` — stays
+        // on disk until it ages out with everything else from its epoch, and is not
+        // knocked on: nothing could answer there, and an onion that is not one would
+        // start Tor for nobody.
+        everywhere
+            .into_iter()
+            .filter(|address| address.parse::<n333_net::PeerAddress>().is_ok())
+            .collect()
     }
 
     /// Keep an address overheard on this network, and say whether it is new.
@@ -519,6 +526,22 @@ mod tests {
         let mistrust = fs_mistrust::Mistrust::new_dangerously_trust_everyone();
         let (_, opened) = Node::open(&mistrust, &node.home, Keeping::TheWindow).expect("opens");
         assert_eq!(opened.addresses, 1);
+    }
+
+    #[tokio::test]
+    async fn what_an_earlier_build_kept_unread_is_not_knocked_on() {
+        let (node, _, _dirs) = a_node_and_its_copy("junk");
+        for junk in [
+            "[http://127.0.0.1:43331]:3333",
+            "[334:127.0.0.1:43331]:3333",
+            "abc.onion:3333",
+        ] {
+            node.given_by_hand(junk, None).await.expect("keeps");
+        }
+        node.given_by_hand("192.0.2.9:3333", None)
+            .await
+            .expect("keeps");
+        assert_eq!(node.where_others_are().await, vec!["192.0.2.9:3333"]);
     }
 
     #[tokio::test]

@@ -26,11 +26,8 @@ pub(crate) async fn run(common: &Common, address: &PeerAddress) -> anyhow::Resul
         identity_file::load_or_create(&common.mistrust(), common.paths.root())?;
     aloud_in!("ping-name", name = identity.node_id().to_string());
     crate::named::report(origin, common.paths.root());
-    // Written down before the knock, and again with a name once somebody answers: it
-    // is an address this node was given, and the vigil goes on knocking there.
-    let home = common.paths.root();
-    let typed = address.to_string();
-    sources::typed(home, &typed, None).with_context(|| words!("ping-writing-the-address"))?;
+    // Written down once somebody answered there with a key, and not before: an address
+    // nobody answers at is one the vigil would go on knocking at for nothing.
     let answered = knock(
         &identity,
         &Dialer::new(common.clone()),
@@ -38,7 +35,7 @@ pub(crate) async fn run(common: &Common, address: &PeerAddress) -> anyhow::Resul
         address,
     )
     .await?;
-    sources::typed(home, &typed, Some(answered))
+    sources::typed(common.paths.root(), &address.to_string(), Some(answered))
         .with_context(|| words!("ping-writing-who-answered"))
 }
 
@@ -97,10 +94,6 @@ mod tests {
     fn in_english_every_moved_line_says_exactly_what_it_said_before() {
         let (said, phrases) = crate::words::speaking("en", Base::Ten, || {
             let phrases = [
-                (
-                    words!("ping-writing-the-address"),
-                    "writing down the address",
-                ),
                 (
                     words!("ping-writing-who-answered"),
                     "writing down who answered",

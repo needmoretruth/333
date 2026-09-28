@@ -244,7 +244,7 @@ mod tests {
             .await
             .expect("keeps");
         node.given_by_hand(
-            "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz2345.onion:47115",
+            "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz234d.onion:47115",
             None,
         )
         .await
@@ -283,7 +283,7 @@ mod tests {
             "[2001:db8:1:ffff::2]:3333",
             "[2001:db8:2::1]:3333",
             "node.example:3333",
-            "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz2345.onion:3333",
+            "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz234d.onion:3333",
         ]
         .map(str::to_owned);
         assert_eq!(
