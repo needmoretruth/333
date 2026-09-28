@@ -27,7 +27,10 @@ pack-record = { $epochs ->
     }
     .keyword = record
 
-pack-witnessed = { $statements } statements other keys signed about it, going with it
+pack-witnessed = { $statements ->
+        [one] { $statements } statement another key signed about it, going with it
+       *[other] { $statements } statements other keys signed about it, going with it
+    }
     .keyword = witness
 
 pack-holding = the file, going with it

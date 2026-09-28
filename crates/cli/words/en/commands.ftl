@@ -24,9 +24,14 @@ commands-record = { $epochs ->
     } already answered for, none of them open to revision
     .keyword = record
 
-commands-witnessed = { $statements } statements other keys signed about this node. They are kept
-    after the epochs they belong to are gone, because nothing else of
-    them survives the window.
+commands-witnessed = { $statements ->
+        [one] { $statements } statement another key signed about this node. It is kept
+            after the epoch it belongs to is gone, because nothing else of
+            it survives the window.
+       *[other] { $statements } statements other keys signed about this node. They are kept
+            after the epochs they belong to are gone, because nothing else of
+            them survives the window.
+    }
     .keyword = witness
 
 commands-unseen = nothing has been signed about this node, in any epoch. Reaching out
@@ -70,7 +75,10 @@ commands-learned-names = { $members } more of us by name
 commands-heard = { $speakers } of us speak
     .keyword = heard
 
-commands-carried = { $statements } statements about epochs still open
+commands-carried = { $statements ->
+        [one] { $statements } statement about an epoch still open
+       *[other] { $statements } statements about epochs still open
+    }
     .keyword = carried
 
 commands-exchange = { $node }  epoch { $epoch }  { $clocks }  ({ $liveness })
@@ -111,5 +119,8 @@ commands-signed-taking = they said: I handed the file to you in epoch { $epoch }
     it is written in two hands, and neither hand can take it back.
     .keyword = signed
 
-commands-brimming = { $statements } statements would not fit in one run and wait for the next
+commands-brimming = { $statements ->
+        [one] { $statements } statement would not fit in one run and waits for the next
+       *[other] { $statements } statements would not fit in one run and wait for the next
+    }
     .keyword = brimming

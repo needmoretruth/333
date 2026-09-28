@@ -49,11 +49,12 @@ screen-draw-left-a-third = 삼분의 일
 screen-draw-left-more-said = 그 밖에 { $rows }개를 말함
 screen-draw-left-you-said = 당신은 #{ $index }를 말함
 
-screen-draw-left-heard-by-hand = 직접 입력 { $count }
-screen-draw-left-heard-nearby = 이 네트워크 { $count }
-screen-draw-left-heard-meeting-point = 만남의 장소 { $count }
-screen-draw-left-heard-from-us = 우리 { $peers }명에게서 { $count }
-screen-draw-left-heard-not-noted = 기록 없음 { $count }
+# 주소를 처음 들은 곳. "주소 앎" 아래에 한 줄씩.
+screen-draw-left-heard-by-hand = 직접 입력
+screen-draw-left-heard-nearby = 이 네트워크
+screen-draw-left-heard-meeting-point = 만남의 장소
+screen-draw-left-heard-from-us = 우리 { $peers }명에게서
+screen-draw-left-heard-not-noted = 기록 없음
 
 screen-draw-left-unseen = 미관측
 screen-draw-left-unseen-why =

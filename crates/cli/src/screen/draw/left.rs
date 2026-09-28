@@ -5,6 +5,7 @@ use ratatui::layout::Rect;
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
+use unicode_width::UnicodeWidthStr as _;
 
 use n333_core::presence::{Standing, WINDOW_EPOCHS};
 
@@ -22,24 +23,8 @@ use crate::words::Arg;
 pub(super) fn this_node<'a>(watch: &'a Watch, area: Rect) -> Paragraph<'a> {
     let width = usize::from(area.width).saturating_sub(4);
     let mut lines = another_copy(watch, width);
+    lines.extend(numbers(watch, width));
     lines.extend([
-        counted(words!("screen-draw-left-answering"), watch.answering, true),
-        counted(
-            words!("screen-draw-left-silent"),
-            watch.roll.saturating_sub(watch.answering),
-            false,
-        ),
-        Line::from(Span::styled("─────────", Style::new().fg(Color::DarkGray))),
-        counted(words!("screen-draw-left-roll"), watch.roll, false),
-        counted(
-            words!("screen-draw-left-known-where"),
-            watch.addresses,
-            false,
-        ),
-    ]);
-    lines.extend(heard_from(&watch.known, width));
-    lines.extend([
-        counted(words!("screen-draw-left-witnessed"), watch.witnessed, false),
         Line::raw(""),
         Line::from(Span::styled(
             words!("screen-draw-left-you"),
@@ -54,6 +39,35 @@ pub(super) fn this_node<'a>(watch: &'a Watch, area: Rect) -> Paragraph<'a> {
     let rows = usize::from(area.height).saturating_sub(2 + lines.len());
     lines.extend(said(&watch.said, rows, width));
     Paragraph::new(lines).block(titled(words!("screen-draw-left-title")))
+}
+
+/// The count, the roll, the addresses and what was witnessed, each number in one
+/// column, with the ways the addresses were first heard of set in under their count.
+fn numbers(watch: &Watch, width: usize) -> Vec<Line<'static>> {
+    let rows = [
+        (words!("screen-draw-left-answering"), watch.answering),
+        (
+            words!("screen-draw-left-silent"),
+            watch.roll.saturating_sub(watch.answering),
+        ),
+        (words!("screen-draw-left-roll"), watch.roll),
+        (words!("screen-draw-left-known-where"), watch.addresses),
+        (words!("screen-draw-left-witnessed"), watch.witnessed),
+    ];
+    let ways = heard_from(&watch.known);
+    let column = number_column(&rows, &ways, width);
+    let [answering, silent, roll, known, witnessed] = rows;
+    let grey = Style::new().fg(Color::DarkGray);
+    let mut lines = vec![
+        counted(answering, true, column),
+        counted(silent, false, column),
+        Line::from(Span::styled("─────────", grey)),
+        counted(roll, false, column),
+        counted(known, false, column),
+    ];
+    lines.extend(ways.into_iter().map(|way| way_row(way, column)));
+    lines.push(counted(witnessed, false, column));
+    lines
 }
 
 /// What a terminal too narrow for the column still shows above the vigil, in the
@@ -94,47 +108,51 @@ pub(super) fn at_a_glance(watch: &Watch, width: usize) -> Vec<Line<'static>> {
     lines
 }
 
-/// Where the addresses this node holds were first heard of, in one line folded to the
-/// column, naming only the ways some of them came. Nothing when it holds none.
-fn heard_from(known: &Counts, width: usize) -> Vec<Line<'static>> {
-    let ways = [
+/// Where the addresses this node holds were first heard of, as rows under the count of
+/// them, naming only the ways some of them came. Nothing when it holds none.
+fn heard_from(known: &Counts) -> Vec<(String, usize)> {
+    [
+        (words!("screen-draw-left-heard-by-hand"), known.by_hand),
+        (words!("screen-draw-left-heard-nearby"), known.this_network),
         (
-            known.by_hand,
-            words!("screen-draw-left-heard-by-hand", count = known.by_hand),
-        ),
-        (
-            known.this_network,
-            words!("screen-draw-left-heard-nearby", count = known.this_network),
-        ),
-        (
+            words!("screen-draw-left-heard-meeting-point"),
             known.meeting_point,
-            words!(
-                "screen-draw-left-heard-meeting-point",
-                count = known.meeting_point
-            ),
         ),
         (
+            words!("screen-draw-left-heard-from-us", peers = known.peers),
             known.from_peers,
-            words!(
-                "screen-draw-left-heard-from-us",
-                count = known.from_peers,
-                peers = known.peers
-            ),
         ),
-        (
-            known.unrecorded,
-            words!("screen-draw-left-heard-not-noted", count = known.unrecorded),
-        ),
-    ];
-    let said: Vec<String> = ways
-        .into_iter()
-        .filter(|(count, _)| *count != 0)
-        .map(|(_, way)| way)
-        .collect();
-    if said.is_empty() {
-        return Vec::new();
-    }
-    broken(&said.join(" · "), width, Style::new().fg(Color::DarkGray))
+        (words!("screen-draw-left-heard-not-noted"), known.unrecorded),
+    ]
+    .into_iter()
+    .filter(|(_, count)| *count != 0)
+    .collect()
+}
+
+/// How far in the rows' numbers start: past the widest name among them, the ways set
+/// in under "known where" included, so every number stands in one column in every
+/// language. Never less than the thirteen the column was drawn for, and never so far
+/// that a number no longer fits.
+fn number_column(rows: &[(String, usize)], ways: &[(String, usize)], width: usize) -> usize {
+    let widest = rows
+        .iter()
+        .map(|(name, _)| name.width())
+        .chain(ways.iter().map(|(name, _)| WAY_IN.width() + name.width()))
+        .max()
+        .unwrap_or(0);
+    (widest + 1).max(13).min(width.saturating_sub(6).max(13))
+}
+
+/// How far a way an address was heard of is set in under the count of them.
+const WAY_IN: &str = "  ";
+
+/// One way addresses were first heard of, and how many, in the rows' number column.
+fn way_row((name, count): (String, usize), column: usize) -> Line<'static> {
+    let grey = Style::new().fg(Color::DarkGray);
+    Line::from(vec![
+        Span::styled(padded(&format!("{WAY_IN}{name}"), column), grey),
+        Span::styled(words!("screen-draw-left-number", number = count), grey),
+    ])
 }
 
 /// What this screen says while this node is unseen: that being reached is what is
@@ -186,15 +204,15 @@ fn another_copy(watch: &Watch, width: usize) -> Vec<Line<'static>> {
     lines
 }
 
-/// One number with its name, in a column.
-fn counted(name: String, count: usize, loud: bool) -> Line<'static> {
+/// One number with its name, the number in the rows' column.
+fn counted((name, count): (String, usize), loud: bool, column: usize) -> Line<'static> {
     let style = if loud {
         Style::new().add_modifier(Modifier::BOLD)
     } else {
         Style::new()
     };
     Line::from(vec![
-        Span::styled(padded(&name, 13), style),
+        Span::styled(padded(&name, column), style),
         Span::styled(words!("screen-draw-left-number", number = count), style),
     ])
 }
@@ -420,7 +438,7 @@ mod tests {
              this node never said so.\nstop one of them.\n`333 status` says more.\n"
         );
         assert_eq!(
-            english(&|| vec![counted(words!("screen-draw-left-answering"), 7, true)]),
+            english(&|| vec![counted((words!("screen-draw-left-answering"), 7), true, 13)]),
             "ANSWERING    7"
         );
         assert_eq!(
@@ -496,11 +514,44 @@ mod tests {
             peers: 2,
             ..Counts::default()
         };
-        let said = crate::words::speaking("en", crate::words::count::Base::Ten, || {
-            text(&heard_from(&known, 30))
-        });
-        assert_eq!(said, "1 by hand · 2 from a meeting\npoint · 4 from 2 of us");
-        assert!(heard_from(&Counts::default(), 30).is_empty());
+        let said =
+            crate::words::speaking("en", crate::words::count::Base::Ten, || heard_from(&known));
+        let names: Vec<&str> = said.iter().map(|(name, _)| name.as_str()).collect();
+        assert_eq!(names, ["by hand", "a meeting point", "from 2 of us"]);
+        assert!(heard_from(&Counts::default()).is_empty());
+    }
+
+    #[test]
+    fn every_number_in_the_rows_stands_in_one_column_in_every_language() {
+        let mut watch = watching(Vec::new());
+        (watch.roll, watch.addresses) = (3, 3);
+        watch.known = Counts {
+            by_hand: 1,
+            meeting_point: 2,
+            from_peers: 4,
+            peers: 2,
+            ..Counts::default()
+        };
+        for tag in ["en", "ko"] {
+            let rows = crate::words::speaking(tag, crate::words::count::Base::Ten, || {
+                text(&numbers(&watch, 30))
+            });
+            // Where the number of each row stands, as a terminal counts columns. The
+            // way "from 2 of us" has a digit of its own before its number.
+            let columns: Vec<usize> = rows
+                .lines()
+                .filter(|row| !row.starts_with('\u{2500}'))
+                .map(|row| {
+                    let at = row.rfind(' ').map_or(0, |at| at + 1);
+                    row[..at].width()
+                })
+                .collect();
+            assert_eq!(columns.len(), 8, "{tag}: {rows}");
+            assert!(
+                columns.windows(2).all(|two| two[0] == two[1]),
+                "{tag}: {columns:?}\n{rows}"
+            );
+        }
     }
 
     #[test]

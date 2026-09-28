@@ -560,4 +560,29 @@ mod tests {
         assert!(name.ends_with("a16cd4"), "the back is what a person checks");
         assert_eq!(shorten("333"), "333", "a short name is already itself");
     }
+
+    #[test]
+    fn in_english_one_statement_and_one_line_are_said_as_one() {
+        let one = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+            [
+                words!("commands-witnessed", statements = 1_usize),
+                words!("commands-carried", statements = 1_usize),
+                words!("commands-brimming", statements = 1_usize),
+                words!("pack-witnessed", statements = 1_usize),
+                words!("service-said-last", lines = 1_usize),
+            ]
+        });
+        assert_eq!(
+            one,
+            [
+                "witness  1 statement another key signed about this node. It is kept\n\
+                 \x20        after the epoch it belongs to is gone, because nothing else of\n\
+                 \x20        it survives the window.",
+                "carried  1 statement about an epoch still open",
+                "brimming 1 statement would not fit in one run and waits for the next",
+                "witness  1 statement another key signed about it, going with it",
+                "said     the last line:",
+            ]
+        );
+    }
 }

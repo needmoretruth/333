@@ -49,11 +49,12 @@ screen-draw-left-a-third = a third
 screen-draw-left-more-said = and { $rows } more said
 screen-draw-left-you-said = you said #{ $index }
 
-screen-draw-left-heard-by-hand = { $count } by hand
-screen-draw-left-heard-nearby = { $count } on this network
-screen-draw-left-heard-meeting-point = { $count } from a meeting point
-screen-draw-left-heard-from-us = { $count } from { $peers } of us
-screen-draw-left-heard-not-noted = { $count } not noted
+# Where the addresses were first heard of, each on a row under "known where".
+screen-draw-left-heard-by-hand = by hand
+screen-draw-left-heard-nearby = this network
+screen-draw-left-heard-meeting-point = a meeting point
+screen-draw-left-heard-from-us = from { $peers } of us
+screen-draw-left-heard-not-noted = not noted
 
 screen-draw-left-unseen = UNSEEN
 screen-draw-left-unseen-why =

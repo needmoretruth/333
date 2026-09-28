@@ -47,7 +47,10 @@ service-never-awake = never said so, in this directory
 service-said-nothing = nothing that was kept
     .keyword = said
 
-service-said-last = the last { $lines } lines:
+service-said-last = { $lines ->
+        [one] the last line:
+       *[other] the last { $lines } lines:
+    }
     .keyword = said
 
 service-no-manager = this system has no service manager `333 service` knows how to ask. {
