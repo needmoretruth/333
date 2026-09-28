@@ -118,7 +118,7 @@ fn quoted(word: &str) -> String {
 fn unit_directory() -> anyhow::Result<PathBuf> {
     directories::BaseDirs::new()
         .map(|dirs| dirs.config_dir().join("systemd").join("user"))
-        .context("this system names no configuration directory for this user")
+        .with_context(|| words!("service-systemd-no-configuration"))
 }
 
 /// Write the units, start the vigil, and make sure it outlives the session.
@@ -128,14 +128,11 @@ fn unit_directory() -> anyhow::Result<PathBuf> {
 /// started.
 pub(crate) fn install(vigil: &Vigil) -> anyhow::Result<Receipt> {
     if let Err(why) = outcome("systemctl", &["--user", "show-environment"]) {
-        bail!(
-            "systemd is not keeping a session for this user here ({why}). It starts one \
-             when this user logs in, at the console or over ssh, and not through su or \
-             sudo. Log in as this user and run this again."
-        );
+        bail!(words!("service-systemd-no-session", why = why));
     }
     let dir = unit_directory()?;
-    std::fs::create_dir_all(&dir).with_context(|| format!("creating {}", dir.display()))?;
+    std::fs::create_dir_all(&dir)
+        .with_context(|| words!("service-creating", path = dir.display().to_string()))?;
     let files = [
         (
             dir.join(UNIT),
@@ -149,14 +146,12 @@ pub(crate) fn install(vigil: &Vigil) -> anyhow::Result<Receipt> {
     ];
     for (path, text) in &files {
         let replacing = path.exists() && !ours(path);
-        std::fs::write(path, text).with_context(|| format!("writing {}", path.display()))?;
+        let shown = path.display().to_string();
+        std::fs::write(path, text).with_context(|| words!("service-writing", path = &shown))?;
         if replacing {
-            say(format_args!(
-                "wrote    {}, in place of the one there",
-                path.display()
-            ))?;
+            say(&words!("service-systemd-wrote-over", path = &shown))?;
         } else {
-            say(format_args!("wrote    {}", path.display()))?;
+            say(&words!("service-wrote", path = &shown))?;
         }
     }
     run_aloud("systemctl", &["--user", "daemon-reload"])?;
@@ -184,25 +179,19 @@ fn linger_on() -> anyhow::Result<bool> {
         &["show-user", uid.trim(), "-p", "Linger", "--value"],
     );
     if now.as_deref().map(str::trim) == Some("yes") {
-        say(format_args!(
-            "linger   already on for {user}. It is what keeps the vigil running after you log\n\
-             \x20        out, and starts it at boot with nobody logged in."
-        ))?;
+        say(&words!("service-systemd-linger-already", user = &user))?;
         return Ok(false);
     }
     match run_aloud("loginctl", &["enable-linger"]) {
         Ok(_) => {
-            say(format_args!(
-                "linger   on for {user}. It is what keeps the vigil running after you log out,\n\
-                 \x20        and starts it at boot with nobody logged in."
-            ))?;
+            say(&words!("service-systemd-linger-on", user = &user))?;
             Ok(true)
         }
         Err(e) => {
-            say(format_args!(
-                "linger   not on: {e:#}. Without it the vigil stops when you log out and waits\n\
-                 \x20        for you to log in again after a reboot. `sudo loginctl enable-linger\n\
-                 \x20        {user}` turns it on."
+            say(&words!(
+                "service-systemd-linger-not-on",
+                why = format!("{e:#}"),
+                user = &user
             ))?;
             Ok(false)
         }
@@ -226,19 +215,20 @@ pub(crate) fn uninstall(receipt: Option<&Receipt>) -> anyhow::Result<()> {
             continue;
         }
         if !ours(&path) {
-            say(format_args!(
-                "left     {}. `333 service install` did not write it.",
-                path.display()
-            ))?;
+            say(&words!("service-left", path = path.display().to_string()))?;
             continue;
         }
         if name != CHECK
             && let Err(e) = run_aloud("systemctl", &["--user", "disable", "--now", name])
         {
-            say(format_args!("failed   {e:#}"))?;
+            say(&words!("service-failed", why = format!("{e:#}")))?;
         }
-        std::fs::remove_file(&path).with_context(|| format!("removing {}", path.display()))?;
-        say(format_args!("removed  {}", path.display()))?;
+        std::fs::remove_file(&path)
+            .with_context(|| words!("service-removing", path = path.display().to_string()))?;
+        say(&words!(
+            "service-removed",
+            path = path.display().to_string()
+        ))?;
     }
     run_aloud("systemctl", &["--user", "daemon-reload"])?;
     // What systemd remembers of a unit that failed outlives the unit's file. Quietly,
@@ -247,13 +237,9 @@ pub(crate) fn uninstall(receipt: Option<&Receipt>) -> anyhow::Result<()> {
     match receipt {
         Some(receipt) if receipt.linger_turned_on => {
             run_aloud("loginctl", &["disable-linger"])?;
-            say(format_args!(
-                "linger   off again, as it was before install."
-            ))?;
+            say(&words!("service-systemd-linger-off"))?;
         }
-        Some(_) => say(format_args!(
-            "linger   left as it was. Install did not turn it on."
-        ))?,
+        Some(_) => say(&words!("service-systemd-linger-left"))?,
         None => {}
     }
     Ok(())
@@ -289,7 +275,7 @@ pub(crate) fn status(_receipt: Option<&Receipt>) -> Seen {
     );
     Seen {
         state: shown.map_or_else(
-            || "unknown: systemd is not answering for this user".to_owned(),
+            || words!("service-systemd-not-answering"),
             |shown| state(&shown),
         ),
         log: log
@@ -307,29 +293,98 @@ fn state(shown: &str) -> String {
             .unwrap_or_default()
     };
     if property("LoadState") == "not-found" {
-        return "not installed".to_owned();
+        return words!("service-not-installed");
     }
     let what = match (property("ActiveState"), property("SubState")) {
-        ("active", _) => "running".to_owned(),
-        ("activating", "auto-restart") => {
-            "stopped, and starting again 333 seconds after it stopped".to_owned()
-        }
-        ("activating", _) => "starting".to_owned(),
-        ("deactivating", _) => "stopping".to_owned(),
-        ("failed", _) => format!("failed ({})", property("Result")),
-        ("inactive", _) => "stopped".to_owned(),
+        ("active", _) => words!("service-running"),
+        ("activating", "auto-restart") => words!("service-systemd-restarting"),
+        ("activating", _) => words!("service-starting"),
+        ("deactivating", _) => words!("service-systemd-stopping"),
+        ("failed", _) => words!("service-systemd-failed", result = property("Result")),
+        ("inactive", _) => words!("service-systemd-stopped"),
         (other, sub) => format!("{other} ({sub})"),
     };
     match property("UnitFileState") {
-        "enabled" => format!("{what}, and started at every boot"),
+        "enabled" => words!("service-systemd-at-every-boot", state = what),
         "" => what,
-        other => format!("{what}, and {other}: it does not start again by itself"),
+        other => words!(
+            "service-systemd-not-again",
+            state = what,
+            file_state = other
+        ),
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn in_english_every_moved_line_says_exactly_what_it_said_before() {
+        let pairs = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+            [
+                (
+                    words!("service-systemd-no-configuration"),
+                    "this system names no configuration directory for this user",
+                ),
+                (
+                    words!("service-systemd-no-session", why = "no bus"),
+                    "systemd is not keeping a session for this user here (no bus). It starts one \
+                     when this user logs in, at the console or over ssh, and not through su or \
+                     sudo. Log in as this user and run this again.",
+                ),
+                (
+                    words!("service-systemd-wrote-over", path = "/h/333.service"),
+                    "wrote    /h/333.service, in place of the one there",
+                ),
+                (
+                    words!("service-systemd-linger-already", user = "a"),
+                    "linger   already on for a. It is what keeps the vigil running after you log\n\
+                     \x20        out, and starts it at boot with nobody logged in.",
+                ),
+                (
+                    words!("service-systemd-linger-on", user = "a"),
+                    "linger   on for a. It is what keeps the vigil running after you log out,\n\
+                     \x20        and starts it at boot with nobody logged in.",
+                ),
+                (
+                    words!("service-systemd-linger-not-on", why = "denied", user = "a"),
+                    "linger   not on: denied. Without it the vigil stops when you log out and waits\n\
+                     \x20        for you to log in again after a reboot. `sudo loginctl enable-linger\n\
+                     \x20        a` turns it on.",
+                ),
+                (
+                    words!("service-systemd-linger-off"),
+                    "linger   off again, as it was before install.",
+                ),
+                (
+                    words!("service-systemd-linger-left"),
+                    "linger   left as it was. Install did not turn it on.",
+                ),
+                (
+                    words!("service-systemd-not-answering"),
+                    "unknown: systemd is not answering for this user",
+                ),
+                (
+                    state("ActiveState=active\nUnitFileState=enabled\n"),
+                    "running, and started at every boot",
+                ),
+                (
+                    state("ActiveState=activating\nSubState=start\n"),
+                    "starting",
+                ),
+                (state("ActiveState=deactivating\n"), "stopping"),
+                (
+                    state("ActiveState=failed\nResult=exit-code\n"),
+                    "failed (exit-code)",
+                ),
+                (state("ActiveState=inactive\n"), "stopped"),
+            ]
+        });
+        for (now, before) in pairs {
+            assert_eq!(now, before);
+        }
+    }
 
     const PACKAGED: &str = include_str!("../../../../../packaging/package/333.service");
 

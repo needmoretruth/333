@@ -20,11 +20,6 @@ use crate::node::Node;
 
 use super::{awake, notify, say};
 
-/// What the check says when the vigil runs and nothing is ever signed about this node.
-const UNSEEN: &str = "unseen   the vigil is kept, and nothing has been signed about this node in any\n\
-                      \x20        epoch: it reaches out and nobody reaches it. `333 status` says why\n\
-                      \x20        and what to do.";
-
 /// Look, and say what is wrong if anything is.
 ///
 /// # Errors
@@ -35,10 +30,14 @@ pub(crate) async fn run(common: &Common) -> anyhow::Result<()> {
         Some(line) => Some(line),
         // Only once the vigil is known to be running, so that a node directory that
         // is not there is never made by the thing checking on it.
-        None => unseen(common).await?.then(|| UNSEEN.to_owned()),
+        // What the check says when the vigil runs and nothing is ever signed about
+        // this node.
+        None => unseen(common)
+            .await?
+            .then(|| words!("service-check-unseen")),
     };
     if let Some(line) = line {
-        say(format_args!("{line}"))?;
+        say(&line)?;
         notify::raise(&line);
     }
     Ok(())
@@ -71,4 +70,20 @@ async fn the_vigil_says_unseen(root: &Path) -> Option<bool> {
         .ok()?
         .get("unseen")?
         .as_bool()
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn in_english_the_moved_line_says_exactly_what_it_said_before() {
+        let said = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+            words!("service-check-unseen")
+        });
+        assert_eq!(
+            said,
+            "unseen   the vigil is kept, and nothing has been signed about this node in any\n\
+             \x20        epoch: it reaches out and nobody reaches it. `333 status` says why\n\
+             \x20        and what to do."
+        );
+    }
 }

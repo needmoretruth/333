@@ -40,10 +40,10 @@ pub(crate) async fn keep_saying(root: PathBuf) {
             Ok(()) => said_it_failed = false,
             Err(e) if !said_it_failed => {
                 said_it_failed = true;
-                aloud!(
-                    "failed   writing that the vigil is awake, in {}: {e}. Nothing on this\n\
-                     \x20        machine can tell that it is being kept until that works again.",
-                    root.display()
+                aloud_in!(
+                    "service-awake-failed",
+                    root = root.display().to_string(),
+                    why = e.to_string()
                 );
             }
             Err(_) => {}
@@ -81,11 +81,7 @@ pub(crate) fn read(root: &Path) -> Option<u64> {
 #[must_use]
 pub(crate) fn not_kept(last: Option<u64>, installed: bool, now: u64) -> Option<String> {
     let Some(last) = last else {
-        return installed.then(|| {
-            "vigil    not kept. The service is installed and has never said it was awake.\n\
-             \x20        `333 service status` says why."
-                .to_owned()
-        });
+        return installed.then(|| words!("service-awake-never-kept"));
     };
     let gone = now.saturating_sub(last);
     let late = if installed {
@@ -94,10 +90,10 @@ pub(crate) fn not_kept(last: Option<u64>, installed: bool, now: u64) -> Option<S
         gone > EPOCH_SECONDS
     };
     late.then(|| {
-        format!(
-            "vigil    not kept since {}, {} ago. `333 service status` says why.",
-            iso(last),
-            how_long(gone)
+        words!(
+            "service-awake-not-kept-since",
+            at = iso(last),
+            ago = how_long(gone)
         )
     })
 }
@@ -108,11 +104,9 @@ pub(crate) fn how_long(seconds: u64) -> String {
     let epochs = seconds / EPOCH_SECONDS;
     let minutes = seconds / 60;
     match (epochs, minutes) {
-        (0, 0) => "under a minute".to_owned(),
-        (0, 1) => "1 minute".to_owned(),
-        (0, _) => format!("{minutes} minutes"),
-        (1, _) => "1 epoch".to_owned(),
-        (_, _) => format!("{epochs} epochs"),
+        (0, 0) => words!("service-awake-under-a-minute"),
+        (0, _) => words!("service-awake-minutes", minutes = minutes),
+        (_, _) => words!("service-awake-epochs", epochs = epochs),
     }
 }
 
@@ -187,6 +181,27 @@ pub(crate) fn parse_iso(text: &str) -> Option<u64> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn in_english_every_moved_line_says_exactly_what_it_said_before() {
+        let pairs = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+            [
+                (
+                    words!("service-awake-failed", root = "/n", why = "disk full"),
+                    "failed   writing that the vigil is awake, in /n: disk full. Nothing on this\n\
+                     \x20        machine can tell that it is being kept until that works again.",
+                ),
+                (
+                    not_kept(None, true, 1_790_046_600).unwrap(),
+                    "vigil    not kept. The service is installed and has never said it was awake.\n\
+                     \x20        `333 service status` says why.",
+                ),
+            ]
+        });
+        for (now, before) in pairs {
+            assert_eq!(now, before);
+        }
+    }
 
     #[test]
     fn a_time_is_written_the_way_the_rest_of_the_world_writes_it() {

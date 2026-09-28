@@ -18,10 +18,14 @@ pub(crate) fn run_aloud(program: &str, args: &[&str]) -> anyhow::Result<String> 
     let typed = typed(program, args);
     match outcome(program, args) {
         Ok(said) => {
-            crate::commands::service::say(format_args!("ran      {typed}"))?;
+            crate::commands::service::say(&words!("service-programs-ran", command = &typed))?;
             Ok(said)
         }
-        Err(why) => bail!("`{typed}` did not succeed: {why}"),
+        Err(why) => bail!(words!(
+            "service-programs-did-not-succeed",
+            command = typed,
+            why = why
+        )),
     }
 }
 
@@ -47,14 +51,23 @@ pub(crate) fn outcome(program: &str, args: &[&str]) -> Result<String, String> {
             let said = String::from_utf8_lossy(&output.stderr);
             let first = said.lines().find(|line| !line.trim().is_empty());
             Err(first.map_or_else(
-                || format!("it ended with {}", output.status),
+                || {
+                    words!(
+                        "service-programs-ended-with",
+                        status = output.status.to_string()
+                    )
+                },
                 |line| line.trim().to_owned(),
             ))
         }
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-            Err(format!("there is no {program} on this system"))
+            Err(words!("service-programs-no-such", program = program))
         }
-        Err(e) => Err(format!("{program} could not be started: {e}")),
+        Err(e) => Err(words!(
+            "service-programs-not-started",
+            program = program,
+            why = e.to_string()
+        )),
     }
 }
 
@@ -78,6 +91,41 @@ pub(crate) fn typed(program: &str, args: &[&str]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn in_english_every_moved_line_says_exactly_what_it_said_before() {
+        let pairs = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+            [
+                (
+                    words!("service-programs-ran", command = "loginctl enable-linger"),
+                    "ran      loginctl enable-linger",
+                ),
+                (
+                    words!(
+                        "service-programs-did-not-succeed",
+                        command = "loginctl enable-linger",
+                        why = "no"
+                    ),
+                    "`loginctl enable-linger` did not succeed: no",
+                ),
+                (
+                    words!("service-programs-ended-with", status = "exit status: 1"),
+                    "it ended with exit status: 1",
+                ),
+                (
+                    words!(
+                        "service-programs-not-started",
+                        program = "id",
+                        why = "denied"
+                    ),
+                    "id could not be started: denied",
+                ),
+            ]
+        });
+        for (now, before) in pairs {
+            assert_eq!(now, before);
+        }
+    }
 
     #[test]
     fn a_command_is_shown_the_way_it_would_be_typed() {

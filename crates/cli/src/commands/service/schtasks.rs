@@ -153,7 +153,7 @@ pub(crate) fn cmd_arguments(exe: &Path, args: &[String], log: &Path) -> anyhow::
         .chain(args.iter().cloned())
         .collect();
     if let Some(bad) = words.iter().find(|word| word.contains(['"', '%'])) {
-        bail!("`{bad}` has a \" or a % in it, which cmd.exe cannot pass on as it is");
+        bail!(words!("service-schtasks-cannot-pass", word = bad));
     }
     let line: Vec<String> = words.iter().map(|word| quoted(word)).collect();
     Ok(format!(
@@ -202,12 +202,12 @@ pub(crate) fn utf16(xml: &str) -> Vec<u8> {
 pub(crate) fn install(vigil: &Vigil) -> anyhow::Result<Receipt> {
     let user = match (std::env::var("USERDOMAIN"), std::env::var("USERNAME")) {
         (Ok(domain), Ok(name)) => format!("{domain}\\{name}"),
-        _ => bail!("Windows did not say who this user is (%USERDOMAIN% and %USERNAME%)"),
+        _ => bail!(words!("service-schtasks-no-user")),
     };
     // The log is appended to from the first second, and cmd cannot append to a file in
     // a directory that is not there yet.
     std::fs::create_dir_all(&vigil.node)
-        .with_context(|| format!("creating {}", vigil.node.display()))?;
+        .with_context(|| words!("service-creating", path = vigil.node.display().to_string()))?;
     let log = vigil.node.join(LOG);
     let directory = vigil.node.display().to_string();
     let tasks = [
@@ -230,7 +230,8 @@ pub(crate) fn install(vigil: &Vigil) -> anyhow::Result<Receipt> {
     ];
     for (name, xml) in &tasks {
         let file = std::env::temp_dir().join(format!("{name}.xml"));
-        std::fs::write(&file, utf16(xml)).with_context(|| format!("writing {}", file.display()))?;
+        std::fs::write(&file, utf16(xml))
+            .with_context(|| words!("service-writing", path = file.display().to_string()))?;
         let created = run_aloud(
             "schtasks",
             &[
@@ -246,12 +247,9 @@ pub(crate) fn install(vigil: &Vigil) -> anyhow::Result<Receipt> {
         created?;
     }
     run_aloud("schtasks", &["/Run", "/TN", VIGIL_TASK])?;
-    say(format_args!(
-        "logon    Windows keeps the vigil while you are logged in, from the moment you log\n\
-         \x20        in. A service kept from boot would run as an account of its own, and a\n\
-         \x20        node lives in your own directory, where that account has no business.\n\
-         \x20        What it says is in {}.",
-        log.display()
+    say(&words!(
+        "service-schtasks-logon",
+        log = log.display().to_string()
     ))?;
     Ok(Receipt {
         node: vigil.node.clone(),
@@ -274,7 +272,7 @@ pub(crate) fn uninstall(_receipt: Option<&Receipt>) -> anyhow::Result<()> {
         }
         let _ = outcome("schtasks", &["/End", "/TN", name]);
         if let Err(e) = run_aloud("schtasks", &["/Delete", "/TN", name, "/F"]) {
-            say(format_args!("failed   {e:#}"))?;
+            say(&words!("service-failed", why = format!("{e:#}")))?;
         }
     }
     Ok(())
@@ -289,7 +287,10 @@ pub(crate) fn status(receipt: Option<&Receipt>) -> Seen {
         &["-NoProfile", "-NonInteractive", "-Command", &asked],
     );
     Seen {
-        state: state.map_or_else(|| "not installed".to_owned(), |state| words(state.trim())),
+        state: state.map_or_else(
+            || words!("service-not-installed"),
+            |state| in_words(state.trim()),
+        ),
         log: receipt
             .and_then(|receipt| receipt.log.as_deref())
             .map(super::last_lines)
@@ -298,12 +299,12 @@ pub(crate) fn status(receipt: Option<&Receipt>) -> Seen {
 }
 
 /// A task's state, in words.
-fn words(state: &str) -> String {
+fn in_words(state: &str) -> String {
     match state {
-        "Running" => "running".to_owned(),
-        "Ready" => "stopped, and started again within 333 seconds".to_owned(),
-        "Queued" => "starting".to_owned(),
-        "Disabled" => "disabled: it does not start again by itself".to_owned(),
+        "Running" => words!("service-running"),
+        "Ready" => words!("service-schtasks-ready"),
+        "Queued" => words!("service-starting"),
+        "Disabled" => words!("service-schtasks-disabled"),
         other => other.to_lowercase(),
     }
 }
@@ -311,6 +312,42 @@ fn words(state: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn in_english_every_moved_line_says_exactly_what_it_said_before() {
+        let pairs = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+            [
+                (
+                    words!("service-schtasks-cannot-pass", word = "a%b"),
+                    "`a%b` has a \" or a % in it, which cmd.exe cannot pass on as it is",
+                ),
+                (
+                    words!("service-schtasks-no-user"),
+                    "Windows did not say who this user is (%USERDOMAIN% and %USERNAME%)",
+                ),
+                (
+                    words!("service-schtasks-logon", log = r"C:\node\vigil.log"),
+                    "logon    Windows keeps the vigil while you are logged in, from the moment you log\n\
+                     \x20        in. A service kept from boot would run as an account of its own, and a\n\
+                     \x20        node lives in your own directory, where that account has no business.\n\
+                     \x20        What it says is in C:\\node\\vigil.log.",
+                ),
+                (in_words("Running"), "running"),
+                (
+                    in_words("Ready"),
+                    "stopped, and started again within 333 seconds",
+                ),
+                (in_words("Queued"), "starting"),
+                (
+                    in_words("Disabled"),
+                    "disabled: it does not start again by itself",
+                ),
+            ]
+        });
+        for (now, before) in pairs {
+            assert_eq!(now, before);
+        }
+    }
 
     #[test]
     fn the_vigil_runs_from_logon_for_ever_on_battery_and_again_after_it_stops() {

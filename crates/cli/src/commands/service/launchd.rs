@@ -111,10 +111,10 @@ fn escaped(text: &(impl std::fmt::Display + ?Sized)) -> String {
 fn home_and_uid() -> anyhow::Result<(PathBuf, String)> {
     let home = directories::BaseDirs::new()
         .map(|dirs| dirs.home_dir().to_path_buf())
-        .context("this system names no home directory for this user")?;
+        .with_context(|| words!("service-launchd-no-home"))?;
     let uid = ask("id", &["-u"])
         .map(|uid| uid.trim().to_owned())
-        .context("asking `id -u` which user this is")?;
+        .with_context(|| words!("service-launchd-asking-who"))?;
     Ok((home, uid))
 }
 
@@ -127,7 +127,8 @@ pub(crate) fn install(vigil: &Vigil) -> anyhow::Result<Receipt> {
     let agents = home.join("Library").join("LaunchAgents");
     let logs = home.join("Library").join("Logs");
     for dir in [&agents, &logs] {
-        std::fs::create_dir_all(dir).with_context(|| format!("creating {}", dir.display()))?;
+        std::fs::create_dir_all(dir)
+            .with_context(|| words!("service-creating", path = dir.display().to_string()))?;
     }
     let log = logs.join("333.log");
     let files = [
@@ -137,8 +138,9 @@ pub(crate) fn install(vigil: &Vigil) -> anyhow::Result<Receipt> {
     let mut wrote = Vec::new();
     for (label, text) in files {
         let path = agents.join(format!("{label}.plist"));
-        std::fs::write(&path, text).with_context(|| format!("writing {}", path.display()))?;
-        say(format_args!("wrote    {}", path.display()))?;
+        std::fs::write(&path, text)
+            .with_context(|| words!("service-writing", path = path.display().to_string()))?;
+        say(&words!("service-wrote", path = path.display().to_string()))?;
         // An earlier install of the same agent is still loaded, and launchd refuses to
         // load a label twice. Quietly, because there is usually nothing to unload.
         let _ = outcome("launchctl", &["bootout", &format!("gui/{uid}/{label}")]);
@@ -153,11 +155,9 @@ pub(crate) fn install(vigil: &Vigil) -> anyhow::Result<Receipt> {
         )?;
         wrote.push(path);
     }
-    say(format_args!(
-        "login    launchd keeps the vigil from the moment you log in until you log out,\n\
-         \x20        and after a restart it begins again when you log in. What it says is in\n\
-         \x20        {}.",
-        log.display()
+    say(&words!(
+        "service-launchd-login",
+        log = log.display().to_string()
     ))?;
     Ok(Receipt {
         node: vigil.node.clone(),
@@ -183,17 +183,18 @@ pub(crate) fn uninstall(_receipt: Option<&Receipt>) -> anyhow::Result<()> {
             continue;
         }
         if !std::fs::read_to_string(&path).is_ok_and(|text| text.contains(MARK)) {
-            say(format_args!(
-                "left     {}. `333 service install` did not write it.",
-                path.display()
-            ))?;
+            say(&words!("service-left", path = path.display().to_string()))?;
             continue;
         }
         if let Err(e) = run_aloud("launchctl", &["bootout", &format!("gui/{uid}/{label}")]) {
-            say(format_args!("failed   {e:#}"))?;
+            say(&words!("service-failed", why = format!("{e:#}")))?;
         }
-        std::fs::remove_file(&path).with_context(|| format!("removing {}", path.display()))?;
-        say(format_args!("removed  {}", path.display()))?;
+        std::fs::remove_file(&path)
+            .with_context(|| words!("service-removing", path = path.display().to_string()))?;
+        say(&words!(
+            "service-removed",
+            path = path.display().to_string()
+        ))?;
     }
     Ok(())
 }
@@ -204,7 +205,10 @@ pub(crate) fn status(receipt: Option<&Receipt>) -> Seen {
     let state = home_and_uid()
         .ok()
         .and_then(|(_, uid)| ask("launchctl", &["print", &format!("gui/{uid}/{LABEL}")]))
-        .map_or_else(|| "not installed".to_owned(), |printed| state(&printed));
+        .map_or_else(
+            || words!("service-not-installed"),
+            |printed| state(&printed),
+        );
     Seen {
         state,
         log: receipt
@@ -223,16 +227,50 @@ fn state(printed: &str) -> String {
         })
     };
     match (field("state").as_deref(), field("last exit code")) {
-        (Some("running"), _) => "running".to_owned(),
-        (Some(other), Some(code)) => format!("{other}, and it last ended with {code}"),
+        (Some("running"), _) => words!("service-running"),
+        (Some(other), Some(code)) => {
+            words!("service-launchd-ended-with", state = other, code = code)
+        }
         (Some(other), None) => other.to_owned(),
-        (None, _) => "loaded, and launchd did not say what it is doing".to_owned(),
+        (None, _) => words!("service-launchd-loaded"),
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn in_english_every_moved_line_says_exactly_what_it_said_before() {
+        let pairs = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+            [
+                (
+                    words!("service-launchd-no-home"),
+                    "this system names no home directory for this user",
+                ),
+                (
+                    words!("service-launchd-asking-who"),
+                    "asking `id -u` which user this is",
+                ),
+                (
+                    words!(
+                        "service-launchd-login",
+                        log = "/Users/a/Library/Logs/333.log"
+                    ),
+                    "login    launchd keeps the vigil from the moment you log in until you log out,\n\
+                     \x20        and after a restart it begins again when you log in. What it says is in\n\
+                     \x20        /Users/a/Library/Logs/333.log.",
+                ),
+                (
+                    state("\tpid = 1\n"),
+                    "loaded, and launchd did not say what it is doing",
+                ),
+            ]
+        });
+        for (now, before) in pairs {
+            assert_eq!(now, before);
+        }
+    }
 
     #[test]
     fn the_filled_in_agent_runs_this_program_for_this_node_and_logs_where_it_says() {

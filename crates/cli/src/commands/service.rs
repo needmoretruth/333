@@ -108,20 +108,20 @@ pub(crate) fn say_if_not_kept(root: &Path, aside: bool) {
         let _ = if aside {
             writeln!(std::io::stderr().lock(), "{line}")
         } else {
-            say(format_args!("{line}"))
+            say(&line)
         };
     }
 }
 
-/// Say one line on standard output.
+/// Say one line on standard output, already in words.
 ///
 /// Through one locked handle rather than `println!`, so that a reader that walked away
 /// ends this quietly instead of panicking inside the print macro.
 ///
 /// # Errors
 /// Fails if standard output is closed.
-pub(crate) fn say(text: std::fmt::Arguments<'_>) -> std::io::Result<()> {
-    writeln!(std::io::stdout().lock(), "{text}")
+pub(crate) fn say(line: &str) -> std::io::Result<()> {
+    writeln!(std::io::stdout().lock(), "{line}")
 }
 
 /// The last lines of a log file, oldest first.
@@ -144,39 +144,33 @@ fn install(common: &Common, flags: &[String]) -> anyhow::Result<()> {
     let cli = vigil::read(common, flags).unwrap_or_else(|refused| refused.exit());
     let vigil = vigil::write(cli, exe::lasting()?)?;
     if exe::fleeting(&vigil.node) {
-        say(format_args!(
-            "mind     {} is somewhere this system empties, and this node's name is kept\n\
-             \x20        nowhere else. The service keeps the vigil there until it is emptied.",
-            vigil.node.display()
+        say(&words!(
+            "service-mind",
+            node = vigil.node.display().to_string()
         ))?;
     }
     let args: Vec<&str> = vigil.serve.iter().map(String::as_str).collect();
-    say(format_args!(
-        "vigil    {}",
-        programs::typed(&vigil.exe.display().to_string(), &args)
-    ))?;
+    let command = programs::typed(&vigil.exe.display().to_string(), &args);
+    say(&words!("service-runs", command = command))?;
     let receipt = match manager::install(&vigil) {
         Ok(receipt) => receipt,
         Err(e) => {
-            say(format_args!(
-                "undo     `333 service uninstall` removes whatever of this was done."
-            ))?;
+            say(&words!("service-undo-partial"))?;
             return Err(e);
         }
     };
     let Some(path) = receipt::path() else {
-        anyhow::bail!("this system names no configuration directory to keep the receipt in");
+        anyhow::bail!(words!("service-no-receipt-directory"));
     };
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir)?;
     }
     std::fs::write(&path, receipt.to_text())?;
-    say(format_args!(
-        "wrote    {}, which is how `333 service uninstall` knows what to undo.\n\
-         undo     `333 service uninstall` stops the vigil and undoes all of the above.\n\
-         \x20        The node's own directory is not touched by either.",
-        path.display()
+    say(&words!(
+        "service-wrote-receipt",
+        path = path.display().to_string()
     ))?;
+    say(&words!("service-undo"))?;
     Ok(())
 }
 
@@ -186,22 +180,21 @@ fn uninstall() -> anyhow::Result<()> {
     manager::uninstall(receipt.as_ref())?;
     if let Some(path) = receipt::path().filter(|path| path.exists()) {
         std::fs::remove_file(&path)?;
-        say(format_args!("removed  {}", path.display()))?;
+        say(&words!(
+            "service-removed",
+            path = path.display().to_string()
+        ))?;
         // The directory too, if install is what made it and nothing else is in it.
         if let Some(dir) = path.parent() {
             let _ = std::fs::remove_dir(dir);
         }
     }
     match receipt {
-        Some(receipt) => say(format_args!(
-            "vigil    no longer kept by a service. {} is left as the vigil left it:\n\
-             \x20        `333 serve` keeps the vigil by hand, and `333 service install` sets\n\
-             \x20        the service up again.",
-            receipt.node.display()
+        Some(receipt) => say(&words!(
+            "service-uninstalled",
+            node = receipt.node.display().to_string()
         ))?,
-        None => say(format_args!(
-            "service  none was installed by `333 service install` for this user."
-        ))?,
+        None => say(&words!("service-none-installed"))?,
     }
     Ok(())
 }
@@ -215,22 +208,22 @@ fn status(common: &Common) -> anyhow::Result<()> {
         || common.paths.root().to_path_buf(),
         |receipt| receipt.node.clone(),
     );
-    say(format_args!("service  {}", seen.state))?;
-    say(format_args!("node     {}", node.display()))?;
+    say(&words!("service-state", state = seen.state))?;
+    say(&words!("service-node", node = node.display().to_string()))?;
     match awake::read(&node) {
-        Some(last) => say(format_args!(
-            "awake    said so last at {}, {} ago",
-            awake::iso(last),
-            awake::how_long(unix_now_seconds().saturating_sub(last))
+        Some(last) => say(&words!(
+            "service-last-awake",
+            at = awake::iso(last),
+            ago = awake::how_long(unix_now_seconds().saturating_sub(last))
         ))?,
-        None => say(format_args!("awake    never said so, in this directory"))?,
+        None => say(&words!("service-never-awake"))?,
     }
     if seen.log.is_empty() {
-        return Ok(say(format_args!("said     nothing that was kept"))?);
+        return Ok(say(&words!("service-said-nothing"))?);
     }
-    say(format_args!("said     the last {} lines:", seen.log.len()))?;
+    say(&words!("service-said-last", lines = seen.log.len()))?;
     for line in &seen.log {
-        say(format_args!("         {line}"))?;
+        say(&format!("         {line}"))?;
     }
     Ok(())
 }
@@ -242,22 +235,19 @@ mod manager {
     use super::receipt::Receipt;
     use super::vigil::Vigil;
 
-    /// The same sentence for all three, because it is the same fact.
-    const NONE: &str = "this system has no service manager `333 service` knows how to ask. \
-                        `333 serve --plain` keeps the vigil under whatever keeps programs \
-                        running here.";
+    // The same sentence for all three, because it is the same fact.
 
     pub(crate) fn install(_: &Vigil) -> anyhow::Result<Receipt> {
-        anyhow::bail!(NONE)
+        anyhow::bail!(words!("service-no-manager"))
     }
 
     pub(crate) fn uninstall(_: Option<&Receipt>) -> anyhow::Result<()> {
-        anyhow::bail!(NONE)
+        anyhow::bail!(words!("service-no-manager"))
     }
 
     pub(crate) fn status(_: Option<&Receipt>) -> Seen {
         Seen {
-            state: "not installed: there is no service manager here this knows".to_owned(),
+            state: words!("service-not-installed-here"),
             log: Vec::new(),
         }
     }
@@ -266,6 +256,123 @@ mod manager {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn in_english_every_moved_line_says_exactly_what_it_said_before() {
+        let pairs = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+            [
+                (
+                    words!("service-mind", node = "/tmp/333-node"),
+                    "mind     /tmp/333-node is somewhere this system empties, and this node's name is kept\n\
+                     \x20        nowhere else. The service keeps the vigil there until it is emptied.",
+                ),
+                (
+                    words!("service-runs", command = "/usr/bin/333 serve --plain"),
+                    "vigil    /usr/bin/333 serve --plain",
+                ),
+                (
+                    words!("service-undo-partial"),
+                    "undo     `333 service uninstall` removes whatever of this was done.",
+                ),
+                (
+                    words!("service-no-receipt-directory"),
+                    "this system names no configuration directory to keep the receipt in",
+                ),
+                (
+                    format!(
+                        "{}\n{}",
+                        words!("service-wrote-receipt", path = "/c/333/receipt"),
+                        words!("service-undo")
+                    ),
+                    "wrote    /c/333/receipt, which is how `333 service uninstall` knows what to undo.\n\
+                     undo     `333 service uninstall` stops the vigil and undoes all of the above.\n\
+                     \x20        The node's own directory is not touched by either.",
+                ),
+                (
+                    words!("service-removed", path = "/c/333/receipt"),
+                    "removed  /c/333/receipt",
+                ),
+                (
+                    words!("service-uninstalled", node = "/tmp/333-node"),
+                    "vigil    no longer kept by a service. /tmp/333-node is left as the vigil left it:\n\
+                     \x20        `333 serve` keeps the vigil by hand, and `333 service install` sets\n\
+                     \x20        the service up again.",
+                ),
+                (
+                    words!("service-none-installed"),
+                    "service  none was installed by `333 service install` for this user.",
+                ),
+                (
+                    words!("service-state", state = "running"),
+                    "service  running",
+                ),
+                (
+                    words!("service-node", node = "/tmp/333-node"),
+                    "node     /tmp/333-node",
+                ),
+                (
+                    words!(
+                        "service-last-awake",
+                        at = "2026-09-22T03:10:00Z",
+                        ago = "7 minutes"
+                    ),
+                    "awake    said so last at 2026-09-22T03:10:00Z, 7 minutes ago",
+                ),
+                (
+                    words!("service-never-awake"),
+                    "awake    never said so, in this directory",
+                ),
+                (
+                    words!("service-said-nothing"),
+                    "said     nothing that was kept",
+                ),
+                (
+                    words!("service-said-last", lines = 20_usize),
+                    "said     the last 20 lines:",
+                ),
+                (
+                    words!("service-no-manager"),
+                    "this system has no service manager `333 service` knows how to ask. \
+                     `333 serve --plain` keeps the vigil under whatever keeps programs \
+                     running here.",
+                ),
+                (
+                    words!("service-not-installed-here"),
+                    "not installed: there is no service manager here this knows",
+                ),
+                (
+                    words!("service-creating", path = "/h/.config/systemd/user"),
+                    "creating /h/.config/systemd/user",
+                ),
+                (
+                    words!("service-writing", path = "/h/333.service"),
+                    "writing /h/333.service",
+                ),
+                (
+                    words!("service-removing", path = "/h/333.service"),
+                    "removing /h/333.service",
+                ),
+                (
+                    words!("service-wrote", path = "/h/333.service"),
+                    "wrote    /h/333.service",
+                ),
+                (
+                    words!("service-left", path = "/h/333.service"),
+                    "left     /h/333.service. `333 service install` did not write it.",
+                ),
+                (
+                    words!("service-failed", why = "`systemctl` did not succeed: no"),
+                    "failed   `systemctl` did not succeed: no",
+                ),
+                (words!("service-not-installed"), "not installed"),
+                (words!("service-running"), "running"),
+                (words!("service-starting"), "starting"),
+            ]
+        });
+        for (now, before) in pairs {
+            assert_eq!(now, before);
+        }
+    }
 
     #[test]
     fn a_long_log_is_shown_as_its_last_twenty_lines() {

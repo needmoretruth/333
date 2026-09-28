@@ -16,16 +16,15 @@ use anyhow::{Context as _, bail};
 /// Fails if the system cannot say where this program is, or if it is somewhere that
 /// does not last.
 pub(crate) fn lasting() -> anyhow::Result<PathBuf> {
-    let exe = std::env::current_exe().context("asking the system where this program is")?;
+    let exe = std::env::current_exe().with_context(|| words!("service-exe-asking"))?;
     let exe = exe.canonicalize().unwrap_or(exe);
     if let Some(why) = temporary(&exe, &temporary_places()) {
-        bail!(
-            "this program is running from {}, which is {why}. A service pointed at it \
-             would stop the day that goes. Copy it to {} and run `service install` \
-             from there.",
-            exe.display(),
-            suggested_home()
-        );
+        bail!(words!(
+            "service-exe-fleeting",
+            exe = exe.display().to_string(),
+            why = why,
+            home = suggested_home()
+        ));
     }
     Ok(exe)
 }
@@ -60,15 +59,15 @@ fn temporary_places() -> Vec<PathBuf> {
 /// directory, rather than by its name: a target directory can be called anything, and
 /// a directory called `target` can be somebody's real one. `.rustc_info.json` is
 /// always there; `CACHEDIR.TAG` only in some versions.
-fn temporary(exe: &Path, places: &[PathBuf]) -> Option<&'static str> {
+fn temporary(exe: &Path, places: &[PathBuf]) -> Option<String> {
     if places.iter().any(|place| exe.starts_with(place)) {
-        return Some("a directory the system empties");
+        return Some(words!("service-exe-emptied"));
     }
     let built = exe
         .ancestors()
         .skip(1)
         .any(|dir| dir.join(".rustc_info.json").is_file() || dir.join("CACHEDIR.TAG").is_file());
-    built.then_some("a build directory, which the next build or clean replaces")
+    built.then(|| words!("service-exe-build-directory"))
 }
 
 /// Where a person would put this program on this system, said as they would type it.
@@ -85,6 +84,32 @@ const fn suggested_home() -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn in_english_every_moved_line_says_exactly_what_it_said_before() {
+        let pairs = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+            [
+                (
+                    words!("service-exe-asking"),
+                    "asking the system where this program is",
+                ),
+                (
+                    words!(
+                        "service-exe-fleeting",
+                        exe = "/tmp/x/333",
+                        why = words!("service-exe-emptied"),
+                        home = "~/.local/bin/333"
+                    ),
+                    "this program is running from /tmp/x/333, which is a directory the system \
+                     empties. A service pointed at it would stop the day that goes. Copy it to \
+                     ~/.local/bin/333 and run `service install` from there.",
+                ),
+            ]
+        });
+        for (now, before) in pairs {
+            assert_eq!(now, before);
+        }
+    }
 
     #[test]
     fn a_program_under_a_temporary_directory_is_refused() {
@@ -105,7 +130,7 @@ mod tests {
         std::fs::remove_dir_all(&target).unwrap();
         assert_eq!(
             why,
-            Some("a build directory, which the next build or clean replaces")
+            Some("a build directory, which the next build or clean replaces".to_owned())
         );
     }
 

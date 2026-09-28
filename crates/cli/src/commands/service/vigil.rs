@@ -103,10 +103,10 @@ pub(crate) fn write(cli: crate::Cli, exe: PathBuf) -> anyhow::Result<Vigil> {
         plain: _,
     } = command
     else {
-        bail!("only the flags `serve` takes can be given to `service install`");
+        bail!(words!("service-vigil-only-serve-flags"));
     };
     if no_direct && !tor {
-        bail!("nothing would be listening: --no-direct needs --tor");
+        bail!(words!("serve-nothing-listening"));
     }
     let node = data_dir.unwrap_or_else(|| NodePaths::default_home().root().to_path_buf());
     let node = std::path::absolute(&node).unwrap_or(node);
@@ -157,7 +157,7 @@ pub(crate) fn write(cli: crate::Cli, exe: PathBuf) -> anyhow::Result<Vigil> {
         .chain(&check)
         .any(|arg| arg.contains(['\n', '\r']))
     {
-        bail!("a flag with a line break in it cannot be written into a service");
+        bail!(words!("service-vigil-line-break"));
     }
     Ok(Vigil {
         exe,
@@ -195,6 +195,25 @@ mod tests {
     use std::time::Duration;
 
     use super::*;
+
+    #[test]
+    fn in_english_every_moved_line_says_exactly_what_it_said_before() {
+        let pairs = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+            [
+                (
+                    words!("service-vigil-only-serve-flags"),
+                    "only the flags `serve` takes can be given to `service install`",
+                ),
+                (
+                    words!("service-vigil-line-break"),
+                    "a flag with a line break in it cannot be written into a service",
+                ),
+            ]
+        });
+        for (now, before) in pairs {
+            assert_eq!(now, before);
+        }
+    }
 
     fn common(root: &str, bridges: &[&str]) -> Common {
         Common {
