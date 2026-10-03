@@ -23,7 +23,7 @@ screen-draw-left-on-nobodys-roll =
     아직 받지 않았습니다.
     초대장이 있어야 받습니다.
 screen-draw-left-began-alone =
-    이 노드가 줄을 시작했습니다.
+    이 노드가 계보를 시작했습니다.
     받은 적이 없어 명부에
     없습니다. 파일을 건네받은
     노드부터 셈에 듭니다.

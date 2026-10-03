@@ -23,6 +23,8 @@ pub(super) struct Watch {
     pub(super) name: String,
     /// The epoch it was taken in.
     pub(super) epoch: Epoch,
+    /// Which epoch of this line that is, if this node holds any admission.
+    pub(super) line: Option<u64>,
     /// Whether this node has the file.
     pub(super) has_the_file: bool,
     /// Everyone this node holds a signed word from, this epoch or the last.
@@ -119,6 +121,7 @@ impl Watch {
         Ok(Self {
             name: node.identity().node_id().to_string(),
             epoch: now,
+            line: node.line_epoch(now).await,
             has_the_file: node.subject().await.is_some(),
             answering: answering.len(),
             roll: node.roll().await.len(),
@@ -141,6 +144,7 @@ impl Watch {
         Self {
             name: "333".into(),
             epoch: Epoch(9),
+            line: None,
             has_the_file: false,
             answering: 0,
             roll: 0,

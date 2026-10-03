@@ -227,6 +227,20 @@ impl Node {
             .map(|member| member.received_in)
     }
 
+    /// Which epoch of this line `now` is, the first being the epoch of the earliest
+    /// admission this node holds.
+    ///
+    /// That is the epoch the file was first handed on, if this node has been handed
+    /// that admission, and otherwise the earliest it has been handed: the same limit
+    /// as [`Node::lineage`], and nothing here can tell the two apart. Absent for a
+    /// node that holds no admission, and for a clock behind that epoch.
+    pub(crate) async fn line_epoch(&self, now: Epoch) -> Option<u64> {
+        let state = self.state.lock().await;
+        let roll = state.admissions.roll();
+        let first = roll.members().map(|member| member.received_in.0).min()?;
+        now.0.checked_sub(first).map(|run| run.saturating_add(1))
+    }
+
     /// Has the file passed between this node and `peer` in `epoch`, either way?
     ///
     /// Asked before `join` asks `peer` for it: handed back in the same epoch it would

@@ -16,6 +16,7 @@
 //! that it is waiting. A node that was switched off for a year and came back saying
 //! everyone was dead would be the single most destructive thing this client could do.
 
+mod heading;
 mod json;
 mod known;
 mod short;
@@ -96,17 +97,10 @@ pub(crate) async fn run(common: &Common, show: Show) -> anyhow::Result<()> {
         return short::write(out, &node, now).await;
     }
 
-    name_and_epoch(out, &node, now)?;
+    heading::name_and_epoch(out, &node, now).await?;
     crate::commands::report_opening(&opened);
     writeln!(out)?;
     rest(out, &node, now, show).await
-}
-
-/// The two lines every way of saying it but the JSON begins with.
-fn name_and_epoch(out: &mut impl std::io::Write, node: &Node, now: Epoch) -> std::io::Result<()> {
-    let name = node.identity().node_id().to_string();
-    writeln!(out, "{}", words!("status-name", name = name))?;
-    writeln!(out, "{}", words!("status-epoch", epoch = now.0))
 }
 
 /// Everything after the name and the epoch, in the way asked for.
@@ -147,7 +141,7 @@ pub(crate) async fn whole(
         Show::Short => return short::write(out, node, now).await,
         Show::Everything | Show::Sources => {}
     }
-    name_and_epoch(out, node, now)?;
+    heading::name_and_epoch(out, node, now).await?;
     writeln!(out)?;
     rest(out, node, now, show).await
 }
@@ -522,7 +516,7 @@ mod tests {
         assert_eq!(
             text,
             "name     NAME\n\
-            epoch    100000\n\
+            epoch    100000, this line's 99101st\n\
             \n\
             ANOTHER COPY OF THIS NAME\n\
             \n\
@@ -611,7 +605,8 @@ mod tests {
         let lines: Vec<&str> = text.lines().collect();
         assert_eq!(lines[0], "name     NAME", "{text}");
         assert!(lines[1].starts_with("address  none yet."), "{text}");
-        assert!(lines[2].starts_with("epoch    100000, ends "), "{text}");
+        let epoch = "epoch    100000, this line's 99101st, ends ";
+        assert!(lines[2].starts_with(epoch), "{text}");
         assert!(text.contains("\nANOTHER COPY OF THIS NAME\n"), "{text}");
         assert!(
             text.ends_with("ANSWERING  1\nsilent     1\n           ─────\nroll       2\n"),
@@ -623,6 +618,56 @@ mod tests {
     }
 
     #[test]
+    fn the_line_is_counted_from_the_earliest_admission_held() {
+        // Admitted in 900 and in 1000: epoch 900 is the line's first.
+        let (line, early) = with_fixture("line", true, |node| {
+            let runtime = runtime();
+            (
+                runtime.block_on(node.line_epoch(NOW)),
+                runtime.block_on(node.line_epoch(Epoch(899))),
+            )
+        });
+        assert_eq!(line, Some(NOW.0 - 900 + 1));
+        assert_eq!(
+            early, None,
+            "a clock behind the first admission counts nothing"
+        );
+    }
+
+    #[test]
+    fn a_node_that_holds_no_admission_says_no_place_in_any_line() {
+        let (short, all) = with_fixture("no-line", false, |node| {
+            (
+                shown(node, Show::Short, "en", Base::Ten),
+                shown(node, Show::Everything, "en", Base::Ten),
+            )
+        });
+        assert!(short.contains("\nepoch    100000, ends "), "{short}");
+        assert!(all.starts_with("name     NAME\nepoch    100000\n"), "{all}");
+        assert!(!format!("{short}{all}").contains("this line"));
+    }
+
+    #[test]
+    fn the_json_says_which_epoch_of_the_line_beside_the_epoch_and_null_without_one() {
+        let text = |joined| {
+            with_fixture(&format!("json-line-{joined}"), joined, |node| {
+                shown(node, Show::Json, "en", Base::Ten)
+            })
+        };
+        let (held, none) = (text(true), text(false));
+        let read = |text: &str| serde_json::from_str::<serde_json::Value>(text).expect("json");
+        assert_eq!(read(&held)["epoch"], NOW.0);
+        assert_eq!(read(&held)["line_epoch"], NOW.0 - 900 + 1);
+        assert_eq!(read(&held)["admissions"][0]["given_in"], 900);
+        assert!(read(&none)["line_epoch"].is_null(), "{none}");
+        // Next to `epoch`, and every field that was there before is still there.
+        let at = |field: &str| held.find(&format!("\n  \"{field}\": "));
+        assert!(at("epoch").is_some(), "{held}");
+        assert!(at("epoch") < at("line_epoch"), "{held}");
+        assert!(at("line_epoch") < at("attendance"), "{held}");
+    }
+
+    #[test]
     fn in_english_the_sources_say_what_they_said_before_but_where_to_find_them() {
         let text = with_fixture("sources", true, |node| {
             shown(node, Show::Sources, "en", Base::Ten)
@@ -630,7 +675,7 @@ mod tests {
         assert_eq!(
             text,
             "name     NAME\n\
-            epoch    100000\n\
+            epoch    100000, this line's 99101st\n\
             \n\
             ANOTHER COPY OF THIS NAME\n\
             \n\
@@ -758,7 +803,7 @@ mod tests {
         });
         // 100000 is 4·12⁴ + 9·12³ + 10·12² + 5·12 + 4.
         assert!(
-            text.starts_with("name     NAME\nepoch    49\u{218A}54\n"),
+            text.starts_with("name     NAME\nepoch    49\u{218A}54, this line's 49425th\n"),
             "{text}"
         );
         assert!(

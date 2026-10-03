@@ -168,6 +168,33 @@ pub(crate) fn written_in(base: Base, number: u64, grouped: bool, at_least: usize
     written
 }
 
+/// Which ending a count takes when it says a place in a row rather than how many:
+/// the first, the second, the third, or any other.
+///
+/// Handed to a catalog as text under the names Unicode gives those four cases —
+/// `one`, `two`, `few` and `other` — and each language says them its own way, or not
+/// at all. Fluent cannot choose them itself: its numbers are written here, in a base
+/// it does not know, and the ending goes with what is written. Twenty-five in twelve
+/// is written 21, and is said the twenty-first.
+#[must_use]
+pub(crate) fn ordinal(number: u64) -> &'static str {
+    ordinal_in(super::current().base(), number)
+}
+
+/// [`ordinal`], in a base given rather than chosen.
+#[must_use]
+pub(crate) const fn ordinal_in(base: Base, number: u64) -> &'static str {
+    let radix = base.radix();
+    match ((number / radix) % radix, number % radix) {
+        // Eleventh, twelfth and thirteenth, and every hundred's.
+        (1, _) => "other",
+        (_, 1) => "one",
+        (_, 2) => "two",
+        (_, 3) => "few",
+        _ => "other",
+    }
+}
+
 /// Read a number a person typed, in the base they are shown numbers in.
 ///
 /// The commas and spaces a count is written with are allowed back in, so a number
@@ -253,6 +280,24 @@ mod tests {
         assert_eq!(written_in(Base::Ten, 19_683, false, 0), "19683");
         assert_eq!(written_in(Base::Ten, 5, false, 2), "05");
         assert_eq!(written_in(Base::Ten, 1_234_567, true, 0), "1,234,567");
+    }
+
+    #[test]
+    fn a_place_in_a_row_takes_its_ending_from_the_digits_written() {
+        let ten = [
+            1, 2, 3, 4, 11, 12, 13, 21, 22, 23, 100, 101, 111, 112, 99_101,
+        ]
+        .map(|number| ordinal_in(Base::Ten, number));
+        assert_eq!(
+            ten,
+            [
+                "one", "two", "few", "other", "other", "other", "other", "one", "two", "few",
+                "other", "one", "other", "other", "one"
+            ]
+        );
+        // 13 is written 11 in twelve, 25 is written 21, and 12 is written 10.
+        let twelve = [13, 25, 12, 11].map(|number| ordinal_in(Base::Twelve, number));
+        assert_eq!(twelve, ["other", "one", "other", "other"]);
     }
 
     #[test]

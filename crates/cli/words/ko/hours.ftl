@@ -1,4 +1,4 @@
-### `333 serve`: 에포크 경계마다 시간을 지키기.
+### `333 serve`: 에포크 경계마다 시간을 기록하기.
 
 hours-failed-marking = 이 에포크를 기록하는 중: { $why }
     .keyword = 실패

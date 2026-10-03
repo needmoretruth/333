@@ -111,16 +111,26 @@ fn counting_in_twelve(width: usize) -> Vec<String> {
 /// The one line that is always true: who this is, when it is, and how long is left.
 ///
 /// Given up from its least needed part when the terminal is narrow: the name first,
-/// which the vigil's lines and `333 id` both say, then the long way of saying how much
-/// is left. The epoch and the time left are what a person looks up to see.
+/// which the vigil's lines and `333 id` both say, then which epoch of this line it is,
+/// which `333 status` says, then the long way of saying how much is left. The epoch
+/// and the time left are what a person looks up to see.
 fn header(watch: &Watch, width: usize) -> Paragraph<'static> {
     let left = remaining(to_the_boundary(watch.epoch));
     let long = words!("screen-draw-to-the-boundary", left = left.as_str());
     let short = words!("screen-draw-time-left", left = left.as_str());
     let name = crate::commands::shorten(&watch.name);
+    let line = watch.line.map(|nth| {
+        let kind = crate::words::count::ordinal(nth);
+        words!("screen-draw-line", nth = nth, kind = kind)
+    });
     let mut chosen = Vec::new();
-    for (name, left) in [(Some(&name), &long), (None, &long), (None, &short)] {
-        chosen = header_line(watch, name, left);
+    for (name, line, left) in [
+        (Some(&name), line.as_ref(), &long),
+        (None, line.as_ref(), &long),
+        (None, None, &long),
+        (None, None, &short),
+    ] {
+        chosen = header_line(watch, name, line, left);
         if chosen
             .iter()
             .map(|span| span.content.width())
@@ -133,8 +143,13 @@ fn header(watch: &Watch, width: usize) -> Paragraph<'static> {
     Paragraph::new(Line::from(chosen))
 }
 
-/// The header's parts, with or without the name.
-fn header_line(watch: &Watch, name: Option<&String>, left: &str) -> Vec<Span<'static>> {
+/// The header's parts, with or without the name and which epoch of this line it is.
+fn header_line(
+    watch: &Watch,
+    name: Option<&String>,
+    line: Option<&String>,
+    left: &str,
+) -> Vec<Span<'static>> {
     let bold = Style::new().add_modifier(Modifier::BOLD);
     let mut spans = vec![Span::styled(
         " 333 ",
@@ -147,8 +162,11 @@ fn header_line(watch: &Watch, name: Option<&String>, left: &str) -> Vec<Span<'st
     spans.extend([
         Span::raw(format!("   {} ", words!("screen-draw-epoch"))),
         Span::styled(words!("screen-draw-number", number = watch.epoch.0), bold),
-        Span::raw(format!("   {left}")),
     ]);
+    if let Some(line) = line {
+        spans.push(Span::raw(line.clone()));
+    }
+    spans.push(Span::raw(format!("   {left}")));
     spans
 }
 
@@ -461,6 +479,27 @@ mod tests {
         assert_eq!(rows[1], " ANSWERING 3   silent 2   roll 5");
         assert_eq!(rows[2], " on nobody's roll.");
         assert!(rows[3].contains("log · times in UTC"), "{}", rows[3]);
+    }
+
+    #[test]
+    fn the_header_says_which_epoch_of_the_line_where_there_is_room_for_it() {
+        let mut watch = Watch::quiet(Vec::new());
+        watch.line = Some(3);
+        let top = |width| {
+            crate::words::speaking("en", Base::Ten, || {
+                drawn_of(&watch, width, 20, &Saying::Nothing)
+            })[0]
+                .clone()
+        };
+        let wide = top(130);
+        assert!(
+            wide.starts_with(" 333   333   epoch 9, this line's 3rd   "),
+            "{wide}"
+        );
+        assert!(wide.ends_with(" to the boundary"), "{wide}");
+        let narrow = top(48);
+        assert!(!narrow.contains("this line"), "{narrow}");
+        assert!(narrow.contains("epoch 9   "), "{narrow}");
     }
 
     #[test]

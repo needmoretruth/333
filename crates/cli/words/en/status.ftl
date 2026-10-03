@@ -12,6 +12,16 @@ status-name = { $name }
 status-epoch = { $epoch }
     .keyword = epoch
 
+status-epoch-in-line = { $epoch }, { $line }
+    .keyword = epoch
+
+status-the-line = this line's { $nth }{ $kind ->
+        [one] st
+        [two] nd
+        [few] rd
+       *[other] th
+    }
+
 status-answering = ANSWERING
 status-silent = silent
 status-roll = roll

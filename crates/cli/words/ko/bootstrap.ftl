@@ -16,7 +16,7 @@ bootstrap-stop = { $meet }에 주소를 남긴 노드가 { $already }개 있습�
 
 bootstrap-not-the-file = 돌아온 것은 그 파일이 아닙니다
 
-bootstrap-begun = 파일이 이 노드의 디렉터리에 있고, 이 노드가 새 줄의 시작입니다.
+bootstrap-begun = 파일이 이 노드의 디렉터리에 있고, 이 노드가 새 계보의 시작입니다.
     건네준 노드가 없으니 건넴의 서명도 없고, 기록을 읽는 누구나 그것을
     볼 수 있습니다.
 

@@ -7,3 +7,5 @@ status-short-unreachable = 아직 없습니다. 켜져 있는 동안 찾습니�
     .keyword = 주소
 status-short-epoch = { $epoch }, { $ends }에 끝남, { $left } 남음
     .keyword = 에포크
+status-short-epoch-in-line = { $epoch }, { $line }, { $ends }에 끝남, { $left } 남음
+    .keyword = 에포크

@@ -166,15 +166,15 @@ mod tests {
     #[test]
     fn every_built_in_language_is_listed_by_its_own_name() {
         let lines = crate::words::speaking("en", Base::Ten, || said(None));
-        assert!(
-            lines.contains(&"language en  English  100% translated".to_owned()),
-            "{lines:?}"
-        );
-        assert!(
-            lines
-                .iter()
-                .any(|line| line.starts_with("language ko  한국어   "))
-        );
+        let named = |tag: &str, name: &str| {
+            lines.iter().any(|line| {
+                let words: Vec<&str> = line.split_whitespace().collect();
+                words.get(1) == Some(&tag) && words.get(2) == Some(&name)
+            })
+        };
+        assert!(named("en", "English"), "{lines:?}");
+        assert!(named("ko", "한국어"), "{lines:?}");
+        assert!(named("zh-Hant", "繁體中文"), "{lines:?}");
         assert_eq!(
             lines.last().unwrap(),
             "speaking en. `333 language <TAG>` saves another for every command."
@@ -210,8 +210,9 @@ mod tests {
             .iter()
             .filter_map(|line| line.find("번역").map(|at| line[..at].width()))
             .collect();
-        assert_eq!(columns.len(), 2, "{lines:?}");
-        assert_eq!(columns[0], columns[1], "{lines:?}");
+        let languages = crate::words::catalog::every_built_in().len();
+        assert_eq!(columns.len(), languages, "{lines:?}");
+        assert!(columns.iter().all(|at| *at == columns[0]), "{lines:?}");
         assert!(
             lines[0].contains("100%"),
             "a share is per hundred: {lines:?}"
@@ -221,17 +222,20 @@ mod tests {
     #[test]
     fn a_folder_beside_the_node_is_a_language_and_counts_what_it_has() {
         let beside = std::env::temp_dir().join(format!("333-words-{}", std::process::id()));
-        std::fs::create_dir_all(beside.join("eo")).unwrap();
-        std::fs::write(beside.join("eo/id.ftl"), "languages-name = Esperanto\n").unwrap();
+        std::fs::create_dir_all(beside.join("la")).unwrap();
+        std::fs::write(beside.join("la/id.ftl"), "languages-name = Latina\n").unwrap();
         let lines = crate::words::speaking("en", Base::Ten, || said(Some(&beside)));
         std::fs::remove_dir_all(&beside).unwrap();
-        let esperanto = lines.iter().find(|line| line.contains(" eo ")).unwrap();
+        let latin = lines.iter().find(|line| line.contains(" la ")).unwrap();
         assert!(
-            esperanto.starts_with("language eo  Esperanto  "),
-            "{esperanto}"
+            latin
+                .split_whitespace()
+                .take(3)
+                .eq(["language", "la", "Latina"]),
+            "{latin}"
         );
         assert!(
-            !esperanto.contains("100%"),
+            !latin.contains("100%"),
             "one message of many is not all of them"
         );
     }
@@ -239,15 +243,15 @@ mod tests {
     #[test]
     fn a_message_that_would_be_said_in_english_is_not_counted_as_the_language_s() {
         let beside = std::env::temp_dir().join(format!("333-shape-{}", std::process::id()));
-        std::fs::create_dir_all(beside.join("eo")).unwrap();
+        std::fs::create_dir_all(beside.join("la")).unwrap();
         // A line in English, a phrase here: said in English whenever it comes up.
-        std::fs::write(beside.join("eo/id.ftl"), "id-name = { $name }\n").unwrap();
+        std::fs::write(beside.join("la/id.ftl"), "id-name = { $name }\n").unwrap();
         let (english, keys) = (
             catalog::bundle("en", catalog::built_in("en"), &mut Vec::new()),
             catalog::keys(&catalog::built_in("en")),
         );
-        let sources = catalog::sources("eo", Some(&beside), &mut Vec::new());
-        let bundle = catalog::bundle("eo", sources, &mut Vec::new());
+        let sources = catalog::sources("la", Some(&beside), &mut Vec::new());
+        let bundle = catalog::bundle("la", sources, &mut Vec::new());
         std::fs::remove_dir_all(&beside).unwrap();
         assert!(keys.contains("id-name"));
         assert!(!its_own(&bundle, &english, "id-name"));

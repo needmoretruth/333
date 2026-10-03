@@ -41,7 +41,8 @@ pub(super) async fn write(
         let line = words!("status-short-invite", invitation = invitation);
         writeln!(out, "{line}")?;
     }
-    writeln!(out, "{}", ends(now, unix_now_seconds()))?;
+    let line = node.line_epoch(now).await;
+    writeln!(out, "{}", ends(now, unix_now_seconds(), line))?;
     writeln!(out)?;
     super::known::copies(out, node).await?;
     let answering = u64::try_from(node.answering(now).await?.len()).unwrap_or(u64::MAX);
@@ -67,14 +68,25 @@ pub(super) async fn write(
     Ok(())
 }
 
-/// The epoch, when it ends, and how long that is from `unix`, in seconds since 1970.
-fn ends(now: Epoch, unix: u64) -> String {
+/// The epoch, which epoch of this line it is if this node holds an admission, when it
+/// ends, and how long that is from `unix`, in seconds since 1970.
+fn ends(now: Epoch, unix: u64, line: Option<u64>) -> String {
     let end = Epoch(now.0 + 1).starts_at_unix_seconds();
+    let (ends, left) = (awake::iso(end), awake::how_long(end.saturating_sub(unix)));
+    let Some(nth) = line else {
+        return words!(
+            "status-short-epoch",
+            epoch = now.0,
+            ends = ends,
+            left = left
+        );
+    };
     words!(
-        "status-short-epoch",
+        "status-short-epoch-in-line",
         epoch = now.0,
-        ends = awake::iso(end),
-        left = awake::how_long(end.saturating_sub(unix))
+        line = super::heading::the_line(nth),
+        ends = ends,
+        left = left
     )
 }
 
@@ -86,8 +98,17 @@ mod tests {
     fn in_english_the_epoch_says_when_it_ends_and_how_long_that_is() {
         let now = Epoch(89_615);
         let unix = now.starts_at_unix_seconds() + 60;
-        let said = crate::words::speaking("en", crate::words::count::Base::Ten, || ends(now, unix));
+        let said = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+            [ends(now, unix, None), ends(now, unix, Some(3))]
+        });
         let end = awake::iso(now.starts_at_unix_seconds() + n333_core::epoch::EPOCH_SECONDS);
-        assert_eq!(said, format!("epoch    89615, ends {end}, in 332 minutes"));
+        assert_eq!(
+            said[0],
+            format!("epoch    89615, ends {end}, in 332 minutes")
+        );
+        assert_eq!(
+            said[1],
+            format!("epoch    89615, this line's 3rd, ends {end}, in 332 minutes")
+        );
     }
 }

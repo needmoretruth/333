@@ -242,25 +242,23 @@ fn every_translation_says_only_what_english_says_and_asks_for_the_same_things() 
 }
 
 #[test]
-fn every_english_line_has_its_korean_beside_it() {
+fn every_built_in_language_says_everything_english_says() {
     let english = messages(&catalog::built_in(ENGLISH));
-    let korean = messages(&catalog::built_in("ko"));
-    let missing: Vec<&str> = english
-        .iter()
-        .filter(|(key, (_, shape))| {
-            korean
-                .get(*key)
-                .is_none_or(|(_, said)| said.attributes != shape.attributes)
-        })
-        .map(|(key, _)| key.as_str())
-        .collect();
-    assert!(
-        missing.is_empty(),
-        "no Korean, or Korean without the same attributes, for: {}.\n\
-         A Korean translation is expected alongside every new English line, in the \
-         file of the same name under words/ko/.",
-        missing.join(", ")
-    );
+    for (tag, files) in catalog::every_built_in() {
+        let said = messages(&files);
+        let missing: Vec<&str> = english
+            .keys()
+            .filter(|key| !said.contains_key(*key))
+            .map(String::as_str)
+            .collect();
+        assert!(
+            missing.is_empty(),
+            "{tag} has no line for: {}. A language built into the client is whole: \
+             add the line under words/{tag}/, or keep the language beside the node \
+             until it is.",
+            missing.join(", ")
+        );
+    }
 }
 
 /// Words that stay in Rust on purpose: the file, the opening, and why. None do: what

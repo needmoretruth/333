@@ -1,4 +1,4 @@
-### `333 serve`: 화면이나 다른 터미널에서 철야가 받은 명령을 수행하기.
+### `333 serve`: 화면이나 다른 터미널에서 노드가 받은 명령을 수행하기.
 
 serve-carrying-not-written-who = 답한 노드를 적는 중: { $why }
     .keyword = 실패

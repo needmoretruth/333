@@ -253,3 +253,11 @@ fn every_command_shows_one_example_of_itself() {
         );
     }
 }
+
+#[test]
+fn a_break_inside_chinese_or_japanese_stays_a_break_and_any_other_is_a_space() {
+    assert_eq!(
+        super::paragraphs("노드를\n켭니다. 一行目\n二行目\nand one\nmore\n\nnext"),
+        "노드를 켭니다. 一行目\n二行目 and one more\n\nnext"
+    );
+}

@@ -5,6 +5,8 @@
 //!
 //! - `format` — 1.
 //! - `epoch` — the epoch this was read in.
+//! - `line_epoch` — which epoch of this line that is, one being the epoch of the
+//!   earliest admission this node holds; null for a node that holds none.
 //! - `attendance` — this node's own record over the window: `window_epochs`,
 //!   `given_in` and `counted_from` (null for a node nobody has handed the file),
 //!   `recorded` (epochs of the window the record says anything about), `counted`,
@@ -49,6 +51,7 @@ pub(super) const FORMAT: u32 = 1;
 struct Observed {
     format: u32,
     epoch: u64,
+    line_epoch: Option<u64>,
     attendance: Attendance,
     answering: usize,
     roll: usize,
@@ -133,6 +136,7 @@ pub(super) async fn write(
     let observed = Observed {
         format: FORMAT,
         epoch: now.0,
+        line_epoch: node.line_epoch(now).await,
         attendance: attendance(node, now).await?,
         answering: answering.len(),
         roll: node.roll().await.len(),

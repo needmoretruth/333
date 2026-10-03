@@ -20,6 +20,7 @@ pub(crate) mod refused;
 
 use clap::builder::StyledStr;
 use clap::{Arg, ArgAction, Command};
+use unicode_width::UnicodeWidthChar as _;
 
 use crate::words::catalog::ENGLISH;
 
@@ -191,11 +192,39 @@ fn said(key: &str) -> String {
 
 /// A catalog's lines as clap's paragraphs: a line break inside a paragraph is a space,
 /// because clap lays the words out itself, and a blank line begins a new one.
+///
+/// Between two letters of a script written without spaces, Chinese or Japanese, the
+/// break stays a break: a space there would be a mistake on the page, and clap would
+/// have no space to wrap the joined line at. Korean is written with spaces and is
+/// joined like English.
 fn paragraphs(text: &str) -> String {
     text.split("\n\n")
-        .map(|paragraph| paragraph.split('\n').collect::<Vec<_>>().join(" "))
+        .map(|paragraph| {
+            let mut joined = String::new();
+            for line in paragraph.split('\n') {
+                if !joined.is_empty() {
+                    let between_letters =
+                        unspaced(joined.chars().last()) && unspaced(line.chars().next());
+                    joined.push(if between_letters { '\n' } else { ' ' });
+                }
+                joined.push_str(line);
+            }
+            joined
+        })
         .collect::<Vec<_>>()
         .join("\n\n")
+}
+
+/// Whether a letter belongs to a script written without spaces between words: wide,
+/// and not Korean.
+fn unspaced(letter: Option<char>) -> bool {
+    letter.is_some_and(|c| {
+        let hangul = matches!(
+            u32::from(c),
+            0x1100..=0x11FF | 0x3130..=0x318F | 0xA960..=0xA97F | 0xAC00..=0xD7FF
+        );
+        c.width() == Some(2) && !hangul
+    })
 }
 
 #[cfg(test)]

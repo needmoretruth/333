@@ -11,3 +11,6 @@ status-short-unreachable = none yet. It finds one while it runs; `333 invite` sa
 
 status-short-epoch = { $epoch }, ends { $ends }, in { $left }
     .keyword = epoch
+
+status-short-epoch-in-line = { $epoch }, { $line }, ends { $ends }, in { $left }
+    .keyword = epoch
