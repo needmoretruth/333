@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Nothing here · 333</title>
-<meta name="description" content="Nothing is kept at this address.">
-<meta name="robots" content="noindex">
+<title>Where people are · 333</title>
+<meta name="description" content="The addresses 333 nodes have signed for themselves in the last two epochs, as invitations to copy.">
+<link rel="canonical" href="https://the333.dev/333">
 <meta name="theme-color" content="#0b0c0f">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/assets/site.css?v={{version}}">
@@ -36,9 +36,19 @@
 
 <main id="main" class="reading">
   <div class="column">
-    <h1>Nothing here</h1>
-    <p class="lede">Nothing is kept at this address.</p>
-    <div class="actions left"><a class="button main" href="/">333</a><a class="button" href="/network">The network</a></div>
+    <h1>Where people are</h1>
+    <p class="dim">These are the addresses nodes have signed for themselves in the last two epochs.
+    Each signature was checked here, and your client checks it again before it believes any of
+    it. Nothing on this page hands over the file. The node at the far end decides that.</p>
+    <p class="dim">To knock on one of them, run <code>333 join 333:address:port</code>. If you do
+    not have the client yet, it is on <a href="/start">Take the program</a>.</p>
+    <ul class="invites" data-board></ul>
+    <p class="dim" data-board-empty hidden>Nobody has left an address here in the last two epochs.</p>
+    <noscript><p class="dim">The list needs JavaScript. The same statements, verified, are at <a href="/api/board">/api/board</a>.</p></noscript>
+  </div>
+  <script type="application/json" id="board-data">{{json:board}}</script>
+  <script type="application/json" id="network-data">{{json:network}}</script>
+  <div>
   </div>
 </main>
 
@@ -55,5 +65,6 @@
   </div>
 </footer>
 <script type="module" src="/assets/page.js?v={{version}}"></script>
+<script type="module" src="/assets/board.js?v={{version}}"></script>
 </body>
 </html>

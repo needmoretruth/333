@@ -3,123 +3,55 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Where we are</title>
-<meta name="description" content="Where the nodes saying where they are, are.">
+<title>Where we are · 333</title>
+<meta name="description" content="A world map of the 333 nodes that left a signed address at the meeting point in the last two epochs, rounded to whole degrees, with Tor counted separately.">
+<link rel="canonical" href="https://the333.dev/map">
+<meta name="theme-color" content="#0b0c0f">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<meta name="robots" content="noindex">
-<style>
-  /* The same greyscale as the rest of the site, and for the same reason: a map that
-     needs hue to be read is a map that cannot be read on a cheap screen, on paper, or
-     by somebody who cannot see red. Count is shown by size and by the table beside it. */
-  :root {
-    color-scheme: light dark;
-    --ground: #ffffff;
-    --raised: #f5f5f5;
-    --line:   #e3e3e3;
-    --land:   #dcdcdc;
-    --ink:    #141414;
-    --dim:    #575757;
-    --faint:  #757575;
-    --radius: 14px;
-    --live:   #2f7d32;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --ground: #0b0b0b;
-      --raised: #151515;
-      --line:   #262626;
-      --land:   #2b2b2b;
-      --ink:    #ededed;
-      --dim:    #a6a6a6;
-      --faint:  #7d7d7d;
-      --live:   #6cc070;
-    }
-  }
-  * { box-sizing: border-box; }
-  html { -webkit-text-size-adjust: 100%; }
-  body {
-    margin: 0;
-    background: var(--ground);
-    color: var(--ink);
-    font: 1rem/1.7 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    padding: 0 1.25rem 6rem;
-    -webkit-font-smoothing: antialiased;
-  }
-  main { max-width: 52rem; margin: 0 auto; }
-  body, main { overflow-wrap: anywhere; }
-  a { color: inherit; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px; }
-  a:hover { text-decoration-thickness: 2px; }
-  h1 { font-size: clamp(1.9rem, 6vw, 2.8rem); letter-spacing: -0.01em; margin: 3rem 0 0.4rem; }
-  p { margin: 0 0 1.1rem; }
-  .dim { color: var(--dim); }
-  .faint { color: var(--faint); font-size: 0.9rem; }
-  hr { border: 0; border-top: 1px solid var(--line); margin: 2.5rem 0; }
-
-  /* The map is the part that costs something to look at, so it is the part that goes
-     first when there is no room for it. Under this width the table is the whole page,
-     and the table was always the thing that actually says the number. */
-  .map { display: none; }
-  @media (min-width: 34rem) {
-    .map {
-      display: block;
-      background: var(--raised);
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      padding: 0.75rem;
-      margin: 0 0 1.5rem;
-    }
-    .map svg { display: block; width: 100%; height: auto; }
-  }
-  .land { fill: var(--land); }
-  .dot { fill: var(--ink); }
-  .ring { fill: none; stroke: var(--ink); stroke-width: 3; opacity: 0.35; }
-
-  table { width: 100%; border-collapse: collapse; margin: 0 0 1.5rem; }
-  th, td { text-align: left; padding: 0.55rem 0.5rem; border-bottom: 1px solid var(--line); }
-  th { font-weight: 600; font-size: 0.85rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--faint); }
-  td.n, th.n { text-align: right; white-space: nowrap; }
-  td.n { font-variant-numeric: tabular-nums; }
-  tr.sum td { font-weight: 600; border-bottom: none; }
-
-  button {
-    font: inherit;
-    color: var(--ink);
-    background: var(--raised);
-    border: 1px solid var(--line);
-    border-radius: 999px;
-    padding: 0.45rem 1.1rem;
-    cursor: pointer;
-  }
-  button:hover { border-color: var(--faint); }
-  .watching { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; margin: 0 0 1.5rem; }
-  /* The one place with hue on the whole site: a status dot, small, and never the colour
-     the page is made of. Recommendation 6 allows exactly this much. */
-  .lamp { width: 0.6rem; height: 0.6rem; border-radius: 50%; background: var(--faint); flex: none; }
-  .lamp.on { background: var(--live); }
-</style>
+<link rel="stylesheet" href="/assets/site.css?v={{version}}">
+<link rel="stylesheet" href="/assets/map.css?v={{version}}">
 </head>
 <body>
-<main>
+<a class="skip" href="#main">Skip to the text</a>
+<header class="top">
+  <a class="mark" href="/">333</a>
+  <nav aria-label="Pages">
+    <a href="/network">Network</a>
+    <a href="/map" aria-current="page">Map</a>
+    <a href="/law">Law</a>
+    <a href="/about">About</a>
+    <a href="/start">Take the program</a>
+  </nav>
+  <a class="state" href="/network" data-live="state"><span class="dot {{site_dot}}"></span><span class="word">{{site_state}}</span></a>
+  <details class="menu">
+    <summary aria-label="Menu">Menu</summary>
+    <div class="sheet">
+      <a href="/network">Network</a>
+      <a href="/map">Map</a>
+      <a href="/law">Law</a>
+      <a href="/about">About</a>
+      <a href="/start">Take the program</a>
+    </div>
+  </details>
+</header>
 
-  <h1>Where we are</h1>
-
-  <p class="dim">Every node that says where it can be reached leaves that statement at
-  <a href="/333">the333.dev/333</a>, and the request carrying it arrives from somewhere. This
-  is that, counted. It is not a census: a node that was handed an invitation and never came
-  here is not in it, and neither is one that told this place nothing.</p>
-
-  <p class="dim">A node reachable through Tor is counted as Tor and placed in no country.
-  The request that carried its statement came from an ordinary address like everybody
-  else&#8217;s, and that address is the one thing an onion address exists to withhold, so it
-  is dropped here rather than stored.</p>
-
-  <div class="watching">
-    <button id="live" type="button" aria-pressed="false">Watch it live</button>
-    <span class="lamp" id="lamp" aria-hidden="true"></span>
-    <span class="faint" id="said">Loading.</span>
+<main id="main" class="reading">
+  <div class="column">
+    <h1>Where we are</h1>
+    <p class="dim">Every node that says where it can be reached leaves that statement at
+    <a href="/333">the333.dev/333</a>, and the request carrying it arrives from somewhere. This
+    is that, counted. It is not a census: a node that was handed an invitation and never came
+    here is not in it, and neither is one that told this place nothing.</p>
+    <p class="dim">A node reachable through Tor is counted as Tor and placed in no country.
+    The request that carried its statement came from an ordinary address like everybody
+    else&#8217;s, and that address is the one thing an onion address exists to withhold, so it
+    is dropped here rather than stored.</p>
+    <div class="watching">
+      <button class="button" id="live" type="button" aria-pressed="false">Watch it live</button>
+      <span class="state"><span class="dot" id="lamp"></span><span id="said">Loading.</span></span>
+    </div>
   </div>
-
-  <div class="map">
+  <div class="wide map">
     <svg viewBox="0 20 1440 580" role="img" aria-labelledby="mapname">
       <title id="mapname">A world map with a mark where each node is</title>
       <!-- Cut at 85 degrees north and 60 degrees south. Nothing is being hidden: the
@@ -130,121 +62,34 @@
       <g id="dots"></g>
     </svg>
   </div>
-
-  <table>
-    <thead>
-      <tr><th>Where</th><th class="n">Saying</th></tr>
-    </thead>
-    <tbody id="rows">
-      <tr><td class="dim" colspan="2">Loading.</td></tr>
-    </tbody>
-  </table>
-
-  <p class="faint">Positions are rounded to whole degrees, which is about a hundred
-  kilometres. The board holds a statement for two epochs and then forgets it, so this shows
-  who has spoken recently rather than who exists.</p>
-
-  <hr>
-
-  <p><a href="/">the333.dev</a> &#183; <a href="/333">the board itself</a> &#183;
-  <a href="https://github.com/needmoretruth/333">the repository</a></p>
-
+  <div class="column">
+    <table>
+      <thead>
+        <tr><th>Where</th><th class="n">Saying</th></tr>
+      </thead>
+      <tbody id="rows">
+        <tr><td class="dim" colspan="2">Loading.</td></tr>
+      </tbody>
+    </table>
+    <p class="dim">Positions are rounded to whole degrees, which is about a hundred
+    kilometres. The board holds a statement for two epochs and then forgets it, so this shows
+    who has spoken recently rather than who exists.</p>
+  </div>
 </main>
-<script>
-  // Off until asked. One fetch when the page opens, and nothing after that unless the
-  // person turns it on, because a page that quietly polls for ever is a page that costs
-  // somebody money on a metered connection.
-  var EVERY = 30000;
-  var timer = null;
-  var naming = null;
-  try { naming = new Intl.DisplayNames(["en"], { type: "region" }); } catch (e) { naming = null; }
 
-  function nameOf(code) {
-    if (code === "TOR") return "Tor";
-    if (!naming) return code;
-    try { return naming.of(code) || code; } catch (e) { return code; }
-  }
-
-  function draw(data) {
-    var dots = document.getElementById("dots");
-    dots.textContent = "";
-    var seen = {};
-    for (var i = 0; i < data.dots.length; i++) {
-      var lon = data.dots[i][0], lat = data.dots[i][1];
-      var key = lon + "," + lat;
-      seen[key] = (seen[key] || 0) + 1;
-    }
-    for (var at in seen) {
-      if (!Object.prototype.hasOwnProperty.call(seen, at)) continue;
-      var parts = at.split(",");
-      var x = (Number(parts[0]) + 180) / 360 * 1440;
-      var y = (90 - Number(parts[1])) / 180 * 720;
-      var many = seen[at];
-      var ring = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      ring.setAttribute("class", "ring");
-      ring.setAttribute("cx", x); ring.setAttribute("cy", y);
-      ring.setAttribute("r", 9 + Math.min(many, 9) * 3);
-      dots.appendChild(ring);
-      var dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      dot.setAttribute("class", "dot");
-      dot.setAttribute("cx", x); dot.setAttribute("cy", y);
-      dot.setAttribute("r", 5 + Math.min(many, 9));
-      var title = document.createElementNS("http://www.w3.org/2000/svg", "title");
-      title.textContent = many + (many === 1 ? " node" : " nodes");
-      dot.appendChild(title);
-      dots.appendChild(dot);
-    }
-
-    var rows = document.getElementById("rows");
-    rows.textContent = "";
-    function row(where, count, klass) {
-      var tr = document.createElement("tr");
-      if (klass) tr.className = klass;
-      var a = document.createElement("td"); a.textContent = where;
-      var b = document.createElement("td"); b.className = "n"; b.textContent = String(count);
-      tr.appendChild(a); tr.appendChild(b); rows.appendChild(tr);
-    }
-    for (var j = 0; j < data.countries.length; j++) {
-      row(nameOf(data.countries[j].c), data.countries[j].n, null);
-    }
-    if (data.tor) row("Tor", data.tor, null);
-    if (data.unplaced) row("Nowhere the edge could place", data.unplaced, null);
-    if (!data.countries.length && !data.tor && !data.unplaced) {
-      var tr = document.createElement("tr");
-      var td = document.createElement("td");
-      td.className = "dim"; td.colSpan = 2;
-      td.textContent = "Nobody is saying where they are.";
-      tr.appendChild(td); rows.appendChild(tr);
-    } else {
-      row("All of us saying", data.saying, "sum");
-    }
-    document.getElementById("said").textContent =
-      "Read at " + new Date(data.as_of).toISOString().replace("T", " ").slice(0, 19) + " UTC.";
-  }
-
-  function look() {
-    fetch("/333/where-we-are", { cache: "no-store" })
-      .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
-      .then(draw)
-      .catch(function () {
-        document.getElementById("said").textContent = "The board could not be read just now.";
-      });
-  }
-
-  document.getElementById("live").addEventListener("click", function () {
-    var on = timer !== null;
-    if (on) {
-      clearInterval(timer); timer = null;
-    } else {
-      timer = setInterval(look, EVERY);
-      look();
-    }
-    this.setAttribute("aria-pressed", String(!on));
-    this.textContent = on ? "Watch it live" : "Stop watching";
-    document.getElementById("lamp").className = on ? "lamp" : "lamp on";
-  });
-
-  look();
-</script>
+<footer class="foot">
+  <div class="wide">
+    <a class="mark" href="/">333</a>
+    <a href="/network">Network</a>
+    <a href="/map">Where we are</a>
+    <a href="/333">The board</a>
+    <a href="/law">The Law</a>
+    <a href="/about">What this is</a>
+    <a href="/start">Take the program</a>
+    <a href="https://github.com/needmoretruth/333">GitHub</a>
+  </div>
+</footer>
+<script type="module" src="/assets/page.js?v={{version}}"></script>
+<script src="/assets/map.js?v={{version}}"></script>
 </body>
 </html>

@@ -1,0 +1,109 @@
+/* The network page: the graph fills the frame; the selected node's card sits beside it on a
+   wide screen and under it on a phone. */
+
+.net-head { padding: clamp(24px, 3vw, 40px) 0 18px; display: flex; gap: 20px 40px; align-items: end; justify-content: space-between; flex-wrap: wrap; }
+.net-head h1 { font-size: clamp(1.9rem, 1.4rem + 1.8vw, 2.9rem); margin-bottom: .25em; }
+.net-head p { max-width: 34rem; margin: 0; font-size: .9375rem; }
+.strip { display: flex; gap: 28px; margin: 0; }
+.strip dt { font-size: var(--small); color: var(--faint); }
+.strip dd { margin: 2px 0 0; font: 500 1.5rem/1.1 var(--mono); color: var(--ink-strong); font-variant-numeric: tabular-nums; white-space: nowrap; }
+@media (max-width: 760px) { .strip { gap: 16px 22px; flex-wrap: wrap; } .strip dd { font-size: 1.25rem; } }
+
+.sky { display: grid; grid-template-columns: 1fr 340px; gap: 16px; align-items: start; }
+.sky-frame {
+  position: relative; height: min(76svh, 820px); min-height: 480px;
+  border: 1px solid var(--edge); border-radius: var(--r-l); overflow: hidden;
+  background: radial-gradient(90% 70% at 50% 45%, color-mix(in srgb, var(--raised) 70%, transparent), transparent 70%), var(--surface-flat);
+  box-shadow: var(--sheen), var(--shadow);
+}
+.chart { width: 100%; height: 100%; cursor: grab; touch-action: none; }
+.chart.dragging { cursor: grabbing; }
+.chart.pointing { cursor: pointer; }
+
+.find { position: absolute; top: 14px; left: 14px; width: min(340px, calc(100% - 28px)); }
+.find label { display: block; font-size: var(--small); color: var(--faint); margin-bottom: 6px; }
+.find-row { display: flex; gap: 8px; }
+.find input {
+  flex: 1; min-width: 0; height: 44px; padding: 0 12px;
+  font: 500 .9375rem var(--mono); color: var(--ink);
+  background: var(--raised); border: 1px solid var(--edge-strong); border-radius: var(--r-m);
+}
+.find input::placeholder { color: var(--faint); font-family: var(--sans); }
+.find .button { flex: none; }
+.find-said { margin: 6px 0 0; font-size: var(--small); color: var(--dim); min-height: 1.2em; }
+
+.zoom { position: absolute; top: 14px; right: 14px; display: flex; gap: 6px; align-items: center; }
+.zoom .button { min-width: 44px; padding: 0 12px; }
+.zoom input[type="range"] { width: 120px; accent-color: var(--ink); }
+
+.legend {
+  display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 0; padding: 12px 4px 0; list-style: none;
+  font-size: var(--small); color: var(--dim);
+}
+.legend li { display: inline-flex; align-items: center; gap: 7px; }
+.k { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.k.founder { width: 12px; height: 12px; background: var(--ink); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink) 22%, transparent); }
+.k.ok { background: var(--ink); box-shadow: 0 0 0 2px var(--ok); }
+.k.quiet { border: 1.5px solid var(--quiet); }
+.k.later { border: 1.5px dashed var(--later); }
+.k.seen { width: 6px; height: 6px; background: var(--faint); }
+.l { width: 18px; height: 0; display: inline-block; border-top: 1.5px solid var(--dim); }
+.l.said { border-top: 1px dashed var(--faint); }
+
+.sky-empty {
+  position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%);
+  margin: 0; text-align: center; color: var(--dim); width: min(90%, 30rem);
+}
+
+.card {
+  background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-l);
+  box-shadow: var(--sheen), var(--shadow); padding: 20px; min-height: 200px;
+  max-height: min(76svh, 820px); overflow: auto;
+}
+.card h3 { font: 600 1.25rem/1.2 var(--mono); margin: 0 0 4px; letter-spacing: 0; }
+.card .role { font-size: .9375rem; color: var(--dim); margin: 0 0 14px; }
+.card .full { font: 400 .8125rem/1.5 var(--mono); color: var(--faint); word-break: break-all; margin: 0 0 12px; }
+.card dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; font-size: .9375rem; }
+.card dt { color: var(--faint); }
+.card dd { margin: 0; }
+.card .links { display: flex; flex-wrap: wrap; gap: 6px; }
+.card .chip {
+  font: 500 .8125rem var(--mono); min-height: 32px; padding: 0 10px; border-radius: var(--r-s);
+  border: 1px solid var(--edge-strong); background: var(--raised); color: var(--ink); cursor: pointer;
+}
+.card .chip:hover { border-color: var(--ink); }
+.card .row { margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap; }
+.card .row .button { min-height: 40px; font-size: .9375rem; }
+
+.table-wrap { overflow-x: auto; border: 1px solid var(--edge); border-radius: var(--r-l); background: var(--surface-flat); }
+table.nodes { width: 100%; border-collapse: collapse; font-size: .9375rem; }
+.nodes th, .nodes td { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--edge); white-space: nowrap; }
+.nodes th { font-weight: 600; color: var(--faint); font-size: var(--small); }
+.nodes tr:last-child td { border-bottom: 0; }
+.nodes td:first-child { font-family: var(--mono); }
+.nodes button.name { font: inherit; color: var(--ink); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 4px; text-decoration-color: var(--edge-strong); }
+.nodes .tag { font-family: var(--sans); font-size: var(--small); color: var(--faint); margin-left: 8px; }
+
+.report { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin-top: 24px; }
+.report section { background: var(--surface-flat); border: 1px solid var(--edge); border-radius: var(--r-m); padding: 16px 18px; }
+.report h3 { font: 600 1rem var(--sans); margin: 0 0 10px; }
+.report dl { margin: 0; display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; font-size: .9375rem; }
+.report dt { color: var(--dim); }
+.report dd { margin: 0; font-family: var(--mono); text-align: right; }
+.report .nested { grid-column: 1 / -1; padding-left: 12px; border-left: 1px solid var(--edge); }
+
+@media (max-width: 960px) {
+  .sky { grid-template-columns: 1fr; }
+  .card { max-height: none; }
+}
+@media (max-width: 760px) {
+  .sky-frame { height: 68svh; min-height: 420px; border-radius: var(--r-m); }
+  .zoom { top: auto; bottom: 12px; right: 12px; }
+  .zoom input[type="range"], .zoom [data-zoom="fit"] { display: none; }
+  .sky-frame + .card { margin-top: 0; }
+  .sky { gap: 12px; }
+}
+@media (max-width: 760px) {
+  .card dl { grid-template-columns: 1fr; gap: 2px; }
+  .card dd { margin-bottom: 10px; }
+}

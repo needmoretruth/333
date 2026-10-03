@@ -1,0 +1,11 @@
+/* Where we are: the land in a quiet grey, each place a point of ink with a faint ring. */
+:root { --land: #262930; }
+@media (prefers-color-scheme: light) { :root { --land: #dcdfe4; } }
+.map { margin: 28px auto 8px; }
+.map svg { display: block; width: 100%; height: auto; }
+.land { fill: var(--land); }
+.map .ring { fill: none; stroke: var(--ink); stroke-opacity: .22; stroke-width: 1.5; }
+.map .dot { fill: var(--ink); }
+.watching { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin: 1.4em 0 0; }
+.reading table td.n, .reading table th.n { text-align: right; font-family: var(--mono); }
+.reading tr.sum td { font-weight: 600; color: var(--ink); }

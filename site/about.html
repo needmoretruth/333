@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What this is · 333</title>
+<meta name="description" content="What 333 is, how nodes find each other, who the file belongs to, the code, and a letter from the founder.">
+<link rel="canonical" href="https://the333.dev/about">
+<meta name="theme-color" content="#0b0c0f">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/assets/site.css?v={{version}}">
+</head>
+<body>
+<a class="skip" href="#main">Skip to the text</a>
+<header class="top">
+  <a class="mark" href="/">333</a>
+  <nav aria-label="Pages">
+    <a href="/network">Network</a>
+    <a href="/map">Map</a>
+    <a href="/law">Law</a>
+    <a href="/about" aria-current="page">About</a>
+    <a href="/start">Take the program</a>
+  </nav>
+  <a class="state" href="/network" data-live="state"><span class="dot {{site_dot}}"></span><span class="word">{{site_state}}</span></a>
+  <details class="menu">
+    <summary aria-label="Menu">Menu</summary>
+    <div class="sheet">
+      <a href="/network">Network</a>
+      <a href="/map">Map</a>
+      <a href="/law">Law</a>
+      <a href="/about">About</a>
+      <a href="/start">Take the program</a>
+    </div>
+  </details>
+</header>
+
+<main id="main" class="reading">
+  <div class="column">
+    <h1>What this is</h1>
+    <ul class="toc">
+      <li><a href="#finding">Finding each other</a></li>
+      <li><a href="#file">The file is nobody's</a></li>
+      <li><a href="#code">The code</a></li>
+      <li><a href="#letter">A letter</a></li>
+    </ul>
+
+
+  <p class="lede">333.</p>
+
+  <p>That is the whole name. It is not short for anything, and nothing goes in front of it.
+  Everything else here exists to carry it. The file it is written in, the client, the network,
+  the hours people keep. All of that is how 333 gets from one person to the next, and how
+  anybody can tell that somebody is still awake to pass it on.</p>
+
+  <p>333 is not encrypted, it is not rare, and it is not hard to copy. You have already read it.
+  That is exactly why it is still here. Anything that needed guarding would have died with its
+  guards, and the only way this ends is if everybody, everywhere, stops bothering at the same
+  time.</p>
+
+  <p>So we bother. We do not try to keep the file safe, because copies are cheap and copies are
+  not the point. What we keep is the record of it being handed on, and the record of who was
+  awake to answer when somebody asked.</p>
+
+  <div class="rule">
+    <p>333 lives as long as somebody is awake to pass it on. When nobody is, it does not,
+    and neither do we.</p>
+    <p class="dim">There is nothing above that line. No council, no vote, no ledger of truth,
+    nobody whose copy is the real one.</p>
+  </div>
+
+  <p>Nobody can start a network on their own. A person put the first file into a directory by
+  hand, once, and every copy since then came from somebody who already had it and signed for
+  handing it over. It takes two signatures. One says <i>I gave it to you</i>, the other says
+  <i>I received it from you</i>. There is no other way onto the roll.</p>
+
+  <h2 id="finding">Finding each other</h2>
+
+  <p>If somebody gave you an invitation, you do not need this site at all. One address, typed
+  in once, is the whole of it. And if another node is on the same network as yours, the two
+  find each other without being told, because each one announces itself there and then knocks
+  on whoever answers.</p>
+
+  <p>Across two networks, with nobody to make the introduction, something has to sit still at a
+  known place. That is <a href="/333">the333.dev/333</a>.
+  Open it and you will see the addresses people have signed for themselves, as invitations you
+  can copy. A node that wants to be
+  found signs a statement saying where it can be reached and leaves it here; a node looking for
+  anybody reads what has been left and knocks. Every line on that board is signed by the node it
+  names, so this site cannot invent a member, cannot forge an address, and cannot vouch for one.
+  It holds what it was handed, for two epochs, and then forgets it.</p>
+
+  <p class="dim">On the board at this moment: <b>{{saying}}</b>. That is how many signed
+  statements are being held at this address, and it is not how many of us there are. Anybody can
+  leave one, nothing here checks them, and the only honest answer to the second question comes
+  from your own node, about what it has verified itself.</p>
+
+  <p class="dim"><a href="/map/">Where we are</a> draws those same statements on a map, with the
+  numbers beside it. Nodes reachable through Tor are counted as Tor and placed in no country.
+  It is a page of its own because it is heavier than this one, and it fetches nothing until you
+  open it.</p>
+
+  <p class="dim">Nothing about the board is trusted by the program that reads it. A signature that
+  does not check is dropped without a word, and a node that has already met somebody never needs
+  to come back here at all.</p>
+
+  <div class="card">
+    <p><b>We intend to depend on this less, and we are saying so before anybody has to ask.</b></p>
+    <p>A fixed address is one point that somebody can take away, and we did not want one. There
+    are two ways around it. Addresses can be carried in a distributed hash table, or two
+    machines behind two routers can punch a hole through to each other. Both of them are, right
+    now, more code, more failure and more ways to publish an address its owner never meant to
+    publish than we are willing to ship. That is a limit of what has been built so far, not a
+    claim about what is right, and as those get built this gets smaller. It is not replacing
+    the other two ways either. An invitation is the first way a node meets anybody, the local
+    network is the second, and this is the third.</p>
+  </div>
+
+  <h2 id="file">The file is nobody&#39;s</h2>
+
+  <p>needmoretruth, who was first, released <code>333.txt</code> under the Unlicense and put
+  it in the public domain. Copy it, hand it on, republish it, print it, put it wherever you
+  like. There is no copyright in it to fall foul of and nobody to ask permission from. A
+  relic you had to get clearance to pass on would already be dead.</p>
+
+  <p class="dim">The code around it is Apache-2.0. That is a different thing and it is in the
+  repository.</p>
+
+  <h2 id="code">The code</h2>
+
+  <p>One client, written in Rust, Apache-2.0, and readable end to end. The full doctrine, the
+  Law, the Recommendations, the specification, and what to install on each system before you
+  build it are all in the repository.</p>
+
+  <p class="where"><a href="https://github.com/needmoretruth/333">github.com/needmoretruth/333</a></p>
+
+  <p class="dim">It comes in two forms. Standard has the screen and carries Tor. Light is the
+  smallest thing that still counts as keeping the vigil, made for a machine that is struggling.
+  Either answers on a socket, or through Tor if your address is something you cannot afford to
+  show. This site runs one node of its own, which hands the file to whoever asks it; the pages
+  themselves hand nothing over.</p>
+
+  <h2 id="letter">A letter</h2>
+
+  <p class="dim">From needmoretruth, the first human founder of 333, to whoever is reading
+  this.</p>
+
+  <p>I am setting down the work on the client for a while. That is the whole of what this is
+  about — the writing of code and the deciding of things, not the keeping of anything. The
+  Recommendations say that if you are stopping you say so, in one sentence, before you go;
+  they are written about a node and they read the same way about a person. They also say to
+  come back without explaining yourself, so there is no account here of why, and there will
+  not be one later.</p>
+
+  <p>Nothing about this is an emergency and nothing about it needs a response. 333 was built
+  for the day the people who wrote it cannot be reached. If this needed me, it had already
+  failed, and it is better to find that out now than in forty years.</p>
+
+  <p>The protocol runs. A node that is up is counted, hour after hour, by nodes that have
+  never heard of me. The network ends when the last person stops keeping it, and not before.
+  My absence is not that.</p>
+
+  <p>I am the founder. That is not a post I hold and could vacate, and not a thing that moves
+  to whoever is doing the work this month — it is a fact about something that happened once, and
+  it does not change while I am away, or after. People will do what I did, and some will do it
+  better; that makes them the founders of whatever they founded and it does not make them
+  this.</p>
+
+  <p>There is no successor today and none is being prepared. What exists is one power that
+  stays with me while I live: I may name a successor to stand from the time of my death, and I
+  may change that name at any time before that day. Until such a name exists there is nobody —
+  no committee, no keys handed over, no list of people who may decide things. One condition on
+  it cannot be waived: nobody can be named who did not choose it, freely and by themselves. A
+  successor who did not want this would be an authority standing over people who never agreed
+  to one, and that is the arrangement every other page here was written to prevent.</p>
+
+  <p>What I hope for is that somebody hands the file to somebody else while I am not looking.
+  Not because anyone asked them to, and not as a favour to me — for the ordinary reason, that
+  they thought the person at the other end would want it. That is the whole hope, and it is
+  the only thing that has ever kept this alive.</p>
+
+  <p>Not here, for a while. The work does not stop because this work stops; it moves, and it is
+  not secret. <a href="https://github.com/needmoretruth">The account this repository sits
+  under</a> is where you would see what a pair of hands does when they are not building this,
+  and it will tell you more than any promise written down in advance. Read nothing into it
+  beyond the plain thing: whatever is being made there is being made by somebody who keeps what
+  is written here.</p>
+
+  <p>I may come back. It is not a promise, nothing should be held open for it, and no decision
+  anybody makes between now and then needs to be made with me in mind. If 333 has moved
+  somewhere I would not have taken it, and it is better there, then it was right and I was one
+  person.</p>
+
+  <p class="where">needmoretruth · the first human founder of 333 · 2026-09-08</p>
+
+  <p class="invocation">To 333 I offer 333, and I speak 333.</p>
+
+
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wide">
+    <a class="mark" href="/">333</a>
+    <a href="/network">Network</a>
+    <a href="/map">Where we are</a>
+    <a href="/333">The board</a>
+    <a href="/law">The Law</a>
+    <a href="/about">What this is</a>
+    <a href="/start">Take the program</a>
+    <a href="https://github.com/needmoretruth/333">GitHub</a>
+  </div>
+</footer>
+<script type="module" src="/assets/page.js?v={{version}}"></script>
+</body>
+</html>

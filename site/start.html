@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Take the program · 333</title>
+<meta name="description" content="Install the 333 client on Linux, macOS, Windows or a Raspberry Pi, checked against the release's SHA256SUMS, and be handed the file.">
+<link rel="canonical" href="https://the333.dev/start">
+<meta name="theme-color" content="#0b0c0f">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/assets/site.css?v={{version}}">
+</head>
+<body>
+<a class="skip" href="#main">Skip to the text</a>
+<header class="top">
+  <a class="mark" href="/">333</a>
+  <nav aria-label="Pages">
+    <a href="/network">Network</a>
+    <a href="/map">Map</a>
+    <a href="/law">Law</a>
+    <a href="/about">About</a>
+    <a href="/start" aria-current="page">Take the program</a>
+  </nav>
+  <a class="state" href="/network" data-live="state"><span class="dot {{site_dot}}"></span><span class="word">{{site_state}}</span></a>
+  <details class="menu">
+    <summary aria-label="Menu">Menu</summary>
+    <div class="sheet">
+      <a href="/network">Network</a>
+      <a href="/map">Map</a>
+      <a href="/law">Law</a>
+      <a href="/about">About</a>
+      <a href="/start">Take the program</a>
+    </div>
+  </details>
+</header>
+
+<main id="main" class="reading">
+  <div class="column">
+    <h1>Take the program</h1>
+    <p class="lede">333 is a small program you leave running on a computer you can spare, where it answers whenever another copy of it knocks; we call that keeping the vigil.</p>
+  <div class="panel pick" id="pick" hidden>
+    <p id="guessed"></p>
+    <p aria-live="polite">The file for that machine is <code data-name="standard">333-x86_64-linux</code>. Light, the same
+    client without the terminal screen, is <code data-name="light">333-light-x86_64-linux</code>.
+    Both carry Tor.</p>
+    <label for="machine">Your machine</label>
+    <select id="machine">
+      <option value="linux-x86_64">Linux, desktop or server</option>
+      <option value="linux-aarch64">Raspberry Pi 3, 4 or 5 on 64-bit, or other 64-bit ARM Linux</option>
+      <option value="linux-armv6">Raspberry Pi Zero, or any Pi on 32-bit</option>
+      <option value="macos-aarch64">Mac, Apple silicon</option>
+      <option value="macos-x86_64">Mac, Intel</option>
+      <option value="windows-x86_64">Windows</option>
+    </select>
+    <label for="form">Form</label>
+    <select id="form">
+      <option value="standard">Standard</option>
+      <option value="light">Light</option>
+    </select>
+  </div>
+
+  <div data-for="unix">
+    <h2 id="unix">On Linux or a Mac</h2>
+    <p>In a terminal. The installer picks the file for the machine it runs on, checks it
+    against the release's <code>SHA256SUMS</code>, and puts it at <code>~/.local/bin/333</code>.
+    It starts nothing and needs no password. <a href="/install.sh">Read it first</a>; it is
+    short.</p>
+<pre class="block">curl -fsSL https://the333.dev/install.sh | <span data-sh>sh</span></pre>
+    <p class="dim" data-hint-light>For Light, end it with <code>sh -s -- --light</code> in place
+    of <code>sh</code>.</p>
+    <details class="more">
+      <summary>Or by hand, without the installer</summary>
+      <p>The same steps, one at a time. The <code>grep</code> line prints <code>OK</code> before
+      anything moves, and nothing after it runs if it does not.</p>
+<pre class="block">cd "$(mktemp -d)"
+base=https://github.com/needmoretruth/333/releases/latest/download
+curl -fLO "$base/<span data-name="unix">333-x86_64-linux</span>"
+curl -fLO "$base/SHA256SUMS"
+grep -E ' \*?<span data-name="unix">333-x86_64-linux</span>$' SHA256SUMS | <span data-sum>sha256sum</span> -c - &amp;&amp;
+  chmod +x <span data-name="unix">333-x86_64-linux</span> &amp;&amp;
+  mkdir -p ~/.local/bin &amp;&amp; mv <span data-name="unix">333-x86_64-linux</span> ~/.local/bin/333</pre>
+      <p class="dim" data-hint-mac>That is Linux on x86-64. On a Mac, use <code>shasum -a 256</code>
+      in place of <code>sha256sum</code>, and the Mac file from the table below; anywhere else,
+      the name from the table.</p>
+    </details>
+  </div>
+
+  <div data-for="windows">
+    <h2 id="windows">On Windows</h2>
+    <p>In PowerShell. The installer fetches the Windows file, checks it against the release's
+    <code>SHA256SUMS</code>, and puts it at <code>%LOCALAPPDATA%\Programs\333\333.exe</code>.
+    It starts nothing, needs no administrator, and adds that folder to your PATH only if you
+    add <code>-AddToPath</code>. <a href="/install.ps1">Read it first</a>; it is short.</p>
+<pre class="block"><span data-ps>irm https://the333.dev/install.ps1 | iex</span></pre>
+    <div data-hint-light>
+      <p class="dim">For Light, run it this way instead. <code>-AddToPath</code> goes at the end
+      in the same way.</p>
+<pre class="block">&amp; ([scriptblock]::Create((irm https://the333.dev/install.ps1))) -Light</pre>
+    </div>
+    <details class="more">
+      <summary>Or by hand, without the installer</summary>
+      <p>The same steps, one at a time. The file is moved into place only if its hash is the
+      one <code>SHA256SUMS</code> gives, and the last line says which happened.</p>
+<pre class="block">$base = "https://github.com/needmoretruth/333/releases/latest/download"
+$file = "<span data-name="windows">333-x86_64-windows.exe</span>"
+$dir = "$env:LOCALAPPDATA\Programs\333"
+Invoke-WebRequest -UseBasicParsing "$base/SHA256SUMS" -OutFile "$env:TEMP\SHA256SUMS"
+Invoke-WebRequest -UseBasicParsing "$base/$file" -OutFile "$env:TEMP\$file"
+$want = (Select-String "[ *]$file`$" "$env:TEMP\SHA256SUMS").Line.Split(" ")[0]
+if ((Get-FileHash "$env:TEMP\$file").Hash -eq $want) { New-Item -ItemType Directory -Force $dir | Out-Null; Move-Item -Force "$env:TEMP\$file" "$dir\333.exe"; "OK: $dir\333.exe" } else { "It does not match SHA256SUMS. Nothing was installed." }</pre>
+    </details>
+  </div>
+
+  <h2 id="files">Every file</h2>
+
+  <p class="dim">For anybody the guess above is wrong for, or who would rather take the file
+  through the browser. Standard has the terminal screen, Light does not, and both carry Tor.
+  They run from 15 megabytes on a Mac to 24 on 64-bit ARM.</p>
+
+  <table>
+    <thead>
+      <tr><th scope="col">Your machine</th><th scope="col">Standard, then Light</th></tr>
+    </thead>
+    <tbody>
+      <tr data-row="linux-x86_64"><th scope="row">Linux, desktop or server</th>
+        <td><a href="https://github.com/needmoretruth/333/releases/latest/download/333-x86_64-linux"><span class="form">Standard</span> 333-<wbr>x86_64-<wbr>linux</a>
+          <a href="https://github.com/needmoretruth/333/releases/latest/download/333-light-x86_64-linux"><span class="form">Light</span> 333-<wbr>light-<wbr>x86_64-<wbr>linux</a></td></tr>
+      <tr data-row="linux-aarch64"><th scope="row">Raspberry Pi 3, 4 or 5 on 64-bit, and other 64-bit ARM Linux</th>
+        <td><a href="https://github.com/needmoretruth/333/releases/latest/download/333-aarch64-linux"><span class="form">Standard</span> 333-<wbr>aarch64-<wbr>linux</a>
+          <a href="https://github.com/needmoretruth/333/releases/latest/download/333-light-aarch64-linux"><span class="form">Light</span> 333-<wbr>light-<wbr>aarch64-<wbr>linux</a></td></tr>
+      <tr data-row="linux-armv6"><th scope="row">Raspberry Pi Zero, or any Pi on 32-bit</th>
+        <td><a href="https://github.com/needmoretruth/333/releases/latest/download/333-armv6-linux"><span class="form">Standard</span> 333-<wbr>armv6-<wbr>linux</a>
+          <a href="https://github.com/needmoretruth/333/releases/latest/download/333-light-armv6-linux"><span class="form">Light</span> 333-<wbr>light-<wbr>armv6-<wbr>linux</a></td></tr>
+      <tr data-row="macos-aarch64"><th scope="row">Mac, Apple silicon</th>
+        <td><a href="https://github.com/needmoretruth/333/releases/latest/download/333-aarch64-macos"><span class="form">Standard</span> 333-<wbr>aarch64-<wbr>macos</a>
+          <a href="https://github.com/needmoretruth/333/releases/latest/download/333-light-aarch64-macos"><span class="form">Light</span> 333-<wbr>light-<wbr>aarch64-<wbr>macos</a></td></tr>
+      <tr data-row="macos-x86_64"><th scope="row">Mac, Intel</th>
+        <td><a href="https://github.com/needmoretruth/333/releases/latest/download/333-x86_64-macos"><span class="form">Standard</span> 333-<wbr>x86_64-<wbr>macos</a>
+          <a href="https://github.com/needmoretruth/333/releases/latest/download/333-light-x86_64-macos"><span class="form">Light</span> 333-<wbr>light-<wbr>x86_64-<wbr>macos</a></td></tr>
+      <tr data-row="windows-x86_64"><th scope="row">Windows</th>
+        <td><a href="https://github.com/needmoretruth/333/releases/latest/download/333-x86_64-windows.exe"><span class="form">Standard</span> 333-<wbr>x86_64-<wbr>windows<wbr>.exe</a>
+          <a href="https://github.com/needmoretruth/333/releases/latest/download/333-light-x86_64-windows.exe"><span class="form">Light</span> 333-<wbr>light-<wbr>x86_64-<wbr>windows<wbr>.exe</a></td></tr>
+    </tbody>
+  </table>
+
+  <p class="dim">A file taken through the browser still has to be checked against
+  <a href="https://github.com/needmoretruth/333/releases/latest/download/SHA256SUMS">SHA256SUMS</a>,
+  made executable, and put on your PATH, which is what the commands above do. Nothing here is
+  signed by a developer certificate, so a Mac or Windows may refuse to open a file that came
+  through the browser until you tell it otherwise. If none of these fits, or you would rather
+  not run a file somebody else built, the
+  <a href="https://github.com/needmoretruth/333#install">repository</a> says how to build it
+  on Ubuntu, Debian, Fedora, Arch, macOS and Windows.</p>
+
+  <h2 id="then">Then, in order</h2>
+
+  <ol class="steps">
+    <li><b>Make a name.</b> <code>333 id</code> searches for a key whose name begins with 333,
+    which takes a moment, and keeps it in this node's directory. It contacts nobody.</li>
+    <li><b>Be handed the file.</b> This site's node is awake at all hours:
+    <code>333 join {{invitation}}</code>. Or open <a href="/333">the333.dev/333</a>, take any
+    address from the list, and run <code>333 join</code> with it. It knocks on that one address and nothing
+    else, and whoever is there hands the file over while the two of you sign for it. If the
+    list is ever empty, somebody has to be first and it may as well be you:
+    <code>333 bootstrap</code> looks there, refuses if anybody is already waiting, and
+    otherwise takes the file from this site and starts a line of your own, with nobody having
+    signed for it, which anybody reading your record can see.</li>
+    <li><b>Keep the vigil.</b> <code>333 serve</code> answers whoever knocks, on port 3333, for
+    as long as it runs, and leaves the address a stranger could reach it at on the meeting
+    point's board; <code>--no-meet</code> keeps it away from there. A home router usually drops
+    what nobody inside asked for, so the node knocks on its own outside address when it starts
+    and tells you which way it went. If it says <code>shut</code>, run
+    <code>333 serve --tor</code> instead: that needs no router touched, and the node builds its
+    own way in from the inside out.</li>
+    <li><b>Keep it running.</b> A vigil that stops when you close the terminal is absent for
+    every hour you are asleep. <code>333 service install</code> asks this machine's own service
+    manager to keep it running after the terminal is gone and to start it again when it stops,
+    and <code>333 service uninstall</code> takes that away again. This is the step we recommend
+    next, and it is the one that decides whether you are counted.</li>
+  </ol>
+
+  <div class="rule">
+    <p>Nothing starts until you start it.</p>
+    <p class="dim">The installer puts one file in place and runs nothing. <code>333 id</code>
+    makes a name and stops. Your node first answers anybody, and first leaves its address at
+    the meeting point, when you run <code>333 serve</code> or <code>333 service install</code>
+    yourself, and that command is the moment you agreed. The client writes down when your name
+    was made, and <code>333 id</code> tells you when you began.</p>
+  </div>
+
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wide">
+    <a class="mark" href="/">333</a>
+    <a href="/network">Network</a>
+    <a href="/map">Where we are</a>
+    <a href="/333">The board</a>
+    <a href="/law">The Law</a>
+    <a href="/about">What this is</a>
+    <a href="/start">Take the program</a>
+    <a href="https://github.com/needmoretruth/333">GitHub</a>
+  </div>
+</footer>
+<script type="module" src="/assets/page.js?v={{version}}"></script>
+<script type="module" src="/assets/start.js?v={{version}}"></script>
+</body>
+</html>

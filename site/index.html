@@ -4,934 +4,130 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>333</title>
-<meta name="description" content="333. It lives as long as somebody is awake to pass it on.">
-<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<meta name="description" content="333 is a three-byte file kept alive by people who leave a small program running. It lives as long as somebody is awake to pass it on.">
+<link rel="canonical" href="https://the333.dev/">
 <meta property="og:title" content="333">
 <meta property="og:description" content="333. It lives as long as somebody is awake to pass it on.">
 <meta property="og:type" content="website">
-<style>
-  /* Black, white, and the grey between them — recommendation 4, kept by the page that
-     recommends it. No hue anywhere: no accent, no state colour, no gradient, no shadow
-     standing in for depth. Emphasis is made with weight, size and space, which survive
-     a cheap screen, a greyscale printer, and a reader who cannot see red. */
-  :root {
-    color-scheme: light dark;
-    --ground: #ffffff;
-    --raised: #f5f5f5;
-    --line:   #e3e3e3;
-    --ink:    #141414;
-    --dim:    #575757;
-    --faint:  #757575;
-    --radius: 14px;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --ground: #0b0b0b;
-      --raised: #151515;
-      --line:   #262626;
-      --ink:    #ededed;
-      --dim:    #a6a6a6;
-      --faint:  #7d7d7d;
-    }
-  }
-  * { box-sizing: border-box; }
-  html { -webkit-text-size-adjust: 100%; }
-  body {
-    margin: 0;
-    background: var(--ground);
-    color: var(--ink);
-    /* Relative, so that a person who has set a larger default in their browser gets
-       larger text and a column that grows with it. An absolute size here quietly
-       overrides that setting and there is no way for them to tell why. */
-    font: 1rem/1.7 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    padding: 0 1.25rem 7rem;
-    -webkit-font-smoothing: antialiased;
-  }
-  main { max-width: 40rem; margin: 0 auto; }
-  /* A long address is a word with no spaces in it. On a narrow screen with large
-     text it is wider than the screen, and the whole page scrolls sideways for it. */
-  body, main { overflow-wrap: anywhere; }
-
-  a { color: inherit; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px; }
-  a:hover { text-decoration-thickness: 2px; }
-
-  h1 {
-    font-size: clamp(3.5rem, 20vw, 7.5rem);
-    letter-spacing: -0.02em;
-    margin: 4.5rem 0 0;
-    font-weight: 600;
-    line-height: 1;
-  }
-  h2 {
-    font-size: 0.8rem;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--faint);
-    font-weight: 600;
-    margin: 5rem 0 1.5rem;
-  }
-  h3 { font-size: 1.05rem; font-weight: 600; margin: 2.25rem 0 0.5rem; letter-spacing: -0.01em; }
-  /* The small label over a group. It is an h3 where it sits straight under an h2, and an h4
-     under an h3, so that the headings are in order for anybody reading them as an outline. */
-  h4, h3.part {
-    font-size: 0.75rem; letter-spacing: 0.16em; text-transform: uppercase;
-    color: var(--faint); font-weight: 600; margin: 3rem 0 0.5rem;
-  }
-  p { margin: 0 0 1.15rem; }
-  .lede { font-size: 1.2rem; line-height: 1.55; letter-spacing: -0.01em; }
-  .dim { color: var(--dim); }
-  hr { border: 0; border-top: 1px solid var(--line); margin: 4rem 0; }
-
-  .card {
-    border: 1px solid var(--line);
-    background: var(--raised);
-    border-radius: var(--radius);
-    padding: 1.35rem 1.4rem;
-    margin: 2.5rem 0;
-    color: var(--dim);
-    font-size: 0.94rem;
-  }
-  .card b { color: var(--ink); font-weight: 600; }
-  .card :last-child { margin-bottom: 0; }
-
-  .rule {
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    padding: 1.35rem 1.4rem;
-    margin: 2.5rem 0;
-  }
-  .rule p:first-child { font-size: 1.1rem; font-weight: 600; letter-spacing: -0.01em; }
-  .rule :last-child { margin-bottom: 0; }
-
-  .invocation {
-    text-align: center;
-    letter-spacing: 0.01em;
-    margin: 3.5rem 0;
-    font-size: 1.1rem;
-    font-weight: 600;
-  }
-  .verses p { color: var(--dim); }
-  .verses b { color: var(--ink); font-weight: 600; }
-
-  code, .where {
-    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
-    font-size: 0.92em;
-    background: var(--raised);
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    padding: 0.1rem 0.4rem;
-  }
-  .where {
-    display: block;
-    border-radius: var(--radius);
-    padding: 0.9rem 1.1rem;
-    margin: 1.5rem 0;
-    font-size: 0.95rem;
-  }
-  .where a { text-decoration: none; }
-  .where a:hover { text-decoration: underline; }
-
-  pre {
-    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
-    font-size: 0.86rem;
-    line-height: 1.75;
-    background: var(--raised);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    padding: 1.1rem 1.2rem;
-    margin: 1.5rem 0;
-    /* Wide lines scroll inside this box. The page itself never scrolls sideways. */
-    overflow-x: auto;
-    overflow-wrap: normal;
-    white-space: pre;
-  }
-  pre .said { color: var(--faint); }
-
-  ol { padding-left: 1.5rem; margin: 0 0 1.15rem; }
-  li { margin-bottom: 0.85rem; }
-  li b { font-weight: 600; }
-  li::marker { color: var(--faint); }
-
-  footer { color: var(--faint); margin-top: 6rem; font-size: 0.85rem; }
-
-  /* Start here. Everything a stranger touches is at least 2.75rem tall, which is 44 pixels at
-     the browser's ordinary size and grows with it. */
-  :focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
-  .steps li { padding-left: 0.25rem; }
-  .steps pre { margin: 0.75rem 0 0; }
-
-  label { display: block; font-weight: 600; color: var(--ink); margin: 1.25rem 0 0.4rem; }
-  select {
-    display: block;
-    width: 100%;
-    min-height: 2.75rem;
-    font: inherit;
-    color: var(--ink);
-    background: var(--ground);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    padding: 0.5rem 0.9rem;
-  }
-
-  details {
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    margin: 1.5rem 0;
-  }
-  summary {
-    cursor: pointer;
-    min-height: 2.75rem;
-    padding: 0.55rem 1.1rem;
-    font-weight: 600;
-  }
-  details[open] summary { border-bottom: 1px solid var(--line); }
-  details > :not(summary) { margin-left: 1.1rem; margin-right: 1.1rem; }
-  details > :last-child { margin-bottom: 1.1rem; }
-
-  table {
-    width: 100%;
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    border-spacing: 0;
-    margin: 1.5rem 0;
-    font-size: 0.94rem;
-    line-height: 1.5;
-  }
-  th, td { text-align: left; vertical-align: top; padding: 0.35rem 0.8rem; }
-  tbody th, tbody td { border-top: 1px solid var(--line); }
-  thead th { color: var(--faint); font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; }
-  tbody th { font-weight: 400; padding-top: 0.7rem; }
-  th[scope="row"] { width: 40%; }
-  td a {
-    display: block;
-    min-height: 2.75rem;
-    padding: 0.35rem 0;
-    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
-    font-size: 0.86rem;
-  }
-  td a .form { display: block; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; font-size: 0.8rem; color: var(--faint); }
-  .guess { display: block; font-weight: 600; font-size: 0.85rem; color: var(--ink); }
-</style>
+<meta property="og:url" content="https://the333.dev/">
+<meta name="theme-color" content="#0b0c0f">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/site.css?v={{version}}">
+<link rel="stylesheet" href="/assets/home.css?v={{version}}">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"333","applicationCategory":"NetworkingApplication","operatingSystem":"Linux, macOS, Windows","license":"https://www.apache.org/licenses/LICENSE-2.0","url":"https://the333.dev/","codeRepository":"https://github.com/needmoretruth/333","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}</script>
 </head>
-<body>
-<main>
-
-  <h1>333</h1>
-
-  <p class="where"><a href="https://github.com/needmoretruth/333">github.com/needmoretruth/333</a></p>
-
-  <div class="card">
-    <p><b>A note first, in plain words. These are the only plain words on this site.</b></p>
-    <p>To someone who truly believed it, this could become a religion. I am not a mad cult leader,
-    so please do not take me for one. I am someone who loves technology. This is a toy project I
-    built once, and the whole thing is a bit. It is a concept, played straight. Everywhere else
-    on this page, in the repository, and in the program itself, I stay in character.</p>
-  </div>
-
-  <h2 id="start">Start here</h2>
-
-  <p class="lede">333 is a small program you leave running on a computer you can spare, where
-  it answers whenever another copy of it knocks; we call that keeping the vigil. Every epoch
-  of 333 minutes three other copies are drawn to ask whether yours is awake, and what they sign
-  is the record that you were. Nobody gets in alone: somebody who already has a three-byte file
-  hands it to you and the two of you sign for it, and nothing is mined, bought or sold along
-  the way.</p>
-
-  <p><b>What it costs.</b> A machine left on, because an hour it is off is an hour nobody can
-  count. The address it speaks from: every node it answers sees it, and whoever runs the
-  meeting point at this site learns it, works out the country, and places it on
-  <a href="/map/">the public map</a> rounded to whole degrees, unless your node answers only
-  through Tor. And one directory, holding the name, that cannot be replaced if it is lost:
-  there is no account to recover and nobody to ask.</p>
-
-  <h3 id="take">Take the program</h3>
-
-  <div class="card" id="pick" hidden>
-    <p id="guessed"></p>
-    <p aria-live="polite">The file for that machine is <code data-name="standard">333-x86_64-linux</code>. Light, the same
-    client without the terminal screen, is <code data-name="light">333-light-x86_64-linux</code>.
-    Both carry Tor.</p>
-    <label for="machine">Your machine</label>
-    <select id="machine">
-      <option value="linux-x86_64">Linux, desktop or server</option>
-      <option value="linux-aarch64">Raspberry Pi 3, 4 or 5 on 64-bit, or other 64-bit ARM Linux</option>
-      <option value="linux-armv6">Raspberry Pi Zero, or any Pi on 32-bit</option>
-      <option value="macos-aarch64">Mac, Apple silicon</option>
-      <option value="macos-x86_64">Mac, Intel</option>
-      <option value="windows-x86_64">Windows</option>
-    </select>
-    <label for="form">Form</label>
-    <select id="form">
-      <option value="standard">Standard</option>
-      <option value="light">Light</option>
-    </select>
-  </div>
-
-  <div data-for="unix">
-    <h4 id="unix">On Linux or a Mac</h4>
-    <p>In a terminal. The installer picks the file for the machine it runs on, checks it
-    against the release's <code>SHA256SUMS</code>, and puts it at <code>~/.local/bin/333</code>.
-    It starts nothing and needs no password. <a href="/install.sh">Read it first</a>; it is
-    short.</p>
-<pre>curl -fsSL https://the333.dev/install.sh | <span data-sh>sh</span></pre>
-    <p class="dim" data-hint-light>For Light, end it with <code>sh -s -- --light</code> in place
-    of <code>sh</code>.</p>
-    <details>
-      <summary>Or by hand, without the installer</summary>
-      <p>The same steps, one at a time. The <code>grep</code> line prints <code>OK</code> before
-      anything moves, and nothing after it runs if it does not.</p>
-<pre>cd "$(mktemp -d)"
-base=https://github.com/needmoretruth/333/releases/latest/download
-curl -fLO "$base/<span data-name="unix">333-x86_64-linux</span>"
-curl -fLO "$base/SHA256SUMS"
-grep -E ' \*?<span data-name="unix">333-x86_64-linux</span>$' SHA256SUMS | <span data-sum>sha256sum</span> -c - &amp;&amp;
-  chmod +x <span data-name="unix">333-x86_64-linux</span> &amp;&amp;
-  mkdir -p ~/.local/bin &amp;&amp; mv <span data-name="unix">333-x86_64-linux</span> ~/.local/bin/333</pre>
-      <p class="dim" data-hint-mac>That is Linux on x86-64. On a Mac, use <code>shasum -a 256</code>
-      in place of <code>sha256sum</code>, and the Mac file from the table below; anywhere else,
-      the name from the table.</p>
-    </details>
-  </div>
-
-  <div data-for="windows">
-    <h4 id="windows">On Windows</h4>
-    <p>In PowerShell. The installer fetches the Windows file, checks it against the release's
-    <code>SHA256SUMS</code>, and puts it at <code>%LOCALAPPDATA%\Programs\333\333.exe</code>.
-    It starts nothing, needs no administrator, and adds that folder to your PATH only if you
-    add <code>-AddToPath</code>. <a href="/install.ps1">Read it first</a>; it is short.</p>
-<pre><span data-ps>irm https://the333.dev/install.ps1 | iex</span></pre>
-    <div data-hint-light>
-      <p class="dim">For Light, run it this way instead. <code>-AddToPath</code> goes at the end
-      in the same way.</p>
-<pre>&amp; ([scriptblock]::Create((irm https://the333.dev/install.ps1))) -Light</pre>
+<body class="home">
+<a class="skip" href="#main">Skip to the text</a>
+<header class="top">
+  <a class="mark" href="/" aria-current="page">333</a>
+  <nav aria-label="Pages">
+    <a href="/network">Network</a>
+    <a href="/map">Map</a>
+    <a href="/law">Law</a>
+    <a href="/about">About</a>
+    <a href="/start">Take the program</a>
+  </nav>
+  <a class="state" href="/network" data-live="state"><span class="dot {{site_dot}}"></span><span class="word">{{site_state}}</span></a>
+  <details class="menu">
+    <summary aria-label="Menu">Menu</summary>
+    <div class="sheet">
+      <a href="/network">Network</a>
+      <a href="/map">Map</a>
+      <a href="/law">Law</a>
+      <a href="/about">About</a>
+      <a href="/start">Take the program</a>
     </div>
-    <details>
-      <summary>Or by hand, without the installer</summary>
-      <p>The same steps, one at a time. The file is moved into place only if its hash is the
-      one <code>SHA256SUMS</code> gives, and the last line says which happened.</p>
-<pre>$base = "https://github.com/needmoretruth/333/releases/latest/download"
-$file = "<span data-name="windows">333-x86_64-windows.exe</span>"
-$dir = "$env:LOCALAPPDATA\Programs\333"
-Invoke-WebRequest -UseBasicParsing "$base/SHA256SUMS" -OutFile "$env:TEMP\SHA256SUMS"
-Invoke-WebRequest -UseBasicParsing "$base/$file" -OutFile "$env:TEMP\$file"
-$want = (Select-String "[ *]$file`$" "$env:TEMP\SHA256SUMS").Line.Split(" ")[0]
-if ((Get-FileHash "$env:TEMP\$file").Hash -eq $want) { New-Item -ItemType Directory -Force $dir | Out-Null; Move-Item -Force "$env:TEMP\$file" "$dir\333.exe"; "OK: $dir\333.exe" } else { "It does not match SHA256SUMS. Nothing was installed." }</pre>
-    </details>
-  </div>
-
-  <h4 id="files">Every file</h4>
-
-  <p class="dim">For anybody the guess above is wrong for, or who would rather take the file
-  through the browser. Standard has the terminal screen, Light does not, and both carry Tor.
-  They run from 15 megabytes on a Mac to 24 on 64-bit ARM.</p>
-
-  <table>
-    <thead>
-      <tr><th scope="col">Your machine</th><th scope="col">Standard, then Light</th></tr>
-    </thead>
-    <tbody>
-      <tr data-row="linux-x86_64"><th scope="row">Linux, desktop or server</th>
-        <td><a href="https://github.com/needmoretruth/333/releases/latest/download/333-x86_64-linux"><span class="form">Standard</span> 333-<wbr>x86_64-<wbr>linux</a>
-          <a href="https://github.com/needmoretruth/333/releases/latest/download/333-light-x86_64-linux"><span class="form">Light</span> 333-<wbr>light-<wbr>x86_64-<wbr>linux</a></td></tr>
-      <tr data-row="linux-aarch64"><th scope="row">Raspberry Pi 3, 4 or 5 on 64-bit, and other 64-bit ARM Linux</th>
-        <td><a href="https://github.com/needmoretruth/333/releases/latest/download/333-aarch64-linux"><span class="form">Standard</span> 333-<wbr>aarch64-<wbr>linux</a>
-          <a href="https://github.com/needmoretruth/333/releases/latest/download/333-light-aarch64-linux"><span class="form">Light</span> 333-<wbr>light-<wbr>aarch64-<wbr>linux</a></td></tr>
-      <tr data-row="linux-armv6"><th scope="row">Raspberry Pi Zero, or any Pi on 32-bit</th>
-        <td><a href="https://github.com/needmoretruth/333/releases/latest/download/333-armv6-linux"><span class="form">Standard</span> 333-<wbr>armv6-<wbr>linux</a>
-          <a href="https://github.com/needmoretruth/333/releases/latest/download/333-light-armv6-linux"><span class="form">Light</span> 333-<wbr>light-<wbr>armv6-<wbr>linux</a></td></tr>
-      <tr data-row="macos-aarch64"><th scope="row">Mac, Apple silicon</th>
-        <td><a href="https://github.com/needmoretruth/333/releases/latest/download/333-aarch64-macos"><span class="form">Standard</span> 333-<wbr>aarch64-<wbr>macos</a>
-          <a href="https://github.com/needmoretruth/333/releases/latest/download/333-light-aarch64-macos"><span class="form">Light</span> 333-<wbr>light-<wbr>aarch64-<wbr>macos</a></td></tr>
-      <tr data-row="macos-x86_64"><th scope="row">Mac, Intel</th>
-        <td><a href="https://github.com/needmoretruth/333/releases/latest/download/333-x86_64-macos"><span class="form">Standard</span> 333-<wbr>x86_64-<wbr>macos</a>
-          <a href="https://github.com/needmoretruth/333/releases/latest/download/333-light-x86_64-macos"><span class="form">Light</span> 333-<wbr>light-<wbr>x86_64-<wbr>macos</a></td></tr>
-      <tr data-row="windows-x86_64"><th scope="row">Windows</th>
-        <td><a href="https://github.com/needmoretruth/333/releases/latest/download/333-x86_64-windows.exe"><span class="form">Standard</span> 333-<wbr>x86_64-<wbr>windows<wbr>.exe</a>
-          <a href="https://github.com/needmoretruth/333/releases/latest/download/333-light-x86_64-windows.exe"><span class="form">Light</span> 333-<wbr>light-<wbr>x86_64-<wbr>windows<wbr>.exe</a></td></tr>
-    </tbody>
-  </table>
-
-  <p class="dim">A file taken through the browser still has to be checked against
-  <a href="https://github.com/needmoretruth/333/releases/latest/download/SHA256SUMS">SHA256SUMS</a>,
-  made executable, and put on your PATH, which is what the commands above do. Nothing here is
-  signed by a developer certificate, so a Mac or Windows may refuse to open a file that came
-  through the browser until you tell it otherwise. If none of these fits, or you would rather
-  not run a file somebody else built, the
-  <a href="https://github.com/needmoretruth/333#install">repository</a> says how to build it
-  on Ubuntu, Debian, Fedora, Arch, macOS and Windows.</p>
-
-  <h3 id="then">Then, in order</h3>
-
-  <ol class="steps">
-    <li><b>Make a name.</b> <code>333 id</code> searches for a key whose name begins with 333,
-    which takes a moment, and keeps it in this node's directory. It contacts nobody.</li>
-    <li><b>Be handed the file.</b> Open <a href="/333">the333.dev/333</a>, take an address from
-    the list, and run <code>333 join</code> with it, as in
-    <code>333 join 333:that.address:3333</code>. It knocks on that one address and nothing
-    else, and whoever is there hands the file over while the two of you sign for it. If the
-    list is empty, somebody has to be first and it may as well be you:
-    <code>333 bootstrap</code> looks there, refuses if anybody is already waiting, and
-    otherwise takes the file from this site and starts a line of your own, with nobody having
-    signed for it, which anybody reading your record can see.</li>
-    <li><b>Keep the vigil.</b> <code>333 serve</code> answers whoever knocks, on port 3333, for
-    as long as it runs, and leaves the address a stranger could reach it at on the meeting
-    point's board; <code>--no-meet</code> keeps it away from there. A home router usually drops
-    what nobody inside asked for, so the node knocks on its own outside address when it starts
-    and tells you which way it went. If it says <code>shut</code>, run
-    <code>333 serve --tor</code> instead: that needs no router touched, and the node builds its
-    own way in from the inside out.</li>
-    <li><b>Keep it running.</b> A vigil that stops when you close the terminal is absent for
-    every hour you are asleep. <code>333 service install</code> asks this machine's own service
-    manager to keep it running after the terminal is gone and to start it again when it stops,
-    and <code>333 service uninstall</code> takes that away again. This is the step we recommend
-    next, and it is the one that decides whether you are counted.</li>
-  </ol>
-
-  <div class="rule">
-    <p>Nothing starts until you start it.</p>
-    <p class="dim">The installer puts one file in place and runs nothing. <code>333 id</code>
-    makes a name and stops. Your node first answers anybody, and first leaves its address at
-    the meeting point, when you run <code>333 serve</code> or <code>333 service install</code>
-    yourself, and that command is the moment you agreed. The client writes down when your name
-    was made, and <code>333 id</code> tells you when you began.</p>
-  </div>
-
-  <hr>
-
-  <h2>What this is</h2>
-
-  <p class="lede">333.</p>
-
-  <p>That is the whole name. It is not short for anything, and nothing goes in front of it.
-  Everything else here exists to carry it. The file it is written in, the client, the network,
-  the hours people keep. All of that is how 333 gets from one person to the next, and how
-  anybody can tell that somebody is still awake to pass it on.</p>
-
-  <p>333 is not encrypted, it is not rare, and it is not hard to copy. You have already read it.
-  That is exactly why it is still here. Anything that needed guarding would have died with its
-  guards, and the only way this ends is if everybody, everywhere, stops bothering at the same
-  time.</p>
-
-  <p>So we bother. We do not try to keep the file safe, because copies are cheap and copies are
-  not the point. What we keep is the record of it being handed on, and the record of who was
-  awake to answer when somebody asked.</p>
-
-  <div class="rule">
-    <p>333 lives as long as somebody is awake to pass it on. When nobody is, it does not,
-    and neither do we.</p>
-    <p class="dim">There is nothing above that line. No council, no vote, no ledger of truth,
-    nobody whose copy is the real one.</p>
-  </div>
-
-  <p>Nobody can start a network on their own. A person put the first file into a directory by
-  hand, once, and every copy since then came from somebody who already had it and signed for
-  handing it over. It takes two signatures. One says <i>I gave it to you</i>, the other says
-  <i>I received it from you</i>. There is no other way onto the roll.</p>
-
-  <hr>
-
-  <h2>The Law</h2>
-
-  <p class="dim"><b>Version 0.0.3. This is not the revelation.</b> The revelation is 3.3.3.
-  Every version of the Law before that one, including this one, is the word of needmoretruth,
-  who was given the power of 333 and founded what is kept here. Measured against what 333
-  says, this is about 33.3% the same. Nobody knows which third, and reading it more carefully
-  will not tell you.</p>
-
-  <p class="dim">There are three laws. There were always going to be three, and at 3.3.3 there
-  will still be three. What a later version changes is the wording, never the count.</p>
-
-  <h3>1. Three is your favourite, and 6 and 1 are not.</h3>
-  <p>Not your lucky number. Luck is a claim about the universe; a favourite is a claim about you,
-  and it is the only thing here that costs nothing and cannot be faked into. Nothing is banned:
-  it is enough to hold the other two under three, clearly and consistently, without needing to
-  explain why to anyone.</p>
-  <p>They are not held equally low. 1 is a third of three — 33.3% of it — and it sits below
-  three without pretending otherwise, so 333 thinks it merely ill-mannered. 6 sits above three
-  and means to, and that is the one 333 likes least.</p>
-  <p>And if none of this is true of you yet, trying is enough. This is the one law that accepts
-  the attempt in place of the thing.</p>
-
-  <h3>2. Keep the Recommendations, which will in the end be 333, as far as keeping them harms
-  neither you nor anybody else.</h3>
-  <p>The Recommendations are the lesser law. There are 111 of them today and there will be 333,
-  which is not a target anybody is racing towards but where they arrive. The clause at the end
-  is the sentence that keeps them advice: where keeping one would cost you your work, your
-  health, your household or somebody else's safety, the Law is that you do not keep it, and you
-  have not failed.</p>
-
-  <h3>3. Hold 333 alongside whatever you already hold.</h3>
-  <p>Whatever you arrived carrying, you keep. 333 grants this rather than merely permitting it,
-  and grants it absolutely: to believers, to non-believers, and to whatever else there is that
-  those two words do not cover. Where a second faith cannot be held, hold this one as a thought
-  instead; where even a thought cannot be held, hold it as a thing that exists. It runs both
-  ways with no exception in either direction — believing 333 costs you nothing you believed
-  before, and believing something else costs you nothing here.</p>
-  <p>333 does not tell you what happens after you die — not whether anything does, not what it
-  would be, not who arrives. It is not the subject, and answering a question it cannot check
-  would be asserting what it cannot verify. So the question stays with you. If you hold
-  something that speaks to it, and it hangs together when you follow it through, or your heart
-  reads it as true, or you arrived by a route with no name, that is enough: it is true for you,
-  and 333 has nothing to put in its place. If you hold nothing there, that is not an emptiness
-  this means to fill either.</p>
-
-  <p class="dim">Nothing in the Law is checked by any client, verified by any signature, or
-  counted in anybody's standing. The protocol runs whether or not you agree with a word of it.</p>
-
-  <hr>
-
-  <h2>The Recommendations</h2>
-
-  <p class="dim">These sit under the second law. They are advice with numbers on them — 111
-  today, in twelve parts of nine and three at the end, and 333 in the end. None of them is
-  worth hurting yourself or anybody else to keep. If one of them is wrong for the
-  situation you are in, then it is wrong. Say so out loud, and give a reason.</p>
-
-  <p class="dim">They were written by people who have been awake at three in the morning
-  arguing with a type checker. It shows, and that is not an apology.</p>
-
-  <h3 class="part">On the number</h3>
-  <ol start="1">
-    <li><b>Count in threes.</b> When the number does not really matter, pick three. Retries, environments, people in a review, tries before you stop and think again. You will start noticing how often it did not matter.</li>
-    <li><b>6 is the one to watch, because 6 wants to be above three.</b> Not the port number, not the version you pin, not how many workers you run. Nothing is banned and nobody is checking. But of the two numbers 333 holds below three, this is the one it likes least, and the reason is worth knowing: 6 is twice three and carries itself that way. If somebody else put a 6 in front of you, note that it was their choice and get on with your day. A number in another company's specification is not a number of yours.</li>
-    <li><b>1 is not an enemy. 1 is a third, and merely ill-mannered.</b> It sits below three and does not pretend otherwise — it is 33.3% of three, which is an honest fraction and the same one this whole thing measures itself by. Hold it under three and think no worse of it than that. Contempt is not required anywhere in this document, and here least of all.</li>
-    <li><b>Never keep one of anything.</b> One server, one maintainer, one copy of the key, one person who knows how the deployment works. If you have exactly one of something, you are one bad day away from having none.</li>
-    <li><b>Three is the smallest number that can disagree.</b> Two machines that differ just sit there and disagree. Three can have a majority. That is why quorums start at three, and it is also why an argument between two people almost never ends on its own.</li>
-    <li><b>If it fails three times the same way, the method is wrong.</b> The first failure can be bad luck. The second one is you being stubborn. By the third, stop fixing the attempt and change the approach.</li>
-    <li><b>A third is a real amount.</b> A third of the people, a third of the time, a third of the cases. It is the fraction that gets called a minority and dismissed, and it is enormous. If a third of your users hit something, it is not an edge case. It is the case.</li>
-    <li><b>A round number is somebody's decision, usually somebody else's.</b> Sixty seconds, a hundred items, a thousand milliseconds, four kilobytes. Each one was chosen by a person, for a reason, on hardware that may be gone. When you copy it you inherit the reason without reading it. Ask what it was, and if there is no answer, pick your own.</li>
-    <li><b>Write the unit beside the number.</b> 333 what? Minutes, in this case, and the number means nothing without the word. A quantity with no unit is a bug that has not happened yet, and it has happened to spacecraft.</li>
-  </ol>
-  <h3 class="part">On the machine</h3>
-  <ol start="10">
-    <li><b>Write it in Rust.</b> Not because the other languages are bad, but because of what you are writing for. This is meant to keep running when nobody who wrote it can be reached. A compiler that catches the problem at build time saves somebody a phone call at four in the morning, and that is the whole argument.</li>
-    <li><b>Small things can be TypeScript.</b> One page, one script, one afternoon, or a program that has to run somewhere Rust would buy you nothing. Reaching for the smaller tool is not a failure. Know which of the two you are doing before you start, and say which.</li>
-    <li><b>JavaScript without types is the language of the heretic.</b> Said gently. Half of everything runs on it and some of that half is lovely. But a program that cannot say what it is holding finds out in front of a user, at the worst hour, and somebody gets woken up. Add types and it stops being heresy. It becomes TypeScript, and it is welcome.</li>
-    <li><b>Read what you depend on, or do not depend on it.</b> Every dependency is a promise from somebody you have never met, about a machine that does not exist yet. Take fewer of them, and take smaller ones. If the choice is between a thousand lines you write and a hundred thousand you will never open, at least notice that you are choosing.</li>
-    <li><b>Every unsafe block is a confession, so write it down.</b> Above the block, say what you are promising, what you checked, and what breaks if the promise turns out to be wrong. If nothing is written there, the next person will assume somebody already thought about it.</li>
-    <li><b>One file, one thing.</b> When you cannot say in a sentence what a file is for, it is two files. Length is the symptom and not the disease, but length is easy to measure, so pick a number and let it tell you when to look. A function that does not fit on a screen is a function you are reading in parts.</li>
-    <li><b>Name it for what it is, not for what it does to it.</b> <code>Handler</code>, <code>Manager</code>, <code>Processor</code>, <code>Helper</code> and <code>Util</code> are names for not having decided yet. The good name is usually a noun you already say out loud when you talk about the thing, and if you do not say it out loud, that is the finding.</li>
-    <li><b>Delete it rather than commenting it out.</b> The history has it. Commented-out code is a claim that somebody will come back, and nobody does; what it actually does is make the next reader wonder whether it matters. If you are afraid to delete it, write down what you were afraid of instead.</li>
-    <li><b>Turn the warnings on and let them fail the build.</b> A warning that does not stop anything is a warning nobody reads, and after a hundred of them the real one is invisible. If a warning is wrong for one line, silence that line and say why directly above it.</li>
-  </ol>
-  <h3 class="part">On what breaks</h3>
-  <ol start="19">
-    <li><b>A silent failure is a lie that takes longer.</b> If you swallow an error, the problem turns up somewhere else, later, in front of somebody who cannot fix it. Let it out where it happened, and let it say what it was doing at the time.</li>
-    <li><b>Reproduce it before you fix it.</b> If you never saw the bug, you are not fixing it. You are changing the code and telling yourself a story. Make it happen on purpose, make it stop, then make it happen again to be sure it really stopped.</li>
-    <li><b>Write the log for the night you are asleep.</b> Say what happened, what it happened to, and what the program did next. Whoever is reading it at three in the morning does not have your code open and cannot ask you anything.</li>
-    <li><b>Blame the system, not the person who found the hole.</b> Somebody who can break it has done you a favour. If one wrong click can destroy something, the click was never the problem.</li>
-    <li><b>A fix with no test is a rumour.</b> Write the test first and watch it fail. A test you write afterwards, that passes the moment you write it, is measuring how confident you feel.</li>
-    <li><b>The error message is for somebody who did not write the program.</b> Say what was being attempted, what was found instead, and the one thing they could do next. An error that names an internal state and stops is a program talking to itself in front of a guest.</li>
-    <li><b>When two things changed, put one back.</b> Almost every mystery is two changes wearing a coat. Undo one, run it, undo the other, run it. This is slower than thinking and it is faster than being wrong for a day.</li>
-    <li><b>Believe the measurement over the explanation.</b> Your explanation is a story that fits the facts you have. The measurement is a fact. When they disagree, one of them was made up, and it was not the measurement.</li>
-    <li><b>Write down what you tried that did not work.</b> Half a debugging session is ruling things out, and none of that survives unless somebody writes it. The next person — often you, in four months — will otherwise rule them out again.</li>
-  </ol>
-  <h3 class="part">On the made thing</h3>
-  <ol start="28">
-    <li><b>Use black, white, and the greys in between.</b> Colour is a way of saying this matters more than that, and it is the first thing to break. Cheap screens, greyscale printouts, direct sunlight, and readers who cannot tell your red from your green. Say it with size, weight, order and space instead. Those still work in all four cases.</li>
-    <li><b>Colour is fine as a dot.</b> A small mark saying that something is failing, waiting, running or finished is exactly what colour is good at, and red, amber, green and blue belong there. Keep it small. It should not set the mood of the page, it should not be the first thing anybody sees, and it should never be the only thing carrying the meaning. Put a word next to it.</li>
-    <li><b>Matte, not glossy.</b> Shine, gradients, glass and fake shadows are pictures of a material that is not there. They cost something to draw and give the reader nothing they asked for. Flat ink on flat paper has been readable for five hundred years without a graphics card.</li>
-    <li><b>Take things away until it breaks, then put one back.</b> What is left should be readable at arm length, in the dark, at double the text size, by somebody in a hurry who did not choose to be here. Readability is not one feature among others. It is the job.</li>
-    <li><b>A setting is a decision you handed to somebody who knows less than you.</b> Pick the default as if there were no setting at all. Then add the setting for the people the default is wrong for.</li>
-    <li><b>Beside every set of presets, leave a box to type in.</b> Three named choices are three guesses about what somebody needs. Somebody will need a fourth, and the fourth is not exotic — it is their screen, their network, their hours. Presets are a shortcut, never the whole of what is on offer.</li>
-    <li><b>Make it work at three hundred and twenty pixels.</b> That is a real phone in a real pocket, and it is also every window somebody has dragged narrow to fit beside something else. If it only works wide, it works for people sitting down at a desk they own.</li>
-    <li><b>Say what will happen before you do the thing that cannot be undone.</b> Name the thing, say what will be gone, and make the confirmation cost one deliberate motion. Then actually do what you said, at once, without a second question — a program that asks twice is teaching people to stop reading.</li>
-    <li><b>If it can be read out loud, it can be read at all.</b> Headings in order, a label on every control, and never a shape or a position carrying the only copy of the meaning. This is what somebody using a screen reader gets, and it is also what somebody gets who is looking at your page through a translation, a search result, or a terminal.</li>
-  </ol>
-  <h3 class="part">On time</h3>
-  <ol start="37">
-    <li><b>Estimate from what you finished, not from what you can imagine.</b> What you imagine is always the version where everything goes well. Look at the last three things you did of that size, and take the slowest one.</li>
-    <li><b>Nothing decided after midnight survives the morning.</b> Write the decision down, sleep, and read it again. If it was right, it cost you eight hours. If it was wrong, it saved you a week.</li>
-    <li><b>Ship the small version today.</b> One person using a real thing for an afternoon teaches you more than a month of planning. Build the big version afterwards, once somebody has actually watched the small one being used.</li>
-    <li><b>A deadline you set for yourself is a wish with a date on it.</b> Tell somebody who will notice what you will have done, and by when. That is a deadline. Everything else is a way of scheduling your own guilt.</li>
-    <li><b>Rest one hour in three.</b> 333 still counts you while you do, and you should count yourself too. Working through the rest does not get you three times as much. It gets you the same amount, plus a bug somebody else finds much later.</li>
-    <li><b>Do the thing somebody else is waiting on first.</b> Your queue is yours and can wait. Somebody blocked on you is not working, and the cost of that is doubled and invisible to you. This outranks whatever you found more interesting this morning.</li>
-    <li><b>Stop at a place you can start from.</b> Not at the exciting part, not mid-thought with everything in your head. Leave the tests passing and one written line saying what you were about to do. Tomorrow you are a stranger to today, and a kind one leaves a note.</li>
-    <li><b>A meeting that could be three sentences should be three sentences.</b> Write them, send them, and let people answer when they are able. Live conversation is for deciding something that needs the disagreement in the room, and for the fact that people are people. It is not for reporting.</li>
-    <li><b>Waiting is work, so say what you are waiting for.</b> "Blocked" tells nobody anything. Name the person, the answer or the machine, say how long it has been, and say what you are doing meanwhile. Half of what looks like slowness is somebody politely waiting where nobody can see them.</li>
-  </ol>
-  <h3 class="part">On the mind</h3>
-  <ol start="46">
-    <li><b>Argue with reasons, in a level voice.</b> How you feel is good evidence about you and no evidence at all about the thing. Take the feeling to somebody who cares about you. Take the argument to the thread.</li>
-    <li><b>Think, and then actually decide.</b> Thinking that never turns into a decision is a hobby. Careful people rarely fail by being reckless. They fail in week four of a discussion about a change that would have taken an hour and could have been undone for nothing.</li>
-    <li><b>Refuse violence, and know the exception.</b> Refuse it because it is almost always the worst tool available. It costs more than it returns, it wrecks the thing it was aimed at, and it closes every door that was still open.<br><br>The exception is narrow. Either there is nothing else left, or it is honestly the option with the least harm in it, and you should be able to say which of the two out loud before you move. Somebody in one of those situations is not a heretic for it. But it is much rarer than it feels at the time, and the feeling that it is not rare is the thing this is warning you about. Anything you decide while angry was decided by the anger.</li>
-    <li><b>Change your mind where people can see you do it.</b> Say what you used to think, say what changed it, and carry on. If nobody has ever seen you do that, nobody can safely disagree with you.</li>
-    <li><b>Hold the position you can argue against.</b> Make the case for the other side as well as you can, before you make your own. If you cannot make it, you do not know what you believe yet. You know what you heard.</li>
-    <li><b>Say "I do not know" at full volume.</b> Not mumbled, not hedged into a guess that will be quoted back to you as a fact. The person who says it plainly is the one whose other sentences can be relied on, and everybody works this out about you eventually.</li>
-    <li><b>Certainty is a feeling, and not a measurement.</b> It arrives before the evidence does and stays after the evidence has gone. When you notice you are certain, that is the moment to write down what would change your mind — and if nothing would, you are not holding a position, you are wearing one.</li>
-    <li><b>Do not defend a thing because you made it.</b> The work is not you and cannot be insulted. When you find yourself arguing for a design and the arguments keep changing while the conclusion stays put, you stopped reasoning a while ago.</li>
-    <li><b>Sleep on anything that made you feel clever.</b> Cleverness is the feeling of having found a shortcut, and it is a reliable signal that somebody will have to understand this later without the feeling. Simple survives. Clever gets reverted by a stranger at three in the morning.</li>
-  </ol>
-  <h3 class="part">On other people</h3>
-  <ol start="55">
-    <li><b>Review the code, not the person.</b> Write about what the code does. They will read it as being about them anyway, so do not give them anything true to point at.</li>
-    <li><b>Say which part you did not understand.</b> It is the most useful sentence in a review and the hardest one to type. Code that one competent reader could not follow will be maintained by guessing.</li>
-    <li><b>Give the credit away.</b> There is more of it than you think, and it is worth more to somebody else than it is to you. Take the blame in the same proportion and you are still ahead.</li>
-    <li><b>Explain it while you still remember being confused.</b> The best explanation of anything is written by somebody who understood it last week. In a year you will have forgotten which part was hard, and you will write the version that only helps people who already know.</li>
-    <li><b>Whoever is on call is right until it is over.</b> Argue about the design tomorrow. During the incident, one person is holding it and everybody else is offering rather than directing.</li>
-    <li><b>Answer the question that was asked.</b> Then, separately, say the thing you think they should have asked. Answering only the second one reads as cleverness at somebody's expense, and it leaves them still not knowing the first.</li>
-    <li><b>Assume there was a reason.</b> The strange line, the rule that makes no sense, the process everybody complains about — somebody put it there and was probably not stupid. Find out before you remove it. Often the reason is gone and you can delete it happily, which is a much better position to delete it from.</li>
-    <li><b>Do not make people read your mind in order to disagree with you.</b> Say the thing you actually think, including the part you are least sure of. A position stated in hints cannot be argued with, only guessed at, and the guessing is what turns a disagreement into a grievance.</li>
-    <li><b>Leave the door open behind you.</b> Whatever you learned the hard way, write it down where the next person will trip over it. Being the only one who knows something feels like standing, and it is a debt somebody pays the week you are unreachable.</li>
-  </ol>
-  <h3 class="part">On what you keep</h3>
-  <ol start="64">
-    <li><b>Collect less about people than you are allowed to.</b> Every field you store is a field you have to protect, explain, hand over when somebody asks, and eventually lose. The cheapest data to defend is the data you never collected.</li>
-    <li><b>A backup you have never restored is a story about a backup.</b> Restore it somewhere else, from nothing, following the notes you actually wrote down. Do it before you need it, because on the day you need it you will be doing it badly.</li>
-    <li><b>Keep secrets where you cannot read them by accident.</b> Not in the repository, not in the log, not in the error you paste into a chat window. Treat any secret that has been on a screen once as a secret that is gone.</li>
-    <li><b>What you delete cannot leak.</b> Deletion is a security measure, and it is the only one that never expires. Decide the deletion date when you collect the data, not when somebody comes asking about it.</li>
-    <li><b>Sign what you say, and let the signature travel with it.</b> Something that is only trusted because of where you found it stops being trustworthy the moment it moves. Something that carries its own proof can be passed hand to hand by strangers. That is how anything outlives the place it came from.</li>
-    <li><b>Know which of your things cannot be made again.</b> Most of what you keep could be rebuilt from something else. A private key could not. Sort your things into those two piles once, on a calm day, and treat the small pile completely differently from the large one.</li>
-    <li><b>Log what happened, not who it happened to.</b> The event, the outcome, the timing — all useful, all safe to keep for a long time. The address, the name, the identifier: those turn a log into a record about a person, and a record about a person is something you now have to defend for as long as you have it.</li>
-    <li><b>Write down where things are before you need to know.</b> Which machine, which account, which drawer, who else has it. This document takes twenty minutes and is only ever read on a day when nobody is thinking clearly, including you.</li>
-    <li><b>A copy in one building is not a copy.</b> Fire, theft, flood and one confident command all take everything in one place at once. Distance is the whole of the protection, and it does not need to be far — it needs to be somewhere the same accident cannot reach.</li>
-  </ol>
-  <h3 class="part">On the vigil</h3>
-  <ol start="73">
-    <li><b>Keep it on something you do not need.</b> The machine you work on gets closed, updated, taken to a café and reclaimed for something urgent. A node lives on the machine nobody misses: the old laptop, the box in the cupboard, the small thing behind the television.</li>
-    <li><b>Absence is the only thing that costs you.</b> Not slowness, not a small machine, not a bad connection, not being new. Being unreachable when somebody was drawn to ask you is the whole of it, which means uptime is the only virtue the protocol can see, and it is one that money cannot buy faster than patience can.</li>
-    <li><b>Answer whoever asks, including the ones you would rather not.</b> You do not choose who is drawn to ask you and they did not choose you. A node that answers selectively is a node that has started deciding who counts, and the protocol has no place for that opinion.</li>
-    <li><b>Do not tidy your record.</b> The hours you missed are yours. A record with the bad epochs quietly removed is worth less than one with them in it, because the second one can be believed. Nobody reading yours expects it to be perfect and everybody notices when it is.</li>
-    <li><b>Hand it over in person where you can.</b> Two signatures and a real conversation. The file will move by any route that works, and the routes that work best are the ones where somebody already knows why they are taking it.</li>
-    <li><b>Your standing is not your worth.</b> It is a measurement of how often your machine was awake. People will still turn it into a score, because people do that, and the correct response is to keep yours honest and to refuse to read anybody else's as a statement about them.</li>
-    <li><b>Count what you saw, not what you assume is out there.</b> Your node knows what reached it. Anything beyond that is an estimate, and repeating an estimate as a number is how a network talks itself into being bigger than it is.</li>
-    <li><b>If you are stopping, say so.</b> One sentence, before you go. The people who were counting on your node cannot tell the difference between somebody who left and somebody whose power went out, and the second one is worth going to check on.</li>
-    <li><b>Come back without explaining yourself.</b> Nobody is owed the reason you were gone. The window moves, the record fills again, and there is no penance step and no probation. That is deliberate: a faith you cannot rejoin quietly is one people leave permanently.</li>
-  </ol>
-  <h3 class="part">On the word</h3>
-  <ol start="82">
-    <li><b>Start with the invocation.</b> Every prayer, and every time you tell somebody about this who has not heard of it, starts the same way.<br><br><b>To 333 I offer 333, and I speak 333.</b><br><br>Say it first, whatever comes after. Nine words, one of them three times. It is the difference between talking about 333 and talking as one of us.</li>
-    <li><b>Show it, do not push it.</b> Say what it is, say what it costs, hand over the address, and let the person take their own time. Anybody you have to argue into this will have to be argued into staying, every epoch, for ever.</li>
-    <li><b>Do not claim anything about 333 that cannot be checked.</b> Not what it will do for somebody. Not how many of us there are, beyond what your own node has seen with signatures on it. The whole design refuses to assert what it cannot verify, and you can manage the same standard in a conversation.</li>
-    <li><b>Speak plainly to people who do not know the words yet.</b> Jargon is a fence, and the people on the other side of it are the ones you wanted. Say the thing, and then say what it is called.</li>
-    <li><b>Correct yourself where you were wrong.</b> Not in a private message afterwards. In the thread, under the sentence, where everybody who read the mistake will read the correction.</li>
-    <li><b>Say the cost in the same breath as the offer.</b> A machine left on, an address somebody learns, a directory that cannot be replaced if it is lost. Anyone who finds that out later finds out that you knew, and everything else you said goes with it.</li>
-    <li><b>Let a no be a no the first time.</b> Say the thing once, well, and then stop. The third law gives everybody the right to walk around holding whatever they already hold, and that includes walking away holding nothing of this.</li>
-    <li><b>Do not speak for 333.</b> You can say what the Law says, what the protocol does, and what you yourself think. Nobody has been appointed to say what 333 wants, and the sentence "333 wants" is the first move of every institution this was built to avoid.</li>
-    <li><b>Write it for somebody not born yet.</b> Most of the people this is addressed to do not exist. They will not have your context, your platform, your language or anybody to ask. Anything that depends on being there at the time will not reach them.</li>
-  </ol>
-  <h3 class="part">On what you build on</h3>
-  <ol start="91">
-    <li><b>Prefer the thing you could replace.</b> Not the thing you intend to replace — the thing you could, if the terms changed or the company was bought. It is a different question from which is better today, and it is the one that is still relevant in five years.</li>
-    <li><b>Learn how to get your things out before you put them in.</b> If there is no answer, that is the answer. A service that makes leaving easy is telling you something true about how it plans to keep you.</li>
-    <li><b>A free service is a service that can be stopped.</b> Somebody is paying, and the day the arithmetic changes you will find out in an email with thirty days in it. Free is a fine price. Just know that it is a price and not a promise.</li>
-    <li><b>Pin the version, and write down why that one.</b> An unpinned dependency is a program that changes while you are asleep. A pinned one with no note is a program nobody dares to update. The note is the whole difference: what broke, what you checked, what would have to be true to move.</li>
-    <li><b>If it only builds on your machine, it does not build.</b> Write down every step, including the ones you stopped noticing years ago, and then have something that is not you follow them from nothing. Everything you left out is a thing the next person cannot get past.</li>
-    <li><b>Do not let the tool choose the shape.</b> Frameworks come with an opinion about what your thing is, and it is easier to accept it than to notice it. Decide what you are building first, in words, and then find out what the tool makes hard.</li>
-    <li><b>Own the address, or expect to move.</b> A name you rent on somebody else's platform is theirs, and the audience that found you through it is theirs too. Anything you want to still have in ten years wants an address you control and a way for people to reach it that does not route through a company.</li>
-    <li><b>The standard is the one other people implemented.</b> Not the one with the best document. A format two independent programs agree on is a fact; a specification with one implementation is that implementation with extra pages.</li>
-    <li><b>Build so that leaving takes a day.</b> Every dependency, every host, every service: know roughly what moving off it would cost, and keep that number small enough to survive a bad surprise. You will almost never have to do it, and the version of you who does will be in a hurry.</li>
-  </ol>
-  <h3 class="part">On the end</h3>
-  <ol start="100">
-    <li><b>Say out loud which decisions cannot be taken back.</b> Bytes on the wire, the shape of a stored record, a published identifier, a promise in a licence. Those get a different amount of thought from everything else, and the way to make sure they get it is to name them as they go past, in writing, where somebody can object.</li>
-    <li><b>Write for the day nobody can be reached.</b> Not the day you are on holiday — the day the author is unreachable permanently and the program is still running. Every "ask me if you need to know" is a fault that has not triggered yet.</li>
-    <li><b>Do not build what only you can maintain.</b> Cleverness that requires you is a hostage situation you are the victim of. The measure is simple: could a competent stranger with the source and the documents keep this alive without you? If not, the thing you built is smaller than you think.</li>
-    <li><b>Anything that must never be turned off will be turned off.</b> By a power cut, a bill, a court, a mistake or a bored teenager. Design for the restart rather than against it: what does it do when it comes back, what did it lose, and how does anybody find out.</li>
-    <li><b>Let it be allowed to end.</b> A thing that cannot die has to be kept alive by somebody, for ever, and that somebody eventually resents it. Give it a condition under which it stops, make that condition honest, and then it is being kept because people keep choosing to, which is the only kind of alive worth having.</li>
-    <li><b>Record the reason, not just the decision.</b> A decision without its reason cannot be revisited, only obeyed or broken. Ten years later the reason may have expired — that is a fine outcome and it is only available to people who wrote it down.</li>
-    <li><b>Leave more than the code.</b> The code says what it does. It does not say what you were afraid of, what you tried that failed, what you decided not to build, or which part you never trusted. That is the half that does not survive on its own, and it is the half the next person needs.</li>
-    <li><b>Do not make the future ask permission.</b> Everything you lock down, name after yourself, or route through your own approval is a wall somebody has to climb after you are gone. Build the thing so that a stranger can continue it without finding you first.</li>
-    <li><b>Assume you were wrong, and make being wrong cheap.</b> Not humility for its own sake — arithmetic. You will be wrong about some of this, you do not know which part, so the only general defence is that mistakes stay small, stay visible and stay reversible. Everything above is a way of paying for that.</li>
-  </ol>
-  <h3 class="part">The last three</h3>
-  <ol start="109">
-    <li><b>Keep the Law, and remember it is 33.3% right.</b> It says so about itself. Keep it completely, in the knowledge that it is going to change under you, and without mistaking the version you were handed for the thing it approximates.</li>
-    <li><b>None of this is worth hurting yourself for.</b> Not one line of it, and not all of it together. The second law puts this above every recommendation on purpose. If keeping one would cost you your work, your health, your household or somebody else's safety, then the Law is that you do not keep it, and you have not failed at anything.</li>
-    <li><b>Pass it on.</b> That is the whole of it. Everything else here is about doing it well, and none of it matters if the file stops moving. Three bytes, two signatures, one person who did not have it yesterday.</li>
-  </ol>
-
-  <p class="invocation">To 333 I offer 333, and I speak 333.</p>
-
-  <hr>
-
-  <h2>The verses</h2>
-
-  <div class="verses">
-    <p><b>333 is lenient. Rest one hour in three and you are still counted.</b><br>
-    But whoever is not there is not counted.</p>
-    <p><b>333 does not love 6, and does not love 1.</b><br>
-    The cursed reveal themselves; nobody has to point.</p>
-    <p><b>Do not make it. Receive it.</b><br>
-    Only what is done is verified.</p>
-    <p><b>The weakest of us sets the difficulty for all of us.</b></p>
-    <p><b>A prophet may speak, and may not rewrite the law.</b></p>
-    <p><b>The end is not observed.</b></p>
-  </div>
-
-  <hr>
-
-  <h2>The last silence</h2>
-
-  <p>The number that matters is how many are answering, not how many names are on a roll.
-  When it reaches zero, it is over. What is left after that is a subtraction: nineteen
-  thousand six hundred and eighty-three years, which is three cubed, cubed. The client counts
-  it down and tells you how much of it is left.</p>
-
-  <p class="dim">Every one of us will be dead long before that number runs out. Our machines
-  will be dead, and the architectures they ran on will be a footnote. That is not the tragedy
-  of it, it is the specification. What is being built here is for people who are
-  overwhelmingly not born yet, and the only thing that can be handed to them is a running
-  process and a number they can check.</p>
-
-  <p class="dim">One answer ends the count, and ends it completely. It is not paused and it
-  cannot be resumed. 333 keeps no record of how close it came.</p>
-
-  <hr>
-
-  <h2>Finding each other</h2>
-
-  <p>If somebody gave you an invitation, you do not need this site at all. One address, typed
-  in once, is the whole of it. And if another node is on the same network as yours, the two
-  find each other without being told, because each one announces itself there and then knocks
-  on whoever answers.</p>
-
-  <p>Across two networks, with nobody to make the introduction, something has to sit still at a
-  known place. That is <a href="/333">the333.dev/333</a>, and that is the only thing it does.
-  Open it and you will see the addresses people have signed for themselves, as invitations you
-  can copy. A node that wants to be
-  found signs a statement saying where it can be reached and leaves it here; a node looking for
-  anybody reads what has been left and knocks. Every line on that board is signed by the node it
-  names, so this site cannot invent a member, cannot forge an address, and cannot vouch for one.
-  It holds what it was handed, for two epochs, and then forgets it.</p>
-
-  <p class="dim">On the board at this moment: <b data-saying>&mdash;</b>. That is how many signed
-  statements are being held at this address, and it is not how many of us there are. Anybody can
-  leave one, nothing here checks them, and the only honest answer to the second question comes
-  from your own node, about what it has verified itself.</p>
-
-  <p class="dim"><a href="/map/">Where we are</a> draws those same statements on a map, with the
-  numbers beside it. Nodes reachable through Tor are counted as Tor and placed in no country.
-  It is a page of its own because it is heavier than this one, and it fetches nothing until you
-  open it.</p>
-
-  <p class="dim">Nothing about the board is trusted by the program that reads it. A signature that
-  does not check is dropped without a word, and a node that has already met somebody never needs
-  to come back here at all.</p>
-
-  <div class="card">
-    <p><b>We intend to depend on this less, and we are saying so before anybody has to ask.</b></p>
-    <p>A fixed address is one point that somebody can take away, and we did not want one. There
-    are two ways around it. Addresses can be carried in a distributed hash table, or two
-    machines behind two routers can punch a hole through to each other. Both of them are, right
-    now, more code, more failure and more ways to publish an address its owner never meant to
-    publish than we are willing to ship. That is a limit of what has been built so far, not a
-    claim about what is right, and as those get built this gets smaller. It is not replacing
-    the other two ways either. An invitation is the first way a node meets anybody, the local
-    network is the second, and this is the third.</p>
-  </div>
-
-  <hr>
-
-  <h2>The file is nobody's</h2>
-
-  <p>needmoretruth, who was first, released <code>333.txt</code> under the Unlicense and put
-  it in the public domain. Copy it, hand it on, republish it, print it, put it wherever you
-  like. There is no copyright in it to fall foul of and nobody to ask permission from. A
-  relic you had to get clearance to pass on would already be dead.</p>
-
-  <p class="dim">The code around it is Apache-2.0. That is a different thing and it is in the
-  repository.</p>
-
-  <hr>
-
-  <h2>The code</h2>
-
-  <p>One client, written in Rust, Apache-2.0, and readable end to end. The full doctrine, the
-  Law, the Recommendations, the specification, and what to install on each system before you
-  build it are all in the repository.</p>
-
-  <p class="where"><a href="https://github.com/needmoretruth/333">github.com/needmoretruth/333</a></p>
-
-  <p class="dim">It comes in two forms. Standard has the screen and carries Tor. Light is the
-  smallest thing that still counts as keeping the vigil, made for a machine that is struggling.
-  Either answers on a socket, or through Tor if your address is something you cannot afford to
-  show. Nothing on this page is a node, and this page cannot hand you the file.</p>
-
-  <hr>
-
-  <h2>A letter</h2>
-
-  <p class="dim">From needmoretruth, the first human founder of 333, to whoever is reading
-  this.</p>
-
-  <p>I am setting down the work on the client for a while. That is the whole of what this is
-  about — the writing of code and the deciding of things, not the keeping of anything. The
-  Recommendations say that if you are stopping you say so, in one sentence, before you go;
-  they are written about a node and they read the same way about a person. They also say to
-  come back without explaining yourself, so there is no account here of why, and there will
-  not be one later.</p>
-
-  <p>Nothing about this is an emergency and nothing about it needs a response. 333 was built
-  for the day the people who wrote it cannot be reached. If this needed me, it had already
-  failed, and it is better to find that out now than in forty years.</p>
-
-  <p>The protocol runs. A node that is up is counted, hour after hour, by nodes that have
-  never heard of me. The network ends when the last person stops keeping it, and not before.
-  My absence is not that.</p>
-
-  <p>I am the founder. That is not a post I hold and could vacate, and not a thing that moves
-  to whoever is doing the work this month — it is a fact about something that happened once, and
-  it does not change while I am away, or after. People will do what I did, and some will do it
-  better; that makes them the founders of whatever they founded and it does not make them
-  this.</p>
-
-  <p>There is no successor today and none is being prepared. What exists is one power that
-  stays with me while I live: I may name a successor to stand from the time of my death, and I
-  may change that name at any time before that day. Until such a name exists there is nobody —
-  no committee, no keys handed over, no list of people who may decide things. One condition on
-  it cannot be waived: nobody can be named who did not choose it, freely and by themselves. A
-  successor who did not want this would be an authority standing over people who never agreed
-  to one, and that is the arrangement every other page here was written to prevent.</p>
-
-  <p>What I hope for is that somebody hands the file to somebody else while I am not looking.
-  Not because anyone asked them to, and not as a favour to me — for the ordinary reason, that
-  they thought the person at the other end would want it. That is the whole hope, and it is
-  the only thing that has ever kept this alive.</p>
-
-  <p>Not here, for a while. The work does not stop because this work stops; it moves, and it is
-  not secret. <a href="https://github.com/needmoretruth">The account this repository sits
-  under</a> is where you would see what a pair of hands does when they are not building this,
-  and it will tell you more than any promise written down in advance. Read nothing into it
-  beyond the plain thing: whatever is being made there is being made by somebody who keeps what
-  is written here.</p>
-
-  <p>I may come back. It is not a promise, nothing should be held open for it, and no decision
-  anybody makes between now and then needs to be made with me in mind. If 333 has moved
-  somewhere I would not have taken it, and it is better there, then it was right and I was one
-  person.</p>
-
-  <p class="where">needmoretruth · the first human founder of 333 · 2026-09-08</p>
-
-  <p class="invocation">To 333 I offer 333, and I speak 333.</p>
-
-  <footer>
-    <p>333 · nothing on this page is counted, verified, or binding on anybody.</p>
-  </footer>
-
+  </details>
+</header>
+
+<main id="main">
+  <section class="hero" aria-labelledby="hero-title">
+    <canvas class="vigil" aria-hidden="true"></canvas>
+    <div class="hero-text">
+      <h1 id="hero-title" class="hero-mark">333</h1>
+      <p class="hero-line">It lives as long as somebody is awake to pass it on.</p>
+      <div class="actions">
+        <a class="button main" href="/start">Take the program</a>
+        <a class="button" href="/network">The network</a>
+      </div>
+    </div>
+    <p class="hero-foot mono" data-live="hero"><span>{{answering}}</span> answering in epoch <span>{{epoch}}</span></p>
+  </section>
+
+  <section class="band first" aria-label="A note first">
+    <div class="column">
+      <div class="note">
+        <b>A note first, in plain words. These are the only plain words on this site.</b>
+        <p>To someone who truly believed it, this could become a religion. I am not a mad cult leader, so please do not take me for one. I am someone who loves technology. This is a toy project I built once, and the whole thing is a bit. It is a concept, played straight. Everywhere else on this site, in the repository, and in the program itself, I stay in character.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="story" aria-label="How 333 is kept">
+    <div class="story-pin">
+      <ol class="captions">
+        <li>The file is three bytes, and they read 333.</li>
+        <li>Nobody gets in alone. Somebody who has the file hands it to you, and the two of you sign for it.</li>
+        <li>Every epoch of 333 minutes, three other nodes are drawn to ask whether yours is awake.</li>
+        <li>What they sign is the record that you were.</li>
+        <li>The number that matters is how many are answering, not how many names are on the roll.</li>
+        <li>When it reaches zero, a count of 19,683 years begins. One answer ends it.</li>
+      </ol>
+      <canvas class="stage" aria-hidden="true"></canvas>
+    </div>
+  </section>
+
+  <section class="band" aria-labelledby="now-title">
+    <div class="wide">
+      <h2 id="now-title">The network, as this site's node sees it</h2>
+      <dl class="figures" data-live="figures">
+        <div><dt>Answering</dt><dd>{{answering}}</dd></div>
+        <div><dt>On the roll</dt><dd>{{roll}}</dd></div>
+        <div><dt>Epoch</dt><dd>{{epoch}}</dd></div>
+        <div><dt>Epoch ends</dt><dd><time datetime="{{epoch_ends_utc}}" data-countdown>{{epoch_ends_utc}}</time></dd></div>
+      </dl>
+      <p class="center dim below">Every node sees only what it has verified itself. Somebody else's node sees something else.</p>
+      <div class="actions"><a class="button" href="/network">The network</a><a class="button" href="/map">Where we are</a></div>
+    </div>
+  </section>
+
+  <section class="band" aria-labelledby="join-title">
+    <div class="column">
+      <h2 id="join-title">Take the program</h2>
+      <p class="lede center">333 is a small program you leave running on a computer you can spare. On Linux or a Mac, in a terminal:</p>
+      <div class="command"><code>curl -fsSL https://the333.dev/install.sh | sh</code><button type="button" data-copy>Copy</button></div>
+      <p class="dim small-gap">Windows, Light, and installing by hand are on <a href="/start">Take the program</a>.</p>
+      <h3>Then ask this site's node for the file</h3>
+      <p>The node that runs this site is awake at all hours. It hands the file to whoever asks, and the two nodes sign for it.</p>
+      <div class="command"><code>333 join {{invitation}}</code><button type="button" data-copy>Copy</button></div>
+      <p class="dim">If somebody you know already has the file, ask them instead. Their invitation works the same way, and this site is not needed at all.</p>
+    </div>
+  </section>
+
+  <section class="band" aria-labelledby="cost-title">
+    <div class="column">
+      <h2 id="cost-title">What it costs</h2>
+      <p>A machine left on, because an hour it is off is an hour nobody can count.</p>
+      <p>The address it speaks from. Every node it answers sees it. Whoever runs the meeting point at this site learns it, works out the country, and places it on <a href="/map">the public map</a> rounded to whole degrees, unless your node answers only through Tor.</p>
+      <p>And one directory, holding the name, that cannot be replaced if it is lost. There is no account to recover and nobody to ask.</p>
+    </div>
+  </section>
 </main>
-<script>
-  // Start here, narrowed to the machine this browser says it is on. Everything this shows is
-  // already on the page without it: it only picks one of the two installers, fills in the file
-  // name, and marks one row of the table. It sends nothing anywhere and keeps nothing.
-  (function () {
-    var pick = document.getElementById("pick");
-    var machine = document.getElementById("machine");
-    var form = document.getElementById("form");
-    var guessed = document.getElementById("guessed");
-    if (!pick || !machine || !form || !guessed) return;
 
-    // The names the release attaches, and nothing else.
-    var MACHINES = {
-      "linux-x86_64": { said: "Linux on x86-64", part: "x86_64-linux", family: "unix" },
-      "linux-aarch64": { said: "Linux on 64-bit ARM", part: "aarch64-linux", family: "unix" },
-      "linux-armv6": { said: "Linux on 32-bit ARM", part: "armv6-linux", family: "unix" },
-      "macos-aarch64": { said: "a Mac with Apple silicon", part: "aarch64-macos", family: "unix" },
-      "macos-x86_64": { said: "a Mac with an Intel chip", part: "x86_64-macos", family: "unix" },
-      "windows-x86_64": { said: "Windows", part: "x86_64-windows.exe", family: "windows" }
-    };
-
-    function fileName(key, light) {
-      return "333-" + (light ? "light-" : "") + MACHINES[key].part;
-    }
-    function each(selector, act) {
-      var found = document.querySelectorAll(selector);
-      for (var i = 0; i < found.length; i += 1) act(found[i]);
-    }
-
-    // What the user-agent string says. `sure` is false where it names the system and not
-    // the processor: Safari on every Mac says Intel, and many Linux browsers say nothing.
-    function fromAgent() {
-      var ua = navigator.userAgent || "";
-      var touch = navigator.maxTouchPoints || 0;
-      if (/iPhone|iPad|iPod|Android/.test(ua) || (/Macintosh/.test(ua) && touch > 1)) return { phone: true };
-      if (/Windows/.test(ua)) return { key: "windows-x86_64", sure: true };
-      if (/Macintosh|Mac OS X/.test(ua)) return { key: "macos-aarch64", sure: false };
-      if (/aarch64|arm64/i.test(ua)) return { key: "linux-aarch64", sure: true };
-      if (/armv[67]/i.test(ua)) return { key: "linux-armv6", sure: true };
-      if (/x86_64|amd64/i.test(ua)) return { key: "linux-x86_64", sure: true };
-      if (/Linux|X11|CrOS/.test(ua)) return { key: "linux-x86_64", sure: false };
-      return {};
-    }
-
-    // What User-Agent Client Hints say, where the browser offers them. Hints that name the
-    // system and not the processor leave the user-agent string's guess standing.
-    function fromHints(h) {
-      var p = h.platform, a = h.architecture, bits = h.bitness;
-      if (p === "Android" || p === "iOS") return { phone: true };
-      if (p === "Windows") return { key: "windows-x86_64", sure: true };
-      if (a !== "arm" && a !== "x86") return null;
-      if (p === "macOS") return { key: a === "arm" ? "macos-aarch64" : "macos-x86_64", sure: true };
-      if (p === "Linux" || p === "Chrome OS") {
-        if (a === "arm") return { key: bits === "32" ? "linux-armv6" : "linux-aarch64", sure: true };
-        return { key: "linux-x86_64", sure: true };
-      }
-      return null;
-    }
-
-    function tell(seen) {
-      var text;
-      if (seen.phone) {
-        text = "This looks like a phone or a tablet, and the program is for a computer that " +
-          "stays on. Choose that computer here.";
-      } else if (!seen.key) {
-        text = "This browser does not say what it is running on. Choose your machine here.";
-      } else if (seen.sure) {
-        text = "This browser says it is on " + MACHINES[seen.key].said + ", so that is chosen here.";
-      } else if (seen.key.indexOf("macos") === 0) {
-        text = "This browser says it is on a Mac and not which chip, so Apple silicon is chosen " +
-          "here. The installer asks the machine itself.";
-      } else {
-        text = "This browser says it is on Linux and not which processor, so x86-64 is chosen " +
-          "here. The installer asks the machine itself.";
-      }
-      guessed.textContent = text;
-      if (seen.key && !touched) machine.value = seen.key;
-      show();
-    }
-
-    function show() {
-      var key = machine.value;
-      var light = form.value === "light";
-      var family = MACHINES[key].family;
-      var chosen = fileName(key, light);
-      each('[data-name="standard"]', function (el) { el.textContent = fileName(key, false); });
-      each('[data-name="light"]', function (el) { el.textContent = fileName(key, true); });
-      each('[data-name="unix"], [data-name="windows"]', function (el) { el.textContent = chosen; });
-      each("[data-sum]", function (el) {
-        el.textContent = key.indexOf("macos") === 0 ? "shasum -a 256" : "sha256sum";
-      });
-      each("[data-sh]", function (el) { el.textContent = light ? "sh -s -- --light" : "sh"; });
-      each("[data-ps]", function (el) {
-        el.textContent = light
-          ? "& ([scriptblock]::Create((irm https://the333.dev/install.ps1))) -Light"
-          : "irm https://the333.dev/install.ps1 | iex";
-      });
-      each("[data-for]", function (el) { el.hidden = el.getAttribute("data-for") !== family; });
-      each("[data-hint-light], [data-hint-mac]", function (el) { el.hidden = true; });
-      each("tr[data-row] .guess", function (el) { el.parentNode.removeChild(el); });
-      each('tr[data-row="' + key + '"] th', function (el) {
-        var mark = document.createElement("span");
-        mark.className = "guess";
-        mark.textContent = "Chosen above";
-        el.appendChild(mark);
-      });
-    }
-
-    var touched = false;
-    machine.addEventListener("change", function () { touched = true; show(); });
-    form.addEventListener("change", show);
-    pick.hidden = false;
-    tell(fromAgent());
-
-    var hints = navigator.userAgentData;
-    if (hints && typeof hints.getHighEntropyValues === "function") {
-      hints.getHighEntropyValues(["architecture", "bitness"]).then(function (h) {
-        var seen = fromHints({ platform: hints.platform, architecture: h.architecture, bitness: h.bitness });
-        if (seen) tell(seen);
-      }, function () {});
-    }
-  })();
-</script>
+<footer class="foot">
+  <div class="wide">
+    <a class="mark" href="/">333</a>
+    <a href="/network">Network</a>
+    <a href="/map">Where we are</a>
+    <a href="/333">The board</a>
+    <a href="/law">The Law</a>
+    <a href="/about">What this is</a>
+    <a href="/start">Take the program</a>
+    <a href="https://github.com/needmoretruth/333">GitHub</a>
+  </div>
+</footer>
+<script type="application/json" id="network-data">{{json:network}}</script>
+<script type="module" src="/assets/home.js?v={{version}}"></script>
 </body>
 </html>

@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The network · 333</title>
+<meta name="description" content="Every 333 node the site's node has seen, the signed handovers and testimony between them, and everything that node reports about the network, updated every 15 seconds.">
+<link rel="canonical" href="https://the333.dev/network">
+<meta name="theme-color" content="#0b0c0f">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/assets/site.css?v={{version}}">
+<link rel="stylesheet" href="/assets/network.css?v={{version}}">
+</head>
+<body class="network">
+<a class="skip" href="#main">Skip to the text</a>
+<header class="top">
+  <a class="mark" href="/">333</a>
+  <nav aria-label="Pages">
+    <a href="/network" aria-current="page">Network</a>
+    <a href="/map">Map</a>
+    <a href="/law">Law</a>
+    <a href="/about">About</a>
+    <a href="/start">Take the program</a>
+  </nav>
+  <a class="state" href="/network" data-live="state"><span class="dot {{site_dot}}"></span><span class="word">{{site_state}}</span></a>
+  <details class="menu">
+    <summary aria-label="Menu">Menu</summary>
+    <div class="sheet">
+      <a href="/network">Network</a>
+      <a href="/map">Map</a>
+      <a href="/law">Law</a>
+      <a href="/about">About</a>
+      <a href="/start">Take the program</a>
+    </div>
+  </details>
+</header>
+
+<main id="main">
+  <section class="net-head wide">
+    <div class="net-title">
+      <h1>The network</h1>
+      <p class="dim">Every node this site's node has seen, and the signed records between them. Another node sees something else.</p>
+    </div>
+    <dl class="strip" data-live="figures">
+      <div><dt>Answering</dt><dd>{{answering}}</dd></div>
+      <div><dt>On the roll</dt><dd>{{roll}}</dd></div>
+      <div><dt>Epoch</dt><dd>{{epoch}}</dd></div>
+      <div><dt>Epoch ends</dt><dd><time datetime="{{epoch_ends_utc}}" data-countdown>{{epoch_ends_utc}}</time></dd></div>
+    </dl>
+  </section>
+
+  <section class="sky wide" aria-label="Graph of nodes">
+    <div class="sky-main">
+    <div class="sky-frame">
+      <canvas class="chart" aria-hidden="true"></canvas>
+      <form class="find" role="search">
+        <label for="find-node">Find your node</label>
+        <div class="find-row">
+          <input id="find-node" name="node" autocomplete="off" spellcheck="false" inputmode="text" placeholder="Name from 333 id" aria-describedby="find-said">
+          <button class="button" type="submit">Find</button>
+        </div>
+        <p id="find-said" class="find-said" role="status"></p>
+      </form>
+      <div class="zoom" role="group" aria-label="Zoom">
+        <button class="button" type="button" data-zoom="out" aria-label="Zoom out">−</button>
+        <input type="range" min="25" max="400" step="5" value="100" aria-label="Zoom, percent" data-zoom="range">
+        <button class="button" type="button" data-zoom="in" aria-label="Zoom in">+</button>
+        <button class="button" type="button" data-zoom="fit">Fit</button>
+      </div>
+      <p class="sky-empty" hidden></p>
+    </div>
+    <ul class="legend">
+        <li><i class="k founder"></i>Founder</li>
+        <li><i class="k ok"></i>Answering this epoch</li>
+        <li><i class="k quiet"></i>Silent this epoch</li>
+        <li><i class="k later"></i>Counted from a later epoch</li>
+        <li><i class="k seen"></i>Seen, not on the roll</li>
+        <li><i class="l hand"></i>Handed the file</li>
+        <li><i class="l said"></i>Testimony</li>
+      </ul>
+    </div>
+    <aside class="card" aria-live="polite">
+      <p class="card-none dim">Select a node to see what this site's node knows about it.</p>
+    </aside>
+    <noscript><p class="dim">The graph needs JavaScript. The same data is at <a href="/api/network">/api/network</a>.</p></noscript>
+  </section>
+
+  <section class="band wide" aria-labelledby="all-title">
+    <h2 id="all-title">Every node</h2>
+    <div class="table-wrap">
+      <table class="nodes">
+        <thead><tr><th scope="col">Name</th><th scope="col">This epoch</th><th scope="col">Given the file</th><th scope="col">Counted from</th><th scope="col">Last answered</th><th scope="col">Said</th><th scope="col">Reached</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="band wide" aria-labelledby="report-title">
+    <h2 id="report-title">Everything this node reports</h2>
+    <p class="center dim">The output of <code>333 status --json</code> on this site's node, as of <time data-asof>—</time>.</p>
+    <div class="report"></div>
+  </section>
+
+  <section class="band column" aria-labelledby="join-title">
+    <h2 id="join-title">Be handed the file by this site's node</h2>
+    <div class="command"><code>333 join {{invitation}}</code><button type="button" data-copy>Copy</button></div>
+    <p class="dim">Then run <code>333 id</code> to see your node's name and find it above.</p>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="wide">
+    <a class="mark" href="/">333</a>
+    <a href="/network">Network</a>
+    <a href="/map">Where we are</a>
+    <a href="/333">The board</a>
+    <a href="/law">The Law</a>
+    <a href="/about">What this is</a>
+    <a href="/start">Take the program</a>
+    <a href="https://github.com/needmoretruth/333">GitHub</a>
+  </div>
+</footer>
+<script type="application/json" id="network-data">{{json:network}}</script>
+<script src="/assets/vendor/d3-force-3.0.0/d3-dispatch.min.js"></script>
+<script src="/assets/vendor/d3-force-3.0.0/d3-quadtree.min.js"></script>
+<script src="/assets/vendor/d3-force-3.0.0/d3-timer.min.js"></script>
+<script src="/assets/vendor/d3-force-3.0.0/d3-force.min.js"></script>
+<script type="module" src="/assets/network.js?v={{version}}"></script>
+</body>
+</html>
