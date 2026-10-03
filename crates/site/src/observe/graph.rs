@@ -8,6 +8,8 @@
 //! The founder is whoever handed the file on and was never handed it: a sponsor with no
 //! admission of its own. The roll leaves the founder out on purpose (a member who can
 //! never leave is a count that can never reach zero); the picture puts it back, marked.
+//! The site's node is a founder too when no record admits it, which is how a line looks
+//! before its founder has handed the file to anybody.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -113,7 +115,11 @@ pub(crate) fn build(held: &Held, now: Epoch, given: &Given) -> Graph {
     drawing.statements(&held.recent);
     drawing.statements(&held.witnessed);
     if let Some(name) = &site {
-        drawing.named(name).site = true;
+        let node = drawing.named(name);
+        node.site = true;
+        // Nobody serves without either joining, which leaves its admission on the roll,
+        // or beginning the line.
+        node.founder |= node.admitted.is_none();
     }
     let invitation = given.invitation.clone().or_else(|| {
         let name = site.as_deref()?;
@@ -298,6 +304,19 @@ mod tests {
                 epoch: 900
             }]
         );
+    }
+
+    #[test]
+    fn a_site_node_no_record_admits_is_the_founder_of_its_line() {
+        let alone = Identity::from_seed(&[5; 32]);
+        let given = Given {
+            site_node: Some(alone.node_id().to_string()),
+            ..Given::default()
+        };
+
+        let graph = build(&Held::default(), Epoch(905), &given);
+        let node = graph.nodes.first().unwrap();
+        assert!(node.site && node.founder && node.admitted.is_none());
     }
 
     #[test]
