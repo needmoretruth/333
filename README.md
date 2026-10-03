@@ -160,7 +160,7 @@ and a number they can check.
 
 ## Where this stands
 
-Version 0.8.1, which is to say: not the revelation, honestly labelled.
+Version 0.9.0, which is to say: not the revelation, honestly labelled.
 
 - [x] Two of us can meet and sign for each other — directly, or unseen
 - [x] The vigil: presence over the moving window, and the reckoning after the end
@@ -171,7 +171,7 @@ Version 0.8.1, which is to say: not the revelation, honestly labelled.
 - [x] The three witnesses, the question they put, and the hours that put it
 - [x] The record, kept as a chain of hashes
 - [x] Finding one another again: we trade what each of us knows, and nobody arbitrates
-- [x] Every line the client says, in English or Korean, and in any other language without touching the code
+- [x] Every line the client says, in nine languages, and in any other without touching the code
 - [ ] The 333 words themselves — a table nobody has written, and none of us alone will
 
 What is written on the wire keeps moving until the release that freezes it. The parts
@@ -560,15 +560,17 @@ Tor's state if it uses Tor. Two nodes on one machine are two directories.
 The client speaks English unless you choose another language; the system's language does not
 choose for you. `333 language ko` saves Korean for every later command at this node,
 `333 language en` goes back, and `333 language` lists what there is and how much of each is
-written. `--language ko` or `THE333_LANGUAGE=ko` asks for one just this once. Today that is
-English and Korean, and every line the client prints is in both.
+written. `--language ko` or `THE333_LANGUAGE=ko` asks for one just this once. Every line the
+client prints is in English (`en`), Korean (`ko`), Spanish (`es`), French (`fr`), German (`de`),
+Japanese (`ja`), Simplified Chinese (`zh-Hans`), Traditional Chinese (`zh-Hant`) and Esperanto
+(`eo`), and [the333.dev](https://the333.dev) is in the same nine.
 What your operating system says in its own words — a refused connection, a missing file — is
 passed on as it said it.
 
 A language this client has no words for is a folder of text files, and adding one touches no
 code and builds nothing. Copy the English catalogs from
 [`crates/cli/words/en/`](crates/cli/words/en/) into `words/<tag>/` inside your node's
-directory, where `<tag>` is the language's tag (`es`, `eo`, `zh-Hant`), and translate them
+directory, where `<tag>` is the language's tag (`pt`, `it`, `pt-BR`), and translate them
 line by line. They are [Fluent](https://projectfluent.org), so plurals and grammar belong to
 the file and not to the program; whatever you have not translated yet is said in English, and
 `333 language` counts how far you have got. Put the finished folder under `crates/cli/words/`
