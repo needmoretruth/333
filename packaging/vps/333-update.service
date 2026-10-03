@@ -1,0 +1,21 @@
+# Runs 333-update once, as the node's owner (`ubuntu`). Started by 333-update.timer; the
+# steps to install both are at the top of packaging/vps/333-update.
+#
+#   systemctl --user start 333-update.service   look for a release now
+#   journalctl --user -u 333-update             what it did
+
+[Unit]
+Description=Update this machine's 333 node to the latest release
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/333-update
+# A download, a restart and up to two 90-second waits.
+TimeoutStartSec=20min
+UMask=0077
+NoNewPrivileges=yes
+LockPersonality=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes

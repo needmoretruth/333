@@ -1,0 +1,25 @@
+# Rebuilds the observer's 333-site when the site moves to another commit, as the node's
+# owner (`ubuntu`). Started by 333-observe-follow.timer; the steps to install both are
+# at the top of packaging/vps/333-observe-follow.
+
+[Unit]
+Description=Build the 333 observer from the commit the site runs
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/333-observe-follow
+# cargo and the toolchain rustup installed for this user.
+Environment=PATH=%h/.cargo/bin:/usr/local/bin:/usr/bin:/bin
+# Up to an hour waiting for the machine's build lock, then the build itself.
+TimeoutStartSec=2h
+# A build shares two cores with a node and a web server; it goes last.
+Nice=15
+CPUWeight=20
+IOWeight=20
+UMask=0022
+NoNewPrivileges=yes
+LockPersonality=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes

@@ -1,0 +1,4 @@
+// /etc/apt/apt.conf.d/99-333-autoclean
+// Clears downloaded package files that can no longer be downloaded, once a week, so
+// months of unattended upgrades do not fill the disk with old .deb files.
+APT::Periodic::AutocleanInterval "7";

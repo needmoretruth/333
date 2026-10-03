@@ -1,0 +1,60 @@
+# the333.dev and its node, looked at from outside every hour. A failed run is the alarm:
+# GitHub sends it to whoever last changed the schedule below.
+#
+# Three things, each tried three times 20 seconds apart before it counts as down:
+# the home page answers 200; the observation the site serves (`as_of`, written every
+# 15 seconds on the server) is under 15 minutes old; and the node's port 3333 accepts
+# a connection within 10 seconds.
+name: watch
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: the333.dev answers 200
+        if: always()
+        run: |
+          for attempt in 1 2 3; do
+            code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 -A 'the333-watch' https://the333.dev/ || true)"
+            echo "attempt $attempt: https://the333.dev/ answered ${code:-nothing}"
+            [ "$code" = 200 ] && exit 0
+            sleep 20
+          done
+          exit 1
+
+      - name: The observation is under 15 minutes old
+        if: always()
+        run: |
+          for attempt in 1 2 3; do
+            as_of="$(curl -fsS --max-time 30 -A 'the333-watch' https://the333.dev/api/network | jq -r '.as_of // empty' || true)"
+            if [[ "$as_of" =~ ^[0-9]+$ ]]; then
+              age=$(( ($(date +%s%3N) - as_of) / 1000 ))
+              echo "attempt $attempt: as_of is ${age}s old"
+              [ "$age" -le 900 ] && exit 0
+            else
+              echo "attempt $attempt: no as_of in https://the333.dev/api/network"
+            fi
+            sleep 20
+          done
+          exit 1
+
+      - name: The node accepts a connection on 158.69.112.10:3333
+        if: always()
+        run: |
+          for attempt in 1 2 3; do
+            if timeout 10 bash -c 'exec 3<>/dev/tcp/158.69.112.10/3333'; then
+              echo "attempt $attempt: 158.69.112.10:3333 accepted a connection"
+              exit 0
+            fi
+            echo "attempt $attempt: 158.69.112.10:3333 did not accept a connection within 10s"
+            sleep 20
+          done
+          exit 1

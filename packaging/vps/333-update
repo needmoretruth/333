@@ -1,0 +1,182 @@
+#!/usr/bin/env bash
+# Keeps the node on the machine that publishes the releases on the newest one, run
+# once a day by 333-update.timer as the node's owner (`ubuntu`).
+#
+# This is that one machine's chore, not something 333 does or offers: the program never
+# updates itself, and a node anybody else runs is updated by the person running it.
+# Here the person who tags a release and the person who runs the node are the same, so
+# fetching the release changes nothing about who decides what runs.
+#
+# What it does, one journal line per step:
+#   1. asks GitHub (unauthenticated) for the latest release's tag;
+#   2. stops there if `333 --version` already says that version or a newer one;
+#   3. downloads 333-x86_64-linux and SHA256SUMS from that release and checks the one
+#      against the other, then that the file says the version the tag does;
+#   4. keeps the running file as 333.previous, puts the new one in place with a rename,
+#      and runs `333 restart`;
+#   5. waits up to 90 seconds for `333` to say it is running in the background, started
+#      after the restart and still running 15 seconds later. If it never does, it puts
+#      333.previous back, runs `333 restart` again and exits non-zero.
+#
+# A release that was put back (or whose file would not say its version) is written to
+# ~/.local/state/333-update/FAILED_TAG, and that tag is skipped with one line a day until
+# a newer one is released, instead of being installed and put back every day with two
+# restarts of the node. A release that comes up clears it. `--from` neither reads nor
+# writes it, so trying the way back cannot hold back the real release of that tag.
+#
+# Every `333` here runs with `--language en`: the status line below is recognised by its
+# English words, and `333 language <TAG>` or THE333_LANGUAGE would change them. The
+# client does not take its language from the locale, so LC_ALL would not do this.
+#
+#   333-update               what the timer runs
+#   333-update --from DIR    the same, but the tag, the file and SHA256SUMS come from DIR
+#                            (files `tag`, `333-x86_64-linux`, `SHA256SUMS`); for trying
+#                            the way back with a file that is meant to fail
+#
+# Install (as ubuntu):
+#   install -m 0755 packaging/vps/333-update ~/.local/bin/333-update
+#   cp packaging/vps/333-update.service packaging/vps/333-update.timer ~/.config/systemd/user/
+#   systemctl --user daemon-reload && systemctl --user enable --now 333-update.timer
+#   journalctl --user -u 333-update    what it did
+set -euo pipefail
+
+repo=needmoretruth/333
+asset=333-x86_64-linux
+bin_dir="$HOME/.local/bin"
+bin="$bin_dir/333"
+previous="$bin_dir/333.previous"
+state="${XDG_STATE_HOME:-$HOME/.local/state}/333-update"
+failed_tag_file="$state/FAILED_TAG"
+wait_for="${UPDATE_WAIT:-90}"
+steady=15
+from=""
+
+say() { printf '333-update: %s\n' "$*"; }
+fail() { say "$*"; exit 1; }
+
+case "${1:-}" in
+  "") ;;
+  --from) from="${2:?--from needs a directory}" ;;
+  *) fail "unknown argument $1 (only --from DIR)" ;;
+esac
+
+# Run the 333 at $1 with the rest of the arguments, speaking English whatever was saved.
+in_english() { local file="$1"; shift; "$file" --language en "$@"; }
+
+# "333 0.8.1 (Standard, tor, x86_64-linux)" -> "0.8.1"; non-zero if the file exits so.
+version_of() { in_english "$1" --version 2>/dev/null | awk 'NR == 1 && $1 == "333" { print $2 }'; }
+
+# Remember $tag as one that failed here, unless it came from --from.
+mark_failed() {
+  [ -z "$from" ] || return 0
+  { mkdir -p "$state" && printf '%s\n' "$tag" > "$failed_tag_file.new" \
+      && mv -f "$failed_tag_file.new" "$failed_tag_file"; } \
+    || say "could not write $failed_tag_file; $tag will be tried again tomorrow"
+}
+
+# Whether $1 is a newer version than $2, by sort -V.
+newer() { [ "$1" != "$2" ] && [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | tail -n 1)" = "$1" ]; }
+
+current="$(version_of "$bin")" || fail "$bin --version exited non-zero; not touching it"
+[ -n "$current" ] || fail "$bin does not say its version; not touching it"
+
+if [ -n "$from" ]; then
+  tag="$(cat "$from/tag")"
+else
+  tag="$(curl -fsS --max-time 30 -H 'Accept: application/vnd.github+json' \
+      -A '333-update' "https://api.github.com/repos/$repo/releases/latest" \
+    | grep -o '"tag_name": *"[^"]*"' | head -n 1 | sed 's/.*"\([^"]*\)"$/\1/')" \
+    || fail "could not ask GitHub for the latest release"
+fi
+latest="${tag#v}"
+[[ "$latest" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "latest release tag '$tag' is not vX.Y.Z"
+say "running $current, latest release $latest"
+
+if ! newer "$latest" "$current"; then
+  say "already current"
+  exit 0
+fi
+
+if [ -z "$from" ] && [ "$(cat "$failed_tag_file" 2>/dev/null || true)" = "$tag" ]; then
+  say "skipping $tag: it failed here before; waiting for a newer release"
+  exit 0
+fi
+
+work="$(mktemp -d "${XDG_CACHE_HOME:-$HOME/.cache}/333-update.XXXXXX")"
+trap 'rm -rf "$work"' EXIT
+
+if [ -n "$from" ]; then
+  cp "$from/$asset" "$from/SHA256SUMS" "$work/"
+else
+  base="https://github.com/$repo/releases/download/$tag"
+  if ! curl -fsSL --max-time 60 -o "$work/SHA256SUMS" "$base/SHA256SUMS"; then
+    say "$tag has no SHA256SUMS yet (its builds may still be running); trying tomorrow"
+    exit 0
+  fi
+  grep -q "  $asset\$" "$work/SHA256SUMS" || { say "$tag lists no $asset yet; trying tomorrow"; exit 0; }
+  curl -fsSL --max-time 600 -o "$work/$asset" "$base/$asset" || fail "could not download $asset of $tag"
+fi
+say "downloaded $asset of $tag"
+
+(cd "$work" && grep "  $asset\$" SHA256SUMS | sha256sum -c --status -) \
+  || fail "$asset does not match SHA256SUMS; not installing it"
+say "checksum matches SHA256SUMS"
+
+chmod 0755 "$work/$asset"
+if ! said="$(version_of "$work/$asset")"; then
+  say "the new $asset of $tag exited non-zero on --version; discarded it"
+  rm -f "$work/$asset"
+  mark_failed
+  exit 1
+fi
+[ "$said" = "$latest" ] || fail "the new file says version '$said', not $latest; not installing it"
+say "the new file says $said"
+
+# Both renames stay inside one directory, so each is atomic: there is always a whole
+# file at $bin, and 333.previous is a second name for the one that was running.
+ln -f "$bin" "$previous"
+install -m 0755 "$work/$asset" "$bin_dir/.333.new"
+mv -f "$bin_dir/.333.new" "$bin"
+say "installed $latest; kept $current as $previous"
+
+# Whether `333` says the node runs in the background, started at or after $1 (seconds
+# since 1970), and keeps saying so for $steady seconds, within $wait_for seconds.
+comes_up() {
+  local after="$1" deadline=$((SECONDS + wait_for)) up_at="" line since
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    line="$(in_english "$bin" 2>/dev/null | grep -m 1 '^running  in the background' || true)"
+    since="$(printf '%s' "$line" | grep -o 'since [0-9T:-]*Z' | cut -c 7- || true)"
+    if [ -n "$line" ] && { [ -z "$since" ] || [ "$(date -d "$since" +%s)" -ge "$after" ]; }; then
+      up_at="${up_at:-$SECONDS}"
+      if [ $((SECONDS - up_at)) -ge "$steady" ]; then
+        say "${line}"
+        return 0
+      fi
+    else
+      up_at=""
+    fi
+    sleep 3
+  done
+  return 1
+}
+
+restarted_at="$(($(date +%s) - 1))"
+in_english "$bin" restart || say "333 restart exited non-zero"
+if comes_up "$restarted_at"; then
+  [ -n "$from" ] || rm -f "$failed_tag_file"
+  say "updated $current -> $latest"
+  exit 0
+fi
+
+say "$latest did not come up within ${wait_for}s; putting $current back"
+install -m 0755 "$previous" "$bin_dir/.333.back"
+mv -f "$bin_dir/.333.back" "$bin"
+restarted_at="$(($(date +%s) - 1))"
+in_english "$bin" restart || say "333 restart exited non-zero"
+# Only when the old file comes back up is the new one to blame. If neither runs, the
+# fault may be the node's, and the release is tried again tomorrow.
+if comes_up "$restarted_at"; then
+  mark_failed
+  fail "rolled back to $current, which is running; $latest was not kept"
+fi
+fail "rolled back to $current, but it is not running either; look at: journalctl --user -u 333"

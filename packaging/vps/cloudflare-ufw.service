@@ -1,0 +1,15 @@
+# Runs cloudflare-ufw once, as root. Started by cloudflare-ufw.timer; the steps to
+# install both are at the top of packaging/vps/cloudflare-ufw.
+#
+#   sudo systemctl start cloudflare-ufw.service   check now
+#   journalctl -u cloudflare-ufw                  what it did
+
+[Unit]
+Description=Match ufw's 80/443 rules to Cloudflare's published ranges
+After=network-online.target ufw.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/cloudflare-ufw
+TimeoutStartSec=5min

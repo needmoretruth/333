@@ -1,0 +1,14 @@
+# Runs 333-update.service once a day, as the node's owner (`ubuntu`). Between 01:33 and
+# 02:33 UTC: well before 04:30, when unattended-upgrades reboots if it has to, so that
+# a reboot never lands between installing a release and checking that it runs.
+
+[Unit]
+Description=Update this machine's 333 node to the latest release, daily
+
+[Timer]
+OnCalendar=*-*-* 01:33:00 UTC
+RandomizedDelaySec=1h
+Persistent=true
+
+[Install]
+WantedBy=timers.target

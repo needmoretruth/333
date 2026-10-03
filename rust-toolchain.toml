@@ -1,0 +1,7 @@
+# The compiler every build of this tree uses: CI, the release files, and the site's
+# server, which installs whatever is named here the first time its deploy runs cargo.
+# Kept equal to `rust-version` in Cargo.toml; raising one means raising the other.
+[toolchain]
+channel = "1.96.0"
+profile = "minimal"
+components = ["rustfmt", "clippy"]

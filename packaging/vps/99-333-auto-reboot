@@ -1,0 +1,7 @@
+// /etc/apt/apt.conf.d/99-333-auto-reboot
+// A kernel or C library fix installed by unattended-upgrades takes effect only after a
+// reboot, and nobody logs in to do one. When an upgrade asks for it, reboot at the
+// next 04:30 (the machine's clock is UTC). The node, the observer, the site and Caddy
+// all start again at boot: both users linger and every unit is enabled.
+Unattended-Upgrade::Automatic-Reboot "true";
+Unattended-Upgrade::Automatic-Reboot-Time "04:30";

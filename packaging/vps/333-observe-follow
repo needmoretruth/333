@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+# Keeps the observer's ~/.local/bin/333-site built from the commit the site is running,
+# so that the file `observe` writes and the site that reads it never come from two
+# different commits for longer than one build. Run every two minutes by
+# 333-observe-follow.timer as the node's owner (`ubuntu`).
+#
+# The site's own binary is never run here. `the333` faces the internet and `ubuntu`
+# holds the node's key (and sudo), so nothing `the333` can write may decide what runs
+# as `ubuntu`. What is taken from `the333` is one commit name, from
+# /home/the333/releases/current/COMMIT; it is used only if it is on GitHub's main, and
+# the code is checked out from this user's own clone of GitHub and built here.
+#
+# Silent when the observer already matches. Otherwise one line per step:
+# fetch, check, build (under the machine's heavy-work lock), install, done.
+#
+# A commit whose build fails is tried at most three times. The commit and how many
+# times its build failed are kept in ~/.local/share/333-observe/FAILED; after the third
+# failure the script stays silent until the site runs another commit, instead of
+# rebuilding the same broken commit every two minutes for as long as the site runs it.
+#
+# Install (once, as root, so that `ubuntu` alone may pass through the333's home to
+# read that one file; nothing else in it changes hands):
+#   apt-get install -y acl && setfacl -m u:ubuntu:x /home/the333
+# Then as ubuntu:
+#   install -m 0755 packaging/vps/333-observe-follow ~/.local/bin/333-observe-follow
+#   cp packaging/vps/333-observe-follow.service packaging/vps/333-observe-follow.timer ~/.config/systemd/user/
+#   systemctl --user daemon-reload && systemctl --user enable --now 333-observe-follow.timer
+#   journalctl --user -u 333-observe-follow    what it did
+set -euo pipefail
+
+commit_file=/home/the333/releases/current/COMMIT
+url=https://github.com/needmoretruth/333
+state="$HOME/.local/share/333-observe"
+src="$state/repo"
+stamp="$state/COMMIT"
+failures="$state/FAILED"
+lock=/tmp/big-heavy.lock
+tries=3
+target="${XDG_CACHE_HOME:-$HOME/.cache}/333-observe/target"
+out="$HOME/.local/bin/333-site"
+
+say() { printf '333-observe-follow: %s\n' "$*"; }
+fail() { say "$*"; exit 1; }
+
+want="$(head -c 64 "$commit_file" 2>/dev/null | tr -d '[:space:]')" \
+  || fail "cannot read $commit_file"
+[[ "$want" =~ ^[0-9a-f]{40}$ ]] || fail "$commit_file does not hold a commit"
+have="$(cat "$stamp" 2>/dev/null || true)"
+[ "$want" != "$have" ] || exit 0
+have_short="${have:0:7}"
+
+# "<commit> <failed builds>", or nothing. Only a failure of the same commit counts.
+failed_commit="" failed_count=0
+{ read -r failed_commit failed_count < "$failures"; } 2>/dev/null || true
+[[ "$failed_count" =~ ^[0-9]+$ ]] || failed_count=0
+[ "$failed_commit" = "$want" ] || failed_count=0
+# The line that said so was written by the third failure; stay silent until the site moves.
+[ "$failed_count" -lt "$tries" ] || exit 0
+
+say "the site runs ${want:0:7}, the observer was built from ${have_short:-no recorded commit}"
+
+mkdir -p "$state"
+if [ ! -d "$src/.git" ]; then
+  git clone --quiet "$url" "$src"
+fi
+git -C "$src" fetch --quiet origin main
+git -C "$src" merge-base --is-ancestor "$want" origin/main 2>/dev/null \
+  || fail "${want:0:7} is not on GitHub's main; not building it"
+git -C "$src" -c advice.detachedHead=false checkout --quiet --force --detach "$want"
+say "checked out ${want:0:7} from GitHub's main"
+
+# The lock file is made at boot by systemd-tmpfiles as root, so it is opened without
+# O_CREAT: with fs.protected_regular=2, creating-or-opening a file in /tmp that another
+# user owns can be refused even though the file is world-writable. It is created here
+# only if it is not there at all. A lock that cannot be opened is no reason to never
+# build again; the build then runs without it, last in line by its nice level.
+if { exec 9<"$lock"; } 2>/dev/null || { exec 9>>"$lock"; } 2>/dev/null; then
+  flock -w 3600 9 || fail "waited an hour for $lock; trying ${want:0:7} again later"
+else
+  say "cannot open or create $lock; building without the machine's heavy-work lock"
+fi
+
+if ! env CARGO_TARGET_DIR="$target" cargo build --release --locked --quiet -p n333-site \
+  --manifest-path "$src/Cargo.toml"; then
+  failed_count=$((failed_count + 1))
+  printf '%s %s\n' "$want" "$failed_count" > "$failures.new"
+  mv -f "$failures.new" "$failures"
+  [ "$failed_count" -lt "$tries" ] \
+    || fail "building ${want:0:7} failed $failed_count times; skipping it until the site runs another commit"
+  fail "building ${want:0:7} failed ($failed_count of $tries tries); the observer keeps ${have_short:-no recorded commit}"
+fi
+exec 9>&-
+say "built 333-site at ${want:0:7}"
+
+install -m 0755 "$target/release/333-site" "$out.new"
+mv -f "$out.new" "$out"
+printf '%s\n' "$want" > "$stamp"
+rm -f "$failures"
+say "the observer now runs 333-site from ${want:0:7}"

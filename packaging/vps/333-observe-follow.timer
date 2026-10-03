@@ -1,0 +1,12 @@
+# Runs 333-observe-follow.service every two minutes, as the node's owner (`ubuntu`).
+# Each run that finds nothing new reads one file and stops.
+
+[Unit]
+Description=Keep the 333 observer on the commit the site runs
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=2min
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+# Keeps ufw's 80/443 rules equal to the address ranges Cloudflare publishes, run weekly
+# by cloudflare-ufw.timer as root. Ports 80 and 443 answer only Cloudflare, so a range
+# Cloudflare adds would otherwise be refused and one it gives up would stay open.
+#
+# Only rules of the exact form `80,443/tcp ALLOW <range>` are read, added or deleted;
+# SSH, 3333 and anything else in ufw are never touched. New ranges are added before
+# old ones are deleted, so no range Cloudflare uses is shut out between the two. Lists
+# that look wrong (a failed download, an empty file, a line that is not a range, fewer
+# than 10 IPv4 ranges) change nothing. Nothing is printed but one line when the rules
+# already match.
+#
+#   sudo install -m 0755 packaging/vps/cloudflare-ufw /usr/local/sbin/cloudflare-ufw
+#   sudo cp packaging/vps/cloudflare-ufw.service packaging/vps/cloudflare-ufw.timer /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now cloudflare-ufw.timer
+#   journalctl -u cloudflare-ufw    what it did
+set -euo pipefail
+
+comment="Cloudflare web only"
+
+say() { printf 'cloudflare-ufw: %s\n' "$*"; }
+# To stderr: a failure inside $(fetch ...) would otherwise vanish into the variable.
+fail() { say "$*" >&2; exit 1; }
+
+v4() {
+  [[ "$1" =~ ^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})/([0-9]{1,2})$ ]] || return 1
+  local i
+  for i in 1 2 3 4; do [ "${BASH_REMATCH[$i]}" -le 255 ] || return 1; done
+  [ "${BASH_REMATCH[5]}" -le 32 ]
+}
+v6() {
+  [[ "$1" =~ ^[0-9a-f:]*:[0-9a-f:]*/([0-9]{1,3})$ ]] && [ "${BASH_REMATCH[1]}" -le 128 ]
+}
+
+# One published list, one range per line, every line checked by $2.
+fetch() {
+  local url="$1" check="$2" body line
+  body="$(curl -fsS --max-time 30 "$url")" || fail "could not download $url; nothing changed"
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    "$check" "$line" || fail "$url holds '$line', which is not a range; nothing changed"
+    printf '%s\n' "$line"
+  done <<< "$(printf '%s\n' "$body" | tr -d '\r' | tr 'A-F' 'a-f')"
+}
+
+want4="$(fetch https://www.cloudflare.com/ips-v4 v4)"
+want6="$(fetch https://www.cloudflare.com/ips-v6 v6)"
+n4="$(printf '%s' "$want4" | grep -c . || true)"
+n6="$(printf '%s' "$want6" | grep -c . || true)"
+[ "$n4" -ge 10 ] || fail "only $n4 IPv4 ranges published; nothing changed"
+[ "$n6" -ge 1 ] || fail "no IPv6 ranges published; nothing changed"
+[ "$((n4 + n6))" -le 200 ] || fail "$((n4 + n6)) ranges published, more than this expects; nothing changed"
+want="$(printf '%s\n%s\n' "$want4" "$want6" | sort -u)"
+
+have="$(ufw status | awk '$1 == "80,443/tcp" && $2 == "ALLOW" { print $3 }' \
+  | while IFS= read -r line; do if v4 "$line" || v6 "$line"; then printf '%s\n' "$line"; fi; done \
+  | sort -u)"
+
+add="$(comm -23 <(printf '%s\n' "$want") <(printf '%s\n' "$have") | grep . || true)"
+drop="$(comm -13 <(printf '%s\n' "$want") <(printf '%s\n' "$have") | grep . || true)"
+
+if [ -z "$add" ] && [ -z "$drop" ]; then
+  say "rules already match Cloudflare's $n4 IPv4 and $n6 IPv6 ranges"
+  exit 0
+fi
+while IFS= read -r range; do
+  [ -n "$range" ] || continue
+  ufw allow proto tcp from "$range" to any port 80,443 comment "$comment" > /dev/null
+  say "added $range"
+done <<< "$add"
+while IFS= read -r range; do
+  [ -n "$range" ] || continue
+  ufw delete allow proto tcp from "$range" to any port 80,443 > /dev/null
+  say "deleted $range"
+done <<< "$drop"
+say "rules now match Cloudflare's $n4 IPv4 and $n6 IPv6 ranges"
