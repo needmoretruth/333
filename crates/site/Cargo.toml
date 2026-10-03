@@ -23,6 +23,14 @@ anyhow.workspace = true
 # environment file. A feature of a crate already in the tree; no crate added.
 clap = { workspace = true, features = ["env"] }
 humantime.workspace = true
+# The pages' words, in the same catalogs and the same format as the client's, read by
+# the same crates at the same versions. Already in the tree through the client.
+fluent-bundle.workspace = true
+fluent-syntax.workspace = true
+# The one request `deploy` sends after a switch: telling search engines which pages
+# changed (IndexNow). Already in the tree through the client's meeting point, with the
+# same features; it is the site binary that newly links it.
+ureq.workspace = true
 rand_core.workspace = true
 serde.workspace = true
 # `raw_value` keeps the node's own `status --json` byte for byte inside the observation

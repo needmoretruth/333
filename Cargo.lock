@@ -2915,6 +2915,8 @@ dependencies = [
  "anyhow",
  "base64 0.22.1",
  "clap",
+ "fluent-bundle",
+ "fluent-syntax",
  "hmac",
  "http-body-util",
  "humantime",
@@ -2929,6 +2931,7 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
+ "ureq",
 ]
 
 [[package]]

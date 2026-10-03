@@ -4,8 +4,9 @@
 #   systemctl --user start 333-site-deploy.service   deploy now instead of waiting
 #   journalctl --user -u 333-site-deploy             what the last runs did
 #
-# A commit that fails to build is written to ~/releases/.failed and not built again;
-# the running release stays. Delete that file to try the same commit once more.
+# A commit that fails to build three runs in a row, would unpublish a language, or does
+# not serve after the restart is written to ~/releases/.failed and not built again; the
+# release that ran before stays or runs again. Delete that file to try the commit again.
 
 [Unit]
 Description=Deploy the333.dev from origin/main

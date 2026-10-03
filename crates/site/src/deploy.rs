@@ -11,18 +11,35 @@
 //! 3. Copy the binary and `site/` into `<releases>/<commit>/`, with two small files beside
 //!    them: `VERSION` (the short commit, which `serve --version-file` reads and pages show)
 //!    and `COMMIT` (the whole one, which step 1 compares).
-//! 4. Point `<releases>/current` at it by renaming a new symlink over the old one, so
-//!    there is no moment with no `current`; then `systemctl --user restart <unit>`.
-//! 5. Delete all but the newest three releases. The one `current` names is never deleted.
+//!    Beside the pages goes `.lastmod.json`: the date each page's files last changed in
+//!    git, which the sitemap gives as `lastmod`.
+//! 4. Refuse it if a language the running release publishes would stop being published,
+//!    or English would not load (see [`guard`]).
+//! 5. Point `<releases>/current` at it by renaming a new symlink over the old one, so
+//!    there is no moment with no `current`; then `systemctl --user restart <unit>`, and
+//!    ask the server for its home page for about thirty seconds. If the restart fails or
+//!    no page comes, `current` goes back to the release that ran before and that one is
+//!    restarted.
+//! 6. Tell search engines (IndexNow) which pages' dates changed since the release that
+//!    ran before. That can only be logged as failing, never fail the deploy.
+//! 7. Delete all but the newest three releases. The one `current` names is never deleted.
 //!
-//! IF THE BUILD FAILS, what runs keeps running and this exits non-zero with the reason.
-//! The commit is written to `<releases>/.failed`, and later runs refuse to build that
-//! same commit again: a broken commit would otherwise cost the machine a full build every
-//! five minutes. A newer commit is built as usual; deleting the file retries this one.
+//! IF ANYTHING FAILS, what ran before keeps running and this exits non-zero with the
+//! reason. A commit refused in step 4 or 5 is written to `<releases>/.failed` at once, and
+//! one whose build failed [`BUILD_ATTEMPTS`] runs in a row (counted in
+//! `<releases>/.attempts`): a build can fail for a reason that is not the commit's, such as
+//! the network while cargo fetches. Later runs refuse to build a commit in `.failed` again,
+//! since a broken commit would otherwise cost the machine a full build every five minutes.
+//! A newer commit is built as usual; deleting the file retries this one. Waiting too long
+//! for the build lock is not a failed build and is not counted.
 
+mod guard;
+mod indexnow;
+mod lastmod;
 mod release;
 
 use std::fs::{File, OpenOptions, TryLockError};
+use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{Duration, Instant};
@@ -38,6 +55,9 @@ const LOCK_PATIENCE: Duration = Duration::from_secs(3600);
 /// How many releases are kept, the running one among them.
 const KEEP: usize = 3;
 
+/// How many failed builds in a row it takes to give up on a commit.
+const BUILD_ATTEMPTS: u32 = 3;
+
 /// What `deploy` is told.
 #[derive(clap::Args)]
 pub(crate) struct Args {
@@ -50,12 +70,16 @@ pub(crate) struct Args {
     /// The systemd user unit that serves, restarted after a switch.
     #[arg(long)]
     unit: String,
+    /// Where the unit's server listens, asked for the home page after a restart.
+    #[arg(long, default_value = crate::serve::LISTEN)]
+    listen: SocketAddr,
 }
 
 /// Deploy `origin/main` if it is not what runs.
 ///
 /// # Errors
-/// Fails if git, the build, the copy, the switch or the restart fails, saying which.
+/// Fails if git, the build, the copy, the checks, the switch or the restart fails,
+/// saying which.
 pub(crate) fn run(args: &Args) -> anyhow::Result<()> {
     std::fs::create_dir_all(&args.releases)
         .with_context(|| format!("making {}", args.releases.display()))?;
@@ -64,43 +88,96 @@ pub(crate) fn run(args: &Args) -> anyhow::Result<()> {
         &args.repo,
         &["rev-parse", "--verify", "origin/main^{commit}"],
     )?;
-    if release::deployed(&args.releases).as_deref() == Some(target.as_str()) {
+    let running = release::deployed(&args.releases);
+    if running.as_deref() == Some(target.as_str()) {
         tracing::info!("{target} is already running");
         return Ok(());
     }
     if release::failed(&args.releases).as_deref() == Some(target.as_str()) {
-        bail!("{target} failed to build before; waiting for a newer commit");
+        bail!("{target} failed to deploy before; waiting for a newer commit");
     }
     git(&args.repo, &["reset", "--quiet", "--hard", &target])?;
     let short = git_says(&args.repo, &["rev-parse", "--short", &target])?;
-    if let Err(failure) = build(&args.repo) {
-        release::mark_failed(&args.releases, &target)?;
-        return Err(failure.context(format!(
-            "{short} was not deployed; the running release stays"
-        )));
-    }
+    let kept = || format!("{short} was not deployed; the running release stays");
+    build(args, &target).with_context(kept)?;
     release::stage(&args.repo, &args.releases, &target, &short)?;
+    let before = running
+        .as_ref()
+        .map(|commit| args.releases.join(commit).join("site"));
+    let staged = args.releases.join(&target).join("site");
+    if let Err(lost) = guard::languages_kept(before.as_deref(), &staged) {
+        release::mark_failed(&args.releases, &target)?;
+        return Err(lost.context(kept()));
+    }
     release::switch(&args.releases, &target)?;
-    run_command(
-        Command::new("systemctl").args(["--user", "restart", &args.unit]),
-        "systemctl --user restart",
-    )?;
+    if let Err(broken) = restart(&args.unit).and_then(|()| guard::serving(args.listen)) {
+        return Err(roll_back(args, running.as_deref(), &target, &short, broken));
+    }
     tracing::info!("{short} is running");
+    indexnow::notify(before.as_deref(), &staged);
     for gone in release::prune(&args.releases, KEEP)? {
         tracing::info!("deleted {}", gone.display());
     }
     Ok(())
 }
 
-/// Build the site binary, holding the heavy-work lock.
-fn build(repo: &Path) -> anyhow::Result<()> {
+/// Build the site binary, holding the heavy-work lock, and give up on `commit` once it
+/// has failed [`BUILD_ATTEMPTS`] times in a row.
+fn build(args: &Args, commit: &str) -> anyhow::Result<()> {
+    // Not counted when it fails: waiting too long for the lock says nothing of the commit.
     let _held = heavy_lock()?;
-    run_command(
+    let built = run_command(
         Command::new("cargo")
             .args(["build", "--release", "--locked", "-p", "n333-site"])
-            .current_dir(repo),
+            .current_dir(&args.repo),
         "cargo build",
+    );
+    if built.is_err() {
+        let count = release::count_failure(&args.releases, commit)?;
+        if count >= BUILD_ATTEMPTS {
+            release::mark_failed(&args.releases, commit)?;
+        } else {
+            tracing::warn!("build {count} of {BUILD_ATTEMPTS} of {commit} failed; trying again");
+        }
+    }
+    built
+}
+
+/// Restart the unit that serves `current`.
+fn restart(unit: &str) -> anyhow::Result<()> {
+    run_command(
+        Command::new("systemctl").args(["--user", "restart", unit]),
+        "systemctl --user restart",
     )
+}
+
+/// Point `current` back at `before` and restart it, after `target` failed to serve, and
+/// never try `target` again. Returns the one error that says all of it.
+///
+/// The first deploy has nothing to go back to (and its restart fails until the unit is
+/// installed), so `current` stays on `target` and it is not marked.
+fn roll_back(
+    args: &Args,
+    before: Option<&str>,
+    target: &str,
+    short: &str,
+    broken: anyhow::Error,
+) -> anyhow::Error {
+    let Some(before) = before else {
+        return broken.context(format!("{short} is current and does not serve"));
+    };
+    let back = release::switch(&args.releases, before).and_then(|()| restart(&args.unit));
+    if let Err(error) = release::mark_failed(&args.releases, target) {
+        tracing::error!("{error:#}");
+    }
+    match back {
+        Ok(()) => broken.context(format!(
+            "{short} did not serve, so {before} runs again and {short} is not tried again"
+        )),
+        Err(error) => error.context(format!(
+            "{short} did not serve ({broken:#}), and going back to {before} failed too"
+        )),
+    }
 }
 
 /// Take the machine's heavy-work lock, waiting up to [`LOCK_PATIENCE`].

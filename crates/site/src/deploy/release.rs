@@ -13,8 +13,11 @@ const COMMIT: &str = "COMMIT";
 /// The short commit, inside each release, read by `serve --version-file`.
 const VERSION: &str = "VERSION";
 
-/// The commit that last failed to build.
+/// The commit that last failed to deploy, and is not tried again.
 const FAILED: &str = ".failed";
+
+/// The commit whose build last failed, and how many times in a row: `<commit> <count>`.
+const ATTEMPTS: &str = ".attempts";
 
 /// The binary inside each release.
 const BINARY: &str = "333-site";
@@ -24,12 +27,12 @@ pub(crate) fn deployed(releases: &Path) -> Option<String> {
     read_trimmed(&releases.join(CURRENT).join(COMMIT))
 }
 
-/// The commit that last failed to build, if one did.
+/// The commit that last failed to deploy, if one did.
 pub(crate) fn failed(releases: &Path) -> Option<String> {
     read_trimmed(&releases.join(FAILED))
 }
 
-/// Remember that `commit` failed to build.
+/// Remember that `commit` failed to deploy, so later runs do not try it again.
 ///
 /// # Errors
 /// Fails if the file cannot be written.
@@ -40,6 +43,34 @@ pub(crate) fn mark_failed(releases: &Path, commit: &str) -> anyhow::Result<()> {
         0o644,
     )
     .context("noting the failed commit")
+}
+
+/// Count one more failed build of `commit`, and say how many there have been in a row.
+///
+/// A build can fail for reasons the commit does not have (the network was down while
+/// cargo fetched a crate), so one failure is not enough to give up on a commit.
+///
+/// # Errors
+/// Fails if the file cannot be written.
+pub(crate) fn count_failure(releases: &Path, commit: &str) -> anyhow::Result<u32> {
+    let before = read_trimmed(&releases.join(ATTEMPTS))
+        .and_then(|text| {
+            let (counted, count) = text.split_once(' ')?;
+            if counted == commit {
+                count.parse::<u32>().ok()
+            } else {
+                None
+            }
+        })
+        .unwrap_or(0);
+    let now = before.saturating_add(1);
+    crate::atomic::write(
+        &releases.join(ATTEMPTS),
+        format!("{commit} {now}\n").as_bytes(),
+        0o644,
+    )
+    .context("counting the failed build")?;
+    Ok(now)
 }
 
 /// A file's contents without the line break, if it can be read.
@@ -64,6 +95,7 @@ pub(crate) fn stage(repo: &Path, releases: &Path, commit: &str, short: &str) -> 
     std::fs::copy(&built, staging.join(BINARY))
         .with_context(|| format!("copying {}", built.display()))?;
     copy_tree(&repo.join("site"), &staging.join("site"))?;
+    super::lastmod::write(repo, &staging.join("site"));
     std::fs::write(staging.join(VERSION), format!("{short}\n")).context("writing VERSION")?;
     // Last, so its time is when the release was made; pruning goes by it.
     std::fs::write(staging.join(COMMIT), format!("{commit}\n")).context("writing COMMIT")?;

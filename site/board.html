@@ -1,70 +1,70 @@
 <!doctype html>
-<html lang="en">
+<html lang="{{lang}}" data-base="{{base}}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Where people are · 333</title>
-<meta name="description" content="The addresses 333 nodes have signed for themselves in the last two epochs, as invitations to copy.">
-<link rel="canonical" href="https://the333.dev/333">
+<title>{{a:board-meta-title}}</title>
+<meta name="description" content="{{a:board-meta-description}}">
+<meta property="og:title" content="{{a:board-meta-title}}">
+<meta property="og:description" content="{{a:board-meta-description}}">
+<meta property="og:type" content="website">
+{{html:head}}
 <meta name="theme-color" content="#0b0c0f">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/assets/site.css?v={{version}}">
 </head>
 <body>
-<a class="skip" href="#main">Skip to the text</a>
+<a class="skip" href="#main">{{t:skip}}</a>
 <header class="top">
-  <a class="mark" href="/">333</a>
-  <nav aria-label="Pages">
-    <a href="/network">Network</a>
-    <a href="/map">Map</a>
-    <a href="/law">Law</a>
-    <a href="/about">About</a>
-    <a href="/start">Take the program</a>
+  <a class="mark" href="{{base}}/">333</a>
+  <nav aria-label="{{a:nav-label}}">
+    <a href="{{base}}/network">{{t:nav-network}}</a>
+    <a href="{{base}}/map">{{t:nav-map}}</a>
+    <a href="{{base}}/status">{{t:nav-status}}</a>
+    <a href="{{base}}/law">{{t:nav-law}}</a>
+    <a href="{{base}}/about">{{t:nav-about}}</a>
+    <a href="{{base}}/start">{{t:nav-start}}</a>
   </nav>
-  <a class="state" href="/network" data-live="state"><span class="dot {{site_dot}}"></span><span class="word">{{site_state}}</span></a>
+  <a class="state" href="{{base}}/network" data-live="state"><span class="dot {{site_dot}}"></span><span class="word">{{site_state}}</span></a>
   <details class="menu">
-    <summary aria-label="Menu">Menu</summary>
+    <summary aria-label="{{a:nav-menu}}">{{t:nav-menu}}</summary>
     <div class="sheet">
-      <a href="/network">Network</a>
-      <a href="/map">Map</a>
-      <a href="/law">Law</a>
-      <a href="/about">About</a>
-      <a href="/start">Take the program</a>
+      <a href="{{base}}/network">{{t:nav-network}}</a>
+      <a href="{{base}}/map">{{t:nav-map}}</a>
+      <a href="{{base}}/status">{{t:nav-status}}</a>
+      <a href="{{base}}/law">{{t:nav-law}}</a>
+      <a href="{{base}}/about">{{t:nav-about}}</a>
+      <a href="{{base}}/start">{{t:nav-start}}</a>
     </div>
   </details>
 </header>
 
 <main id="main" class="reading">
   <div class="column">
-    <h1>Where people are</h1>
-    <p class="dim">These are the addresses nodes have signed for themselves in the last two epochs.
-    Each signature was checked here, and your client checks it again before it believes any of
-    it. Nothing on this page hands over the file. The node at the far end decides that.</p>
-    <p class="dim">To knock on one of them, run <code>333 join 333:address:port</code>. If you do
-    not have the client yet, it is on <a href="/start">Take the program</a>.</p>
-    <ul class="invites" data-board></ul>
-    <p class="dim" data-board-empty hidden>Nobody has left an address here in the last two epochs.</p>
-    <noscript><p class="dim">The list needs JavaScript. The same statements, verified, are at <a href="/api/board">/api/board</a>.</p></noscript>
+    <h1>{{t:board-heading}}</h1>
+    <p class="dim">{{t:board-lede}}</p>
+    <p class="dim">{{t:board-how}}</p>
+    <ul class="invites" data-board>{{html:board_list}}</ul>
+    <p class="dim" data-board-empty{{html:board_empty_hidden}}>{{t:board-empty}}</p>
   </div>
-  <script type="application/json" id="board-data">{{json:board}}</script>
   <script type="application/json" id="network-data">{{json:network}}</script>
-  <div>
-  </div>
 </main>
 
 <footer class="foot">
   <div class="wide">
-    <a class="mark" href="/">333</a>
-    <a href="/network">Network</a>
-    <a href="/map">Where we are</a>
-    <a href="/333">The board</a>
-    <a href="/law">The Law</a>
-    <a href="/about">What this is</a>
-    <a href="/start">Take the program</a>
+    <a class="mark" href="{{base}}/">333</a>
+    <a href="{{base}}/network">{{t:foot-network}}</a>
+    <a href="{{base}}/map">{{t:foot-map}}</a>
+    <a href="{{base}}/status">{{t:foot-status}}</a>
+    <a href="{{base}}/333">{{t:foot-board}}</a>
+    <a href="{{base}}/law">{{t:foot-law}}</a>
+    <a href="{{base}}/about">{{t:foot-about}}</a>
+    <a href="{{base}}/start">{{t:foot-start}}</a>
     <a href="https://github.com/needmoretruth/333">GitHub</a>
   </div>
+  {{html:languages}}
 </footer>
-<script type="module" src="/assets/page.js?v={{version}}"></script>
+<script type="application/json" id="words">{{json:words}}</script>
 <script type="module" src="/assets/board.js?v={{version}}"></script>
 </body>
 </html>

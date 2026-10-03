@@ -2,6 +2,8 @@
 // position (never by a timer), so the picture is always where the reader is. The pictures are
 // diagrams of the rules, not of the live network; the live network has its own page.
 
+// The page's words; home.js hands over the real ones before anything is drawn.
+let say = (key) => key;
 const reduced = matchMedia("(prefers-reduced-motion: reduce)");
 const BEAT_VH = 0.85;
 
@@ -72,7 +74,7 @@ function bytes(c, k, t) {
   }
   const f = span(t, 0.62, 0.85);
   c.globalAlpha = f;
-  label(c, "333.txt · 3 bytes", cx, cy - size / 2 - 0.7 * u, k.dim, 0.34 * u);
+  label(c, say("js-story-file"), cx, cy - size / 2 - 0.7 * u, k.dim, 0.34 * u);
   c.globalAlpha = 1;
 }
 
@@ -98,11 +100,11 @@ function handover(c, k, t) {
   const g = span(t, 0.62, 0.74);
   const r = span(t, 0.74, 0.86);
   c.globalAlpha = g;
-  label(c, "I gave it to you", ax, cy + 1.1 * u, k.dim, 0.3 * u);
-  label(c, "signed", ax, cy + 1.6 * u, k.faint, 0.26 * u);
+  label(c, say("js-story-gave"), ax, cy + 1.1 * u, k.dim, 0.3 * u);
+  label(c, say("js-story-signed"), ax, cy + 1.6 * u, k.faint, 0.26 * u);
   c.globalAlpha = r;
-  label(c, "I received it from you", bx, cy + 1.1 * u, k.dim, 0.3 * u);
-  label(c, "signed", bx, cy + 1.6 * u, k.faint, 0.26 * u);
+  label(c, say("js-story-received"), bx, cy + 1.1 * u, k.dim, 0.3 * u);
+  label(c, say("js-story-signed"), bx, cy + 1.6 * u, k.faint, 0.26 * u);
   c.globalAlpha = 1;
 }
 
@@ -122,7 +124,7 @@ function asking(c, k, t) {
   c.beginPath();
   c.arc(cx, cy, ring, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * span(t, 0, 0.9));
   c.stroke();
-  label(c, "333 min", cx, cy + ring + 0.5 * u, k.faint, 0.28 * u);
+  label(c, say("js-story-minutes"), cx, cy + ring + 0.5 * u, k.faint, 0.28 * u);
   const ask = span(t, 0.18, 0.5);
   const answer = span(t, 0.55, 0.82);
   for (const a of ASKERS) {
@@ -156,8 +158,8 @@ function record(c, k, t) {
   }
   c.globalAlpha = 1;
   const bottom = top + rows * pitch + 0.45 * u;
-  label(c, "333 epochs", left, bottom, k.faint, 0.28 * u, "mono", "left");
-  label(c, "now", left + cols * pitch - (pitch - cell), bottom, k.faint, 0.28 * u, "mono", "right");
+  label(c, say("js-story-epochs"), left, bottom, k.faint, 0.28 * u, "mono", "left");
+  label(c, say("js-story-now"), left + cols * pitch - (pitch - cell), bottom, k.faint, 0.28 * u, "mono", "right");
   const drop = span(t, 0.72, 0.95);
   if (drop > 0) {
     const last = left + ((filled - 1) % cols) * pitch + cell / 2;
@@ -193,9 +195,9 @@ function counted(c, k, t, dark = 0, keep = -1) {
   }
   const y = cy + 2.3 * u;
   label(c, String(on), cx - 1.6 * u, y, k.ink, 0.8 * u);
-  label(c, "answering", cx - 1.6 * u, y + 0.7 * u, k.dim, 0.28 * u);
+  label(c, say("js-story-answering"), cx - 1.6 * u, y + 0.7 * u, k.dim, 0.28 * u);
   label(c, String(GRID[0] * GRID[1]), cx + 1.6 * u, y, k.faint, 0.8 * u);
-  label(c, "on the roll", cx + 1.6 * u, y + 0.7 * u, k.faint, 0.28 * u);
+  label(c, say("js-story-roll"), cx + 1.6 * u, y + 0.7 * u, k.faint, 0.28 * u);
   return on;
 }
 
@@ -210,7 +212,7 @@ function silence(c, k, t) {
     const years = 19683 - Math.floor(span(t, 0.56, 0.84) * 2);
     c.fillStyle = k.ground;
     c.fillRect(cx - 3.6 * u, cy + 1.6 * u, 7.2 * u, 1.6 * u);
-    label(c, `${years.toLocaleString("en-US")} years`, cx, cy + 2.35 * u, k.ink, 0.62 * u);
+    label(c, say("js-story-years", { years }), cx, cy + 2.35 * u, k.ink, 0.62 * u);
     c.globalAlpha = 1;
   }
 }
@@ -218,7 +220,8 @@ function silence(c, k, t) {
 const SCENES = [bytes, handover, asking, record, (c, k, t) => counted(c, k, t), silence];
 
 /** Start the story; returns nothing, and leaves the plain list when there is no canvas. */
-export function story(section) {
+export function story(section, speak) {
+  if (speak) say = speak;
   const canvas = section.querySelector(".stage");
   const items = [...section.querySelectorAll(".captions li")];
   const c = canvas.getContext("2d");

@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="{{lang}}" data-base="{{base}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{a:status-meta-title}}</title>
+<meta name="description" content="{{a:status-meta-description}}">
+<meta property="og:title" content="{{a:status-meta-title}}">
+<meta property="og:description" content="{{a:status-meta-description}}">
+<meta property="og:type" content="website">
+{{html:head}}
+<meta name="theme-color" content="#0b0c0f">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/assets/site.css?v={{version}}">
+<link rel="stylesheet" href="/assets/status.css?v={{version}}">
+</head>
+<body>
+<a class="skip" href="#main">{{t:skip}}</a>
+<header class="top">
+  <a class="mark" href="{{base}}/">333</a>
+  <nav aria-label="{{a:nav-label}}">
+    <a href="{{base}}/network">{{t:nav-network}}</a>
+    <a href="{{base}}/map">{{t:nav-map}}</a>
+    <a href="{{base}}/status" aria-current="page">{{t:nav-status}}</a>
+    <a href="{{base}}/law">{{t:nav-law}}</a>
+    <a href="{{base}}/about">{{t:nav-about}}</a>
+    <a href="{{base}}/start">{{t:nav-start}}</a>
+  </nav>
+  <a class="state" href="{{base}}/network" data-live="state"><span class="dot {{site_dot}}"></span><span class="word">{{site_state}}</span></a>
+  <details class="menu">
+    <summary aria-label="{{a:nav-menu}}">{{t:nav-menu}}</summary>
+    <div class="sheet">
+      <a href="{{base}}/network">{{t:nav-network}}</a>
+      <a href="{{base}}/map">{{t:nav-map}}</a>
+      <a href="{{base}}/status">{{t:nav-status}}</a>
+      <a href="{{base}}/law">{{t:nav-law}}</a>
+      <a href="{{base}}/about">{{t:nav-about}}</a>
+      <a href="{{base}}/start">{{t:nav-start}}</a>
+    </div>
+  </details>
+</header>
+
+<main id="main" class="reading">
+  <div class="column">
+    <h1>{{t:status-heading}}</h1>
+    <p class="lede dim">{{t:status-lede}}</p>
+
+    <h2 id="now">{{t:status-now-title}}</h2>
+    <dl class="facts">
+      <div><dt>{{t:figure-epoch}}</dt><dd>{{epoch}} {{html:line_epoch}}</dd></div>
+      <div><dt>{{t:figure-ends}}</dt><dd><time datetime="{{epoch_ends_utc}}">{{epoch_ends_utc}}</time></dd></div>
+      <div><dt>{{t:status-roll}}</dt><dd>{{status_roll}}</dd></div>
+      <div><dt>{{t:figure-answering}}</dt><dd>{{answering}}</dd></div>
+      <div><dt>{{t:status-saying}}</dt><dd>{{saying}}</dd></div>
+      <div><dt>{{t:status-tor}}</dt><dd>{{status_tor}}</dd></div>
+      <div><dt>{{t:status-site-node}}</dt><dd><span class="state"><span class="dot {{site_dot}}"></span>{{site_state}}</span></dd></div>
+    </dl>
+
+    <h2 id="over-time">{{t:status-time-title}}</h2>
+    <p class="dim">{{t:status-time-lede}}</p>
+    <h3>{{t:status-chart-recent-title}}</h3>
+    {{html:status_chart_recent}}
+    <h3>{{t:status-chart-all-title}}</h3>
+    {{html:status_chart_all}}
+
+    <h2 id="machine">{{t:status-machine-title}}</h2>
+    <dl class="facts">
+      <div><dt>{{t:status-release}}</dt><dd>{{html:status_release}}</dd></div>
+      <div><dt>{{t:status-deployed}}</dt><dd>{{html:status_deployed}}</dd></div>
+      <div><dt>{{t:status-observed}}</dt><dd>{{html:status_observed}}</dd></div>
+      {{html:status_uptime}}
+    </dl>
+
+    <p class="elsewhere">{{t:status-elsewhere}}</p>
+    <p class="dim">{{t:status-json}}</p>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wide">
+    <a class="mark" href="{{base}}/">333</a>
+    <a href="{{base}}/network">{{t:foot-network}}</a>
+    <a href="{{base}}/map">{{t:foot-map}}</a>
+    <a href="{{base}}/status">{{t:foot-status}}</a>
+    <a href="{{base}}/333">{{t:foot-board}}</a>
+    <a href="{{base}}/law">{{t:foot-law}}</a>
+    <a href="{{base}}/about">{{t:foot-about}}</a>
+    <a href="{{base}}/start">{{t:foot-start}}</a>
+    <a href="https://github.com/needmoretruth/333">GitHub</a>
+  </div>
+  {{html:languages}}
+</footer>
+<script type="application/json" id="words">{{json:words}}</script>
+<script type="module" src="/assets/page.js?v={{version}}"></script>
+</body>
+</html>

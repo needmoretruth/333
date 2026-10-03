@@ -32,11 +32,14 @@ Description=the333.dev meeting point and pages
 Documentation=https://the333.dev
 After=network-online.target
 Wants=network-online.target
+# Never give up restarting it: a site that fails five times in ten seconds is otherwise
+# left down until somebody logs in.
+StartLimitIntervalSec=0
 
 [Service]
 ExecStart=%h/releases/current/333-site serve --site %h/releases/current/site --state %h/state --observation /var/lib/333-observation/network.json --version-file %h/releases/current/VERSION
 Restart=always
-RestartSec=2
+RestartSec=5
 UMask=0077
 # Hardening that works in a user manager without namespaces. ProtectSystem, PrivateTmp
 # and the like need an unprivileged user namespace in a user unit, which Ubuntu's

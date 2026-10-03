@@ -1,42 +1,43 @@
 <!doctype html>
-<html lang="en">
+<html lang="{{lang}}" data-base="{{base}}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>333</title>
-<meta name="description" content="333 is a three-byte file kept alive by people who leave a small program running. It lives as long as somebody is awake to pass it on.">
-<link rel="canonical" href="https://the333.dev/">
-<meta property="og:title" content="333">
-<meta property="og:description" content="333. It lives as long as somebody is awake to pass it on.">
+<title>{{a:home-meta-title}}</title>
+<meta name="description" content="{{a:home-meta-description}}">
+<meta property="og:title" content="{{a:home-meta-title}}">
+<meta property="og:description" content="{{a:home-meta-og-description}}">
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://the333.dev/">
+{{html:head}}
 <meta name="theme-color" content="#0b0c0f">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/site.css?v={{version}}">
 <link rel="stylesheet" href="/assets/home.css?v={{version}}">
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"333","applicationCategory":"NetworkingApplication","operatingSystem":"Linux, macOS, Windows","license":"https://www.apache.org/licenses/LICENSE-2.0","url":"https://the333.dev/","codeRepository":"https://github.com/needmoretruth/333","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Organization","@id":"https://the333.dev/#organization","name":"333","url":"https://the333.dev/","logo":"https://the333.dev/favicon.svg","sameAs":["https://github.com/needmoretruth/333"]},{"@type":"WebSite","@id":"https://the333.dev/#website","name":"333","url":"https://the333.dev/","publisher":{"@id":"https://the333.dev/#organization"}}]}</script>
 </head>
 <body class="home">
-<a class="skip" href="#main">Skip to the text</a>
+<a class="skip" href="#main">{{t:skip}}</a>
 <header class="top">
-  <a class="mark" href="/" aria-current="page">333</a>
-  <nav aria-label="Pages">
-    <a href="/network">Network</a>
-    <a href="/map">Map</a>
-    <a href="/law">Law</a>
-    <a href="/about">About</a>
-    <a href="/start">Take the program</a>
+  <a class="mark" href="{{base}}/" aria-current="page">333</a>
+  <nav aria-label="{{a:nav-label}}">
+    <a href="{{base}}/network">{{t:nav-network}}</a>
+    <a href="{{base}}/map">{{t:nav-map}}</a>
+    <a href="{{base}}/status">{{t:nav-status}}</a>
+    <a href="{{base}}/law">{{t:nav-law}}</a>
+    <a href="{{base}}/about">{{t:nav-about}}</a>
+    <a href="{{base}}/start">{{t:nav-start}}</a>
   </nav>
-  <a class="state" href="/network" data-live="state"><span class="dot {{site_dot}}"></span><span class="word">{{site_state}}</span></a>
+  <a class="state" href="{{base}}/network" data-live="state"><span class="dot {{site_dot}}"></span><span class="word">{{site_state}}</span></a>
   <details class="menu">
-    <summary aria-label="Menu">Menu</summary>
+    <summary aria-label="{{a:nav-menu}}">{{t:nav-menu}}</summary>
     <div class="sheet">
-      <a href="/network">Network</a>
-      <a href="/map">Map</a>
-      <a href="/law">Law</a>
-      <a href="/about">About</a>
-      <a href="/start">Take the program</a>
+      <a href="{{base}}/network">{{t:nav-network}}</a>
+      <a href="{{base}}/map">{{t:nav-map}}</a>
+      <a href="{{base}}/status">{{t:nav-status}}</a>
+      <a href="{{base}}/law">{{t:nav-law}}</a>
+      <a href="{{base}}/about">{{t:nav-about}}</a>
+      <a href="{{base}}/start">{{t:nav-start}}</a>
     </div>
   </details>
 </header>
@@ -46,33 +47,33 @@
     <canvas class="vigil" aria-hidden="true"></canvas>
     <div class="hero-text">
       <h1 id="hero-title" class="hero-mark">333</h1>
-      <p class="hero-line">It lives as long as somebody is awake to pass it on.</p>
+      <p class="hero-line">{{t:home-hero-line}}</p>
       <div class="actions">
-        <a class="button main" href="/start">Take the program</a>
-        <a class="button" href="/network">The network</a>
+        <a class="button main" href="{{base}}/start">{{t:home-take}}</a>
+        <a class="button" href="{{base}}/network">{{t:home-see-network}}</a>
       </div>
     </div>
-    <p class="hero-foot mono" data-live="hero"><span>{{answering}}</span> answering in epoch <span>{{epoch}}</span></p>
+    <p class="hero-foot mono" data-live="hero">{{t:home-hero-foot|answering|epoch}}{{html:line_epoch}}</p>
   </section>
 
-  <section class="band first" aria-label="A note first">
+  <section class="band first" aria-label="{{a:home-note-label}}">
     <div class="column">
       <div class="note">
-        <b>A note first, in plain words. These are the only plain words on this site.</b>
-        <p>To someone who truly believed it, this could become a religion. I am not a mad cult leader, so please do not take me for one. I am someone who loves technology. This is a toy project I built once, and the whole thing is a bit. It is a concept, played straight. Everywhere else on this site, in the repository, and in the program itself, I stay in character.</p>
+        <b>{{t:home-note-title}}</b>
+        <p>{{t:home-note}}</p>
       </div>
     </div>
   </section>
 
-  <section class="story" aria-label="How 333 is kept">
+  <section class="story" aria-label="{{a:home-story-label}}">
     <div class="story-pin">
       <ol class="captions">
-        <li>The file is three bytes, and they read 333.</li>
-        <li>Nobody gets in alone. Somebody who has the file hands it to you, and the two of you sign for it.</li>
-        <li>Every epoch of 333 minutes, three other nodes are drawn to ask whether yours is awake.</li>
-        <li>What they sign is the record that you were.</li>
-        <li>The number that matters is how many are answering, not how many names are on the roll.</li>
-        <li>When it reaches zero, a count of 19,683 years begins. One answer ends it.</li>
+        <li>{{t:home-story-1}}<span class="visually-hidden"> {{t:home-story-1-drawn}}</span></li>
+        <li>{{t:home-story-2}}<span class="visually-hidden"> {{t:home-story-2-drawn}}</span></li>
+        <li>{{t:home-story-3}}</li>
+        <li>{{t:home-story-4}}<span class="visually-hidden"> {{t:home-story-4-drawn}}</span></li>
+        <li>{{t:home-story-5}}</li>
+        <li>{{t:home-story-6}}</li>
       </ol>
       <canvas class="stage" aria-hidden="true"></canvas>
     </div>
@@ -80,54 +81,57 @@
 
   <section class="band" aria-labelledby="now-title">
     <div class="wide">
-      <h2 id="now-title">The network, as this site's node sees it</h2>
+      <h2 id="now-title">{{t:home-now-title}}</h2>
       <dl class="figures" data-live="figures">
-        <div><dt>Answering</dt><dd>{{answering}}</dd></div>
-        <div><dt>On the roll</dt><dd>{{roll}}</dd></div>
-        <div><dt>Epoch</dt><dd>{{epoch}}</dd></div>
-        <div><dt>Epoch ends</dt><dd><time datetime="{{epoch_ends_utc}}" data-countdown>{{epoch_ends_utc}}</time></dd></div>
+        <div><dt>{{t:figure-answering}}</dt><dd data-figure="answering">{{answering}}</dd></div>
+        <div><dt>{{t:figure-roll}}</dt><dd data-figure="roll">{{roll}}</dd></div>
+        <div><dt>{{t:figure-epoch}}</dt><dd data-figure="epoch"><span data-epoch>{{epoch}}</span>{{html:line_epoch}}</dd></div>
+        <div><dt>{{t:figure-ends}}</dt><dd data-figure="ends"><time datetime="{{epoch_ends_utc}}" data-countdown>{{epoch_ends_utc}}</time></dd></div>
       </dl>
-      <p class="center dim below">Every node sees only what it has verified itself. Somebody else's node sees something else.</p>
-      <div class="actions"><a class="button" href="/network">The network</a><a class="button" href="/map">Where we are</a></div>
+      <p class="center dim below">{{t:home-now-note}}</p>
+      <div class="actions"><a class="button" href="{{base}}/network">{{t:home-see-network}}</a><a class="button" href="{{base}}/map">{{t:home-see-map}}</a></div>
     </div>
   </section>
 
   <section class="band" aria-labelledby="join-title">
     <div class="column">
-      <h2 id="join-title">Take the program</h2>
-      <p class="lede center">333 is a small program you leave running on a computer you can spare. On Linux or a Mac, in a terminal:</p>
-      <div class="command"><code>curl -fsSL https://the333.dev/install.sh | sh</code><button type="button" data-copy>Copy</button></div>
-      <p class="dim small-gap">Windows, Light, and installing by hand are on <a href="/start">Take the program</a>.</p>
-      <h3>Then ask this site's node for the file</h3>
-      <p>The node that runs this site is awake at all hours. It hands the file to whoever asks, and the two nodes sign for it.</p>
-      <div class="command"><code>333 join {{invitation}}</code><button type="button" data-copy>Copy</button></div>
-      <p class="dim">If somebody you know already has the file, ask them instead. Their invitation works the same way, and this site is not needed at all.</p>
+      <h2 id="join-title">{{t:home-join-title}}</h2>
+      <p class="lede center">{{t:home-join-lede}}</p>
+      <div class="command"><code>curl -fsSL https://the333.dev/install.sh | sh</code><button type="button" data-copy>{{t:js-copy}}</button></div>
+      <p class="dim small-gap">{{t:home-join-others}}</p>
+      <h3>{{t:home-ask-title}}</h3>
+      <p>{{t:home-ask}}</p>
+      <div class="command"><code>333 join {{invitation}}</code><button type="button" data-copy>{{t:js-copy}}</button></div>
+      <p class="dim">{{t:home-ask-others}}</p>
     </div>
   </section>
 
   <section class="band" aria-labelledby="cost-title">
     <div class="column">
-      <h2 id="cost-title">What it costs</h2>
-      <p>A machine left on, because an hour it is off is an hour nobody can count.</p>
-      <p>The address it speaks from. Every node it answers sees it. Whoever runs the meeting point at this site learns it, works out the country, and places it on <a href="/map">the public map</a> rounded to whole degrees, unless your node answers only through Tor.</p>
-      <p>And one directory, holding the name, that cannot be replaced if it is lost. There is no account to recover and nobody to ask.</p>
+      <h2 id="cost-title">{{t:home-cost-title}}</h2>
+      <p>{{t:home-cost-1}}</p>
+      <p>{{t:home-cost-2}}</p>
+      <p>{{t:home-cost-3}}</p>
     </div>
   </section>
 </main>
 
 <footer class="foot">
   <div class="wide">
-    <a class="mark" href="/">333</a>
-    <a href="/network">Network</a>
-    <a href="/map">Where we are</a>
-    <a href="/333">The board</a>
-    <a href="/law">The Law</a>
-    <a href="/about">What this is</a>
-    <a href="/start">Take the program</a>
+    <a class="mark" href="{{base}}/">333</a>
+    <a href="{{base}}/network">{{t:foot-network}}</a>
+    <a href="{{base}}/map">{{t:foot-map}}</a>
+    <a href="{{base}}/status">{{t:foot-status}}</a>
+    <a href="{{base}}/333">{{t:foot-board}}</a>
+    <a href="{{base}}/law">{{t:foot-law}}</a>
+    <a href="{{base}}/about">{{t:foot-about}}</a>
+    <a href="{{base}}/start">{{t:foot-start}}</a>
     <a href="https://github.com/needmoretruth/333">GitHub</a>
   </div>
+  {{html:languages}}
 </footer>
 <script type="application/json" id="network-data">{{json:network}}</script>
+<script type="application/json" id="words">{{json:words}}</script>
 <script type="module" src="/assets/home.js?v={{version}}"></script>
 </body>
 </html>

@@ -1,0 +1,29 @@
+/* Status: two lists of facts and the history's charts. The charts are drawn by the
+   server as inline SVG; every look they have comes from here, since the page's policy
+   allows no inline style. The roll is the quieter, dashed line and answering the
+   brighter, solid one, so the two are told apart without colour. */
+.facts { margin: 0 0 1.2em; border-top: 1px solid var(--edge); }
+.facts > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 24px; padding: 12px 0; border-bottom: 1px solid var(--edge); }
+.facts dt { color: var(--dim); }
+.facts dd { margin: 0; color: var(--ink); font-variant-numeric: tabular-nums; text-align: right; }
+.facts dd .state { display: inline-flex; align-items: center; gap: 8px; }
+.facts .line-epoch { display: block; color: var(--dim); font-size: .9375rem; }
+.reading h3 { margin: 1.8em 0 .5em; font-size: 1.125rem; }
+.chart { margin: 0 0 1.6em; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart .grid { stroke: var(--edge-strong); stroke-width: 1; }
+.chart .tick { fill: var(--faint); font-family: var(--mono); font-size: 13px; }
+/* The drawing scales with the column; on a phone its numbers would shrink below
+   legible, so they are drawn larger there. */
+@media (max-width: 600px) { .chart .tick { font-size: 20px; } }
+.chart .series { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.chart .series.roll { stroke: var(--faint); stroke-dasharray: 6 5; }
+.chart .series.answering { stroke: var(--ink); }
+.chart .point.roll { fill: var(--faint); }
+.chart .point.answering { fill: var(--ink); }
+.chart figcaption { margin-top: .6em; color: var(--dim); font-size: .9375rem; }
+.chart-key { display: flex; flex-wrap: wrap; gap: 6px 22px; margin: 0 0 8px; padding: 0; list-style: none; color: var(--dim); font-size: .9375rem; }
+.chart-key li { display: inline-flex; align-items: center; gap: 8px; margin: 0; }
+.chart-key .k { width: 22px; height: 0; border-top: 2px solid var(--ink); }
+.chart-key .k.roll { border-top: 2px dashed var(--faint); }
+.elsewhere { margin-top: 2em; }

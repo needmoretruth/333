@@ -9,3 +9,6 @@
 .watching { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin: 1.4em 0 0; }
 .reading table td.n, .reading table th.n { text-align: right; font-family: var(--mono); }
 .reading tr.sum td { font-weight: 600; color: var(--ink); }
+/* Tor's corner: an onion, and beside it one dot per onion statement. */
+.map .onion { fill: none; stroke: var(--faint); stroke-width: 2; }
+.reading tr.unsaid td { color: var(--dim); }

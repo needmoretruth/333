@@ -3,7 +3,7 @@
 // lightly across the rings. Everything drawn comes from the site node's observation: signed
 // handovers, signed testimony, signed heartbeats. Nothing is inferred and nothing is invented.
 
-import { start, figures, shown } from "./live.js";
+const { start, figures, shown, say } = await import(`./live.js${new URL(import.meta.url).search}`);
 
 const d3 = window.d3;
 const canvas = document.querySelector(".chart");
@@ -56,6 +56,8 @@ function tokens() {
 }
 
 const short = (id) => id.slice(0, 12);
+const esc = (v) => String(v).replace(/[&<>"]/g, (m) => `&#${m.charCodeAt(0)};`);
+const inEpoch = (epoch) => esc(say("js-network-epoch", { epoch: String(epoch) }));
 
 /** What one node is, in this epoch, as far as this site's node can tell. */
 function stateOf(n) {
@@ -66,11 +68,11 @@ function stateOf(n) {
 }
 
 const STATE_WORDS = {
-  founder: "Not on any roll",
-  ok: "Answering this epoch",
-  quiet: "Silent this epoch",
-  later: "Counted from a later epoch",
-  seen: "Seen, not on the roll",
+  founder: say("js-network-state-founder"),
+  ok: say("js-network-state-ok"),
+  quiet: say("js-network-state-quiet"),
+  later: say("js-network-state-later"),
+  seen: say("js-network-state-seen"),
 };
 
 /** A state as a dot and its words. The site node's own state is whether it is running. */
@@ -78,9 +80,9 @@ function stateLine(n) {
   const d = n.data;
   if (n.site) {
     const up = !!(net && net.running);
-    return `<span class="state"><span class="dot ${up ? "ok" : "bad"}"></span>${up ? "Awake" : "Not running"}</span>`;
+    return `<span class="state"><span class="dot ${up ? "ok" : "bad"}"></span>${esc(up ? say("js-network-awake") : say("js-network-not-running"))}</span>`;
   }
-  return `<span class="state"><span class="dot ${d.state}"></span>${STATE_WORDS[d.state]}</span>`;
+  return `<span class="state"><span class="dot ${d.state}"></span>${esc(STATE_WORDS[d.state])}</span>`;
 }
 
 function radiusOf(n) {
@@ -267,7 +269,7 @@ function draw() {
       // Below the founder's halo or the selection ring, whichever reaches further.
       const r = radiusOf(n) * Math.max(0.7, Math.min(1.4, view.k));
       const below = Math.max(n.founder ? r * 2.1 : r, n.id === mine || n === selected ? r + 7 : r) + 6;
-      ctx.fillText(n.id === mine ? `${short(n.id)} · yours` : short(n.id), x, y + below);
+      ctx.fillText(n.id === mine ? say("js-network-yours-label", { name: short(n.id) }) : short(n.id), x, y + below);
     }
   }
   ctx.globalAlpha = 1;
@@ -465,17 +467,17 @@ document.querySelector(".find").addEventListener("submit", (e) => {
   e.preventDefault();
   const typed = e.target.elements.node.value.trim().toLowerCase().replace(/^333:/, "");
   if (!/^[0-9a-f]{6,64}$/.test(typed)) {
-    said.textContent = "A node's name is hexadecimal, at least the first 6 characters of it.";
+    said.textContent = say("js-network-find-bad");
     return;
   }
   const found = nodes.filter((n) => n.id.startsWith(typed));
   if (found.length === 0) {
-    said.textContent = "This site's node has not seen a node with that name.";
+    said.textContent = say("js-network-find-none");
   } else if (found.length > 1) {
-    said.textContent = `${found.length} nodes begin with that. Type more of the name.`;
+    said.textContent = say("js-network-find-many", { count: found.length });
   } else {
     remember(found[0].id);
-    said.textContent = "Marked as yours on this device.";
+    said.textContent = say("js-network-find-marked");
     select(found[0], true);
   }
 });
@@ -499,55 +501,58 @@ function lastAnswer(d) {
 function epochsAgo(epoch) {
   if (typeof epoch !== "number" || !net) return "—";
   const d = net.epoch - epoch;
-  return d <= 0 ? `${epoch} (this epoch)` : `${epoch} (${d} ago)`;
+  return esc(d <= 0 ? say("js-network-epoch-now", { epoch: String(epoch) }) : say("js-network-epoch-ago", { epoch: String(epoch), ago: d }));
 }
 
 function chips(ids) {
   if (!ids.length) return "—";
   const shownIds = ids.slice(0, 24);
-  const more = ids.length > shownIds.length ? `<span class="dim">and ${ids.length - shownIds.length} more in the table below</span>` : "";
+  const more = ids.length > shownIds.length ? `<span class="dim">${esc(say("js-network-more", { count: ids.length - shownIds.length }))}</span>` : "";
   return `<span class="links">${shownIds.map((id) => `<button class="chip" type="button" data-pick="${id}">${short(id)}</button>`).join("")}${more}</span>`;
 }
 
 function renderCard() {
   const n = selected;
   if (!n) {
-    card.innerHTML = '<p class="card-none dim">Select a node to see what this site\'s node knows about it.</p>';
+    card.innerHTML = `<p class="card-none dim">${esc(say("js-network-select"))}</p>`;
     return;
   }
   const d = n.data;
   const roles = [];
-  if (n.founder) roles.push("Founder of this line");
-  if (n.site) roles.push("This site's node");
-  if (n.id === mine) roles.push("Yours, on this device");
+  if (n.founder) roles.push(say("js-network-role-founder"));
+  if (n.site) roles.push(say("js-network-role-site"));
+  if (n.id === mine) roles.push(say("js-network-role-yours"));
   const asked = links.filter((l) => l.kind !== "handover" && l.target === n);
   const asking = links.filter((l) => l.kind !== "handover" && l.source === n);
-  const reach = d.reach === "direct" ? "Directly" : d.reach === "onion" ? "Through Tor" : "Not known";
+  const reach = esc(d.reach === "direct" ? say("js-network-reach-direct") : d.reach === "onion" ? say("js-network-reach-tor") : say("js-network-reach-unknown"));
+  const given = d.sponsor
+    ? say("js-network-given-by", { epoch: esc(d.admitted), sponsor: chips([d.sponsor]) })
+    : esc(n.founder ? say("js-network-given-founder") : say("js-network-given-none"));
   const rows = [
-    ["This epoch", stateLine(n)],
-    ["Given the file", d.sponsor ? `epoch ${d.admitted}, by ${chips([d.sponsor])}` : n.founder ? "Nobody. It began this line." : "Not on the roll"],
-    ["Counted from", typeof d.counts_from === "number" ? `epoch ${d.counts_from}` : "—"],
-    ["Last answered", epochsAgo(lastAnswer(d))],
-    ["Said this epoch", typeof d.signal === "number" ? String(d.signal) : "Nothing"],
-    ["Reached", reach],
-    ["Handed the file to", chips(n.children)],
-    ["Testimony", `asked by ${asked.length}, asked ${asking.length} (last 3 epochs)`],
+    [say("js-network-col-state"), stateLine(n)],
+    [say("js-network-col-given"), given],
+    [say("js-network-col-counted"), typeof d.counts_from === "number" ? esc(say("js-network-epoch", { epoch: String(d.counts_from) })) : "—"],
+    [say("js-network-col-answered"), epochsAgo(lastAnswer(d))],
+    [say("js-network-row-said"), typeof d.signal === "number" ? String(d.signal) : esc(say("js-network-nothing"))],
+    [say("js-network-col-reached"), reach],
+    [say("js-network-row-handed"), chips(n.children)],
+    [say("js-network-row-testimony"), esc(say("js-network-testimony", { asked: asked.length, asking: asking.length }))],
   ];
   card.innerHTML = `
     <h3>${short(n.id)}</h3>
-    <p class="role">${roles.join(" · ") || "A node on the network"}</p>
+    <p class="role">${esc(roles.join(" · ") || say("js-network-role-none"))}</p>
     <p class="full">${n.id}</p>
-    <dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl>
+    <dl>${rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join("")}</dl>
     <div class="row">
-      <button class="button" type="button" data-copy-name>Copy name</button>
-      ${n.id === mine ? "" : '<button class="button" type="button" data-mine>This is my node</button>'}
+      <button class="button" type="button" data-copy-name>${esc(say("js-network-copy-name"))}</button>
+      ${n.id === mine ? "" : `<button class="button" type="button" data-mine>${esc(say("js-network-mine"))}</button>`}
     </div>`;
   card.querySelector("[data-copy-name]").addEventListener("click", async (e) => {
     try {
       await navigator.clipboard.writeText(n.id);
-      e.target.textContent = "Copied";
+      e.target.textContent = say("js-copied");
     } catch {
-      e.target.textContent = "Select the name above";
+      e.target.textContent = say("js-network-select-name");
     }
   });
   const markMine = card.querySelector("[data-mine]");
@@ -571,15 +576,15 @@ function renderTable() {
   const order = [...nodes].sort((a, b) => (b.founder - a.founder) || ((a.data.admitted ?? 1e12) - (b.data.admitted ?? 1e12)));
   body.innerHTML = order.map((n) => {
     const d = n.data;
-    const tags = [n.founder ? "founder" : "", n.site ? "this site" : "", n.id === mine ? "yours" : ""].filter(Boolean).join(" · ");
+    const tags = [n.founder ? say("js-network-tag-founder") : "", n.site ? say("js-network-tag-site") : "", n.id === mine ? say("js-network-tag-yours") : ""].filter(Boolean).map(esc).join(" · ");
     return `<tr>
       <td><button class="name" type="button" data-pick="${n.id}">${short(n.id)}</button>${tags ? `<span class="tag">${tags}</span>` : ""}</td>
       <td>${stateLine(n)}</td>
-      <td>${d.sponsor ? `epoch ${d.admitted}` : "—"}</td>
-      <td>${typeof d.counts_from === "number" ? `epoch ${d.counts_from}` : "—"}</td>
-      <td>${typeof lastAnswer(d) === "number" ? `epoch ${lastAnswer(d)}` : "—"}</td>
+      <td>${d.sponsor ? inEpoch(d.admitted) : "—"}</td>
+      <td>${typeof d.counts_from === "number" ? inEpoch(d.counts_from) : "—"}</td>
+      <td>${typeof lastAnswer(d) === "number" ? inEpoch(lastAnswer(d)) : "—"}</td>
       <td>${typeof d.signal === "number" ? d.signal : "—"}</td>
-      <td>${d.reach === "direct" ? "Directly" : d.reach === "onion" ? "Tor" : "—"}</td>
+      <td>${d.reach === "direct" ? esc(say("js-network-reach-direct")) : d.reach === "onion" ? esc(say("js-network-reach-tor-short")) : "—"}</td>
     </tr>`;
   }).join("");
 }
@@ -593,12 +598,11 @@ document.querySelector(".nodes").addEventListener("click", (e) => {
 });
 
 const words = (key) => key.replace(/_/g, " ").replace(/^./, (ch) => ch.toUpperCase());
-const esc = (v) => String(v).replace(/[&<>"]/g, (m) => `&#${m.charCodeAt(0)};`);
 
 function valueOf(v) {
   if (v === null || v === undefined) return "—";
-  if (typeof v === "boolean") return v ? "Yes" : "No";
-  if (typeof v === "number") return v.toLocaleString("en-US");
+  if (typeof v === "boolean") return esc(v ? say("js-network-yes") : say("js-network-no"));
+  if (typeof v === "number") return v.toLocaleString(document.documentElement.lang || "en");
   return esc(v);
 }
 
@@ -606,7 +610,7 @@ function rowsOf(obj) {
   return Object.entries(obj).map(([k, v]) => {
     if (v && typeof v === "object" && !Array.isArray(v)) return `<dt>${esc(words(k))}</dt><dd></dd><div class="nested"><dl>${rowsOf(v)}</dl></div>`;
     if (Array.isArray(v)) {
-      if (!v.length) return `<dt>${esc(words(k))}</dt><dd>None</dd>`;
+      if (!v.length) return `<dt>${esc(words(k))}</dt><dd>${esc(say("js-network-none"))}</dd>`;
       return `<dt>${esc(words(k))}</dt><dd>${v.length}</dd><div class="nested">${v.map((item) => (item && typeof item === "object" ? `<dl>${rowsOf(item)}</dl>` : `<dl><dt></dt><dd>${valueOf(item)}</dd></dl>`)).join("")}</div>`;
     }
     return `<dt>${esc(words(k))}</dt><dd>${valueOf(v)}</dd>`;
@@ -621,9 +625,9 @@ function renderReport() {
     if (v && typeof v === "object") groups.push([k, v]);
     else plain[k] = v;
   }
-  const sections = [["This node", plain], ...groups];
+  const sections = [[null, plain], ...groups];
   document.querySelector(".report").innerHTML = sections
-    .map(([k, v]) => `<section><h3>${esc(k === "This node" ? k : words(k))}</h3><dl>${Array.isArray(v) ? rowsOf({ entries: v }) : rowsOf(v)}</dl></section>`)
+    .map(([k, v]) => `<section><h3>${esc(k === null ? say("js-network-this-node") : words(k))}</h3><dl>${Array.isArray(v) ? rowsOf({ entries: v }) : rowsOf(v)}</dl></section>`)
     .join("");
   const asof = document.querySelector("[data-asof]");
   if (asof && net && net.as_of) {
@@ -637,14 +641,15 @@ function renderReport() {
 function apply(next) {
   build(next);
   const f = figures(next);
-  const dds = document.querySelectorAll('[data-live="figures"] dd');
-  if (dds.length >= 3) {
-    dds[0].textContent = shown(f.answering);
-    dds[1].textContent = shown(f.roll);
-    dds[2].textContent = shown(f.epoch);
+  const strip = document.querySelector('[data-live="figures"]');
+  if (strip) {
+    const answering = strip.querySelector('[data-figure="answering"]');
+    const roll = strip.querySelector('[data-figure="roll"]');
+    if (answering) answering.textContent = shown(f.answering);
+    if (roll) roll.textContent = shown(f.roll);
   }
   empty.hidden = nodes.length > 1;
-  empty.textContent = nodes.length <= 1 ? "No other node has been seen by this site's node yet." : "";
+  empty.textContent = nodes.length <= 1 ? say("js-network-empty") : "";
   if (selected) selected = byId.get(selected.id) || null;
   if (firstFit) {
     firstFit = false;

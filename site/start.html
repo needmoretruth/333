@@ -1,77 +1,75 @@
 <!doctype html>
-<html lang="en">
+<html lang="{{lang}}" data-base="{{base}}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Take the program · 333</title>
-<meta name="description" content="Install the 333 client on Linux, macOS, Windows or a Raspberry Pi, checked against the release's SHA256SUMS, and be handed the file.">
-<link rel="canonical" href="https://the333.dev/start">
+<title>{{a:start-meta-title}}</title>
+<meta name="description" content="{{a:start-meta-description}}">
+<meta property="og:title" content="{{a:start-meta-title}}">
+<meta property="og:description" content="{{a:start-meta-description}}">
+<meta property="og:type" content="website">
+{{html:head}}
 <meta name="theme-color" content="#0b0c0f">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/assets/site.css?v={{version}}">
 </head>
 <body>
-<a class="skip" href="#main">Skip to the text</a>
+<a class="skip" href="#main">{{t:skip}}</a>
 <header class="top">
-  <a class="mark" href="/">333</a>
-  <nav aria-label="Pages">
-    <a href="/network">Network</a>
-    <a href="/map">Map</a>
-    <a href="/law">Law</a>
-    <a href="/about">About</a>
-    <a href="/start" aria-current="page">Take the program</a>
+  <a class="mark" href="{{base}}/">333</a>
+  <nav aria-label="{{a:nav-label}}">
+    <a href="{{base}}/network">{{t:nav-network}}</a>
+    <a href="{{base}}/map">{{t:nav-map}}</a>
+    <a href="{{base}}/status">{{t:nav-status}}</a>
+    <a href="{{base}}/law">{{t:nav-law}}</a>
+    <a href="{{base}}/about">{{t:nav-about}}</a>
+    <a href="{{base}}/start" aria-current="page">{{t:nav-start}}</a>
   </nav>
-  <a class="state" href="/network" data-live="state"><span class="dot {{site_dot}}"></span><span class="word">{{site_state}}</span></a>
+  <a class="state" href="{{base}}/network" data-live="state"><span class="dot {{site_dot}}"></span><span class="word">{{site_state}}</span></a>
   <details class="menu">
-    <summary aria-label="Menu">Menu</summary>
+    <summary aria-label="{{a:nav-menu}}">{{t:nav-menu}}</summary>
     <div class="sheet">
-      <a href="/network">Network</a>
-      <a href="/map">Map</a>
-      <a href="/law">Law</a>
-      <a href="/about">About</a>
-      <a href="/start">Take the program</a>
+      <a href="{{base}}/network">{{t:nav-network}}</a>
+      <a href="{{base}}/map">{{t:nav-map}}</a>
+      <a href="{{base}}/status">{{t:nav-status}}</a>
+      <a href="{{base}}/law">{{t:nav-law}}</a>
+      <a href="{{base}}/about">{{t:nav-about}}</a>
+      <a href="{{base}}/start">{{t:nav-start}}</a>
     </div>
   </details>
 </header>
 
 <main id="main" class="reading">
   <div class="column">
-    <h1>Take the program</h1>
-    <p class="lede">333 is a small program you leave running on a computer you can spare, where it answers whenever another copy of it knocks.</p>
+    <h1>{{t:start-heading}}</h1>
+    <p class="lede">{{t:start-lede}}</p>
   <div class="panel pick" id="pick" hidden>
     <p id="guessed"></p>
-    <p aria-live="polite">The file for that machine is <code data-name="standard">333-x86_64-linux</code>. Light, the same
-    client without the terminal screen, is <code data-name="light">333-light-x86_64-linux</code>.
-    Both carry Tor.</p>
-    <label for="machine">Your machine</label>
+    <p aria-live="polite">{{t:start-pick-file}}</p>
+    <label for="machine">{{t:start-machine}}</label>
     <select id="machine">
-      <option value="linux-x86_64">Linux, desktop or server</option>
-      <option value="linux-aarch64">Raspberry Pi 3, 4 or 5 on 64-bit, or other 64-bit ARM Linux</option>
-      <option value="linux-armv6">Raspberry Pi Zero, or any Pi on 32-bit</option>
-      <option value="macos-aarch64">Mac, Apple silicon</option>
-      <option value="macos-x86_64">Mac, Intel</option>
-      <option value="windows-x86_64">Windows</option>
+      <option value="linux-x86_64">{{t:start-pick-linux-x86_64}}</option>
+      <option value="linux-aarch64">{{t:start-pick-linux-aarch64}}</option>
+      <option value="linux-armv6">{{t:start-pick-linux-armv6}}</option>
+      <option value="macos-aarch64">{{t:start-pick-macos-aarch64}}</option>
+      <option value="macos-x86_64">{{t:start-pick-macos-x86_64}}</option>
+      <option value="windows-x86_64">{{t:start-pick-windows}}</option>
     </select>
-    <label for="form">Form</label>
+    <label for="form">{{t:start-form}}</label>
     <select id="form">
-      <option value="standard">Standard</option>
-      <option value="light">Light</option>
+      <option value="standard">{{t:start-standard}}</option>
+      <option value="light">{{t:start-light}}</option>
     </select>
   </div>
 
   <div data-for="unix">
-    <h2 id="unix">On Linux or a Mac</h2>
-    <p>In a terminal. The installer picks the file for the machine it runs on, checks it
-    against the release's <code>SHA256SUMS</code>, and puts it at <code>~/.local/bin/333</code>.
-    It starts nothing and needs no password. <a href="/install.sh">Read it first</a>; it is
-    short.</p>
+    <h2 id="unix">{{t:start-unix-title}}</h2>
+    <p>{{t:start-unix-installer}}</p>
 <pre class="block">curl -fsSL https://the333.dev/install.sh | <span data-sh>sh</span></pre>
-    <p class="dim" data-hint-light>For Light, end it with <code>sh -s -- --light</code> in place
-    of <code>sh</code>.</p>
+    <p class="dim" data-hint-light>{{t:start-unix-light}}</p>
     <details class="more">
-      <summary>Or by hand, without the installer</summary>
-      <p>The same steps, one at a time. The <code>grep</code> line prints <code>OK</code> before
-      anything moves, and nothing after it runs if it does not.</p>
+      <summary>{{t:start-by-hand}}</summary>
+      <p>{{t:start-unix-by-hand}}</p>
 <pre class="block">cd "$(mktemp -d)"
 base=https://github.com/needmoretruth/333/releases/latest/download
 curl -fLO "$base/<span data-name="unix">333-x86_64-linux</span>"
@@ -79,28 +77,21 @@ curl -fLO "$base/SHA256SUMS"
 grep -E ' \*?<span data-name="unix">333-x86_64-linux</span>$' SHA256SUMS | <span data-sum>sha256sum</span> -c - &amp;&amp;
   chmod +x <span data-name="unix">333-x86_64-linux</span> &amp;&amp;
   mkdir -p ~/.local/bin &amp;&amp; mv <span data-name="unix">333-x86_64-linux</span> ~/.local/bin/333</pre>
-      <p class="dim" data-hint-mac>That is Linux on x86-64. On a Mac, use <code>shasum -a 256</code>
-      in place of <code>sha256sum</code>, and the Mac file from the table below; anywhere else,
-      the name from the table.</p>
+      <p class="dim" data-hint-mac>{{t:start-unix-mac}}</p>
     </details>
   </div>
 
   <div data-for="windows">
-    <h2 id="windows">On Windows</h2>
-    <p>In PowerShell. The installer fetches the Windows file, checks it against the release's
-    <code>SHA256SUMS</code>, and puts it at <code>%LOCALAPPDATA%\Programs\333\333.exe</code>.
-    It starts nothing, needs no administrator, and adds that folder to your PATH only if you
-    add <code>-AddToPath</code>. <a href="/install.ps1">Read it first</a>; it is short.</p>
+    <h2 id="windows">{{t:start-windows-title}}</h2>
+    <p>{{t:start-windows-installer}}</p>
 <pre class="block"><span data-ps>irm https://the333.dev/install.ps1 | iex</span></pre>
     <div data-hint-light>
-      <p class="dim">For Light, run it this way instead. <code>-AddToPath</code> goes at the end
-      in the same way.</p>
+      <p class="dim">{{t:start-windows-light}}</p>
 <pre class="block">&amp; ([scriptblock]::Create((irm https://the333.dev/install.ps1))) -Light</pre>
     </div>
     <details class="more">
-      <summary>Or by hand, without the installer</summary>
-      <p>The same steps, one at a time. The file is moved into place only if its hash is the
-      one <code>SHA256SUMS</code> gives, and the last line says which happened.</p>
+      <summary>{{t:start-by-hand}}</summary>
+      <p>{{t:start-windows-by-hand}}</p>
 <pre class="block">$base = "https://github.com/needmoretruth/333/releases/latest/download"
 $file = "<span data-name="windows">333-x86_64-windows.exe</span>"
 $dir = "$env:LOCALAPPDATA\Programs\333"
@@ -111,79 +102,58 @@ if ((Get-FileHash "$env:TEMP\$file").Hash -eq $want) { New-Item -ItemType Direct
     </details>
   </div>
 
-  <h2 id="files">Every file</h2>
+  <h2 id="files">{{t:start-files-title}}</h2>
 
-  <p class="dim">For anybody the guess above is wrong for, or who would rather take the file
-  through the browser. Standard has the terminal screen, Light does not, and both carry Tor.
-  They run from 15 megabytes on a Mac to 24 on 64-bit ARM.</p>
+  <p class="dim">{{t:start-files-intro}}</p>
 
   <table>
     <thead>
-      <tr><th scope="col">Your machine</th><th scope="col">Standard, then Light</th></tr>
+      <tr><th scope="col">{{t:start-files-machine}}</th><th scope="col">{{t:start-files-forms}}</th></tr>
     </thead>
     <tbody>
-      <tr data-row="linux-x86_64"><th scope="row">Linux, desktop or server</th>
-        <td><a href="https://github.com/needmoretruth/333/releases/latest/download/333-x86_64-linux"><span class="form">Standard</span> 333-<wbr>x86_64-<wbr>linux</a>
-          <a href="https://github.com/needmoretruth/333/releases/latest/download/333-light-x86_64-linux"><span class="form">Light</span> 333-<wbr>light-<wbr>x86_64-<wbr>linux</a></td></tr>
-      <tr data-row="linux-aarch64"><th scope="row">Raspberry Pi 3, 4 or 5 on 64-bit, and other 64-bit ARM Linux</th>
-        <td><a href="https://github.com/needmoretruth/333/releases/latest/download/333-aarch64-linux"><span class="form">Standard</span> 333-<wbr>aarch64-<wbr>linux</a>
-          <a href="https://github.com/needmoretruth/333/releases/latest/download/333-light-aarch64-linux"><span class="form">Light</span> 333-<wbr>light-<wbr>aarch64-<wbr>linux</a></td></tr>
-      <tr data-row="linux-armv6"><th scope="row">Raspberry Pi Zero, or any Pi on 32-bit</th>
-        <td><a href="https://github.com/needmoretruth/333/releases/latest/download/333-armv6-linux"><span class="form">Standard</span> 333-<wbr>armv6-<wbr>linux</a>
-          <a href="https://github.com/needmoretruth/333/releases/latest/download/333-light-armv6-linux"><span class="form">Light</span> 333-<wbr>light-<wbr>armv6-<wbr>linux</a></td></tr>
-      <tr data-row="macos-aarch64"><th scope="row">Mac, Apple silicon</th>
-        <td><a href="https://github.com/needmoretruth/333/releases/latest/download/333-aarch64-macos"><span class="form">Standard</span> 333-<wbr>aarch64-<wbr>macos</a>
-          <a href="https://github.com/needmoretruth/333/releases/latest/download/333-light-aarch64-macos"><span class="form">Light</span> 333-<wbr>light-<wbr>aarch64-<wbr>macos</a></td></tr>
-      <tr data-row="macos-x86_64"><th scope="row">Mac, Intel</th>
-        <td><a href="https://github.com/needmoretruth/333/releases/latest/download/333-x86_64-macos"><span class="form">Standard</span> 333-<wbr>x86_64-<wbr>macos</a>
-          <a href="https://github.com/needmoretruth/333/releases/latest/download/333-light-x86_64-macos"><span class="form">Light</span> 333-<wbr>light-<wbr>x86_64-<wbr>macos</a></td></tr>
-      <tr data-row="windows-x86_64"><th scope="row">Windows</th>
-        <td><a href="https://github.com/needmoretruth/333/releases/latest/download/333-x86_64-windows.exe"><span class="form">Standard</span> 333-<wbr>x86_64-<wbr>windows<wbr>.exe</a>
-          <a href="https://github.com/needmoretruth/333/releases/latest/download/333-light-x86_64-windows.exe"><span class="form">Light</span> 333-<wbr>light-<wbr>x86_64-<wbr>windows<wbr>.exe</a></td></tr>
+      <tr data-row="linux-x86_64"><th scope="row">{{t:start-row-linux-x86_64}}</th>
+        <td><a href="https://github.com/needmoretruth/333/releases/latest/download/333-x86_64-linux"><span class="form">{{t:start-standard}}</span> 333-<wbr>x86_64-<wbr>linux</a>
+          <a href="https://github.com/needmoretruth/333/releases/latest/download/333-light-x86_64-linux"><span class="form">{{t:start-light}}</span> 333-<wbr>light-<wbr>x86_64-<wbr>linux</a></td></tr>
+      <tr data-row="linux-aarch64"><th scope="row">{{t:start-row-linux-aarch64}}</th>
+        <td><a href="https://github.com/needmoretruth/333/releases/latest/download/333-aarch64-linux"><span class="form">{{t:start-standard}}</span> 333-<wbr>aarch64-<wbr>linux</a>
+          <a href="https://github.com/needmoretruth/333/releases/latest/download/333-light-aarch64-linux"><span class="form">{{t:start-light}}</span> 333-<wbr>light-<wbr>aarch64-<wbr>linux</a></td></tr>
+      <tr data-row="linux-armv6"><th scope="row">{{t:start-row-linux-armv6}}</th>
+        <td><a href="https://github.com/needmoretruth/333/releases/latest/download/333-armv6-linux"><span class="form">{{t:start-standard}}</span> 333-<wbr>armv6-<wbr>linux</a>
+          <a href="https://github.com/needmoretruth/333/releases/latest/download/333-light-armv6-linux"><span class="form">{{t:start-light}}</span> 333-<wbr>light-<wbr>armv6-<wbr>linux</a></td></tr>
+      <tr data-row="macos-aarch64"><th scope="row">{{t:start-row-macos-aarch64}}</th>
+        <td><a href="https://github.com/needmoretruth/333/releases/latest/download/333-aarch64-macos"><span class="form">{{t:start-standard}}</span> 333-<wbr>aarch64-<wbr>macos</a>
+          <a href="https://github.com/needmoretruth/333/releases/latest/download/333-light-aarch64-macos"><span class="form">{{t:start-light}}</span> 333-<wbr>light-<wbr>aarch64-<wbr>macos</a></td></tr>
+      <tr data-row="macos-x86_64"><th scope="row">{{t:start-row-macos-x86_64}}</th>
+        <td><a href="https://github.com/needmoretruth/333/releases/latest/download/333-x86_64-macos"><span class="form">{{t:start-standard}}</span> 333-<wbr>x86_64-<wbr>macos</a>
+          <a href="https://github.com/needmoretruth/333/releases/latest/download/333-light-x86_64-macos"><span class="form">{{t:start-light}}</span> 333-<wbr>light-<wbr>x86_64-<wbr>macos</a></td></tr>
+      <tr data-row="windows-x86_64"><th scope="row">{{t:start-row-windows}}</th>
+        <td><a href="https://github.com/needmoretruth/333/releases/latest/download/333-x86_64-windows.exe"><span class="form">{{t:start-standard}}</span> 333-<wbr>x86_64-<wbr>windows<wbr>.exe</a>
+          <a href="https://github.com/needmoretruth/333/releases/latest/download/333-light-x86_64-windows.exe"><span class="form">{{t:start-light}}</span> 333-<wbr>light-<wbr>x86_64-<wbr>windows<wbr>.exe</a></td></tr>
     </tbody>
   </table>
 
-  <p class="dim">A file taken through the browser still has to be checked against
-  <a href="https://github.com/needmoretruth/333/releases/latest/download/SHA256SUMS">SHA256SUMS</a>,
-  made executable, and put on your PATH, which is what the commands above do. Nothing here is
-  signed by a developer certificate, so a Mac or Windows may refuse to open a file that came
-  through the browser until you tell it otherwise. If none of these fits, or you would rather
-  not run a file somebody else built, the
-  <a href="https://github.com/needmoretruth/333#install">repository</a> says how to build it
-  on Ubuntu, Debian, Fedora, Arch, macOS and Windows.</p>
+  <p class="dim">{{t:start-files-after}}</p>
 
-  <h2 id="then">Then, in order</h2>
+  <h2 id="then">{{t:start-then-title}}</h2>
 
   <ol class="steps">
-    <li><b>Be handed the file.</b> This site's node is awake at all hours:
-    <div class="command"><code>333 join {{invitation}}</code><button type="button" data-copy>Copy</button></div>
-    The first <code>join</code> also makes your node's name, a key whose name begins with 333,
-    which takes a moment. Any address on <a href="/333">the board</a> works the same way.</li>
-    <li><b>Start it.</b>
-    <div class="command"><code>333 start</code><button type="button" data-copy>Copy</button></div>
-    It runs in the background from now on, after you log out and after a reboot. If it says
-    <code>shut</code>, your router keeps others out: <code>333 start --tor</code> needs no
-    router change.</li>
-    <li><b>Check on it.</b> <code>333 status</code> says whether it is running, where others can
-    reach it, and how many of us are answering. <code>333 logs</code> shows what it wrote.</li>
-    <li><b>Stop it</b> whenever you want: <code>333 stop</code>. It stays stopped after a reboot
-    until you run <code>333 start</code> again.</li>
+    <li>{{t:start-step-1}}
+    <div class="command"><code>333 join {{invitation}}</code><button type="button" data-copy>{{t:js-copy}}</button></div>
+    {{t:start-step-1-after}}</li>
+    <li>{{t:start-step-2}}
+    <div class="command"><code>333 start</code><button type="button" data-copy>{{t:js-copy}}</button></div>
+    {{t:start-step-2-after}}</li>
+    <li>{{t:start-step-3}}</li>
+    <li>{{t:start-step-4}}</li>
   </ol>
 
-  <p class="dim">To watch it work instead, <code>333 run</code> runs it in this terminal with its
-  screen; <code>q</code> stops it. <code>333</code> on its own says what state your node is in
-  and what to type next, and <code>333 help</code> lists every command.</p>
+  <p class="dim">{{t:start-watch}}</p>
 
-  <p class="dim">If nobody is on the board and this site's node is gone, somebody has to be first:
-  <code>333 begin</code> refuses while anybody is there, and otherwise starts a line of your own,
-  with nobody having signed for it, which anybody reading your record can see.</p>
+  <p class="dim">{{t:start-begin}}</p>
 
   <div class="rule">
-    <p>Nothing starts until you start it.</p>
-    <p class="dim">The installer puts one file in place and runs nothing. Your node first answers
-    anybody, and first leaves its address at the meeting point, when you run
-    <code>333 start</code> or <code>333 run</code> yourself, and that command is the moment you
-    agreed.</p>
+    <p>{{t:start-rule}}</p>
+    <p class="dim">{{t:start-rule-detail}}</p>
   </div>
 
   </div>
@@ -191,16 +161,19 @@ if ((Get-FileHash "$env:TEMP\$file").Hash -eq $want) { New-Item -ItemType Direct
 
 <footer class="foot">
   <div class="wide">
-    <a class="mark" href="/">333</a>
-    <a href="/network">Network</a>
-    <a href="/map">Where we are</a>
-    <a href="/333">The board</a>
-    <a href="/law">The Law</a>
-    <a href="/about">What this is</a>
-    <a href="/start">Take the program</a>
+    <a class="mark" href="{{base}}/">333</a>
+    <a href="{{base}}/network">{{t:foot-network}}</a>
+    <a href="{{base}}/map">{{t:foot-map}}</a>
+    <a href="{{base}}/status">{{t:foot-status}}</a>
+    <a href="{{base}}/333">{{t:foot-board}}</a>
+    <a href="{{base}}/law">{{t:foot-law}}</a>
+    <a href="{{base}}/about">{{t:foot-about}}</a>
+    <a href="{{base}}/start">{{t:foot-start}}</a>
     <a href="https://github.com/needmoretruth/333">GitHub</a>
   </div>
+  {{html:languages}}
 </footer>
+<script type="application/json" id="words">{{json:words}}</script>
 <script type="module" src="/assets/page.js?v={{version}}"></script>
 <script type="module" src="/assets/start.js?v={{version}}"></script>
 </body>

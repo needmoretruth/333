@@ -5,9 +5,12 @@ use std::sync::{Mutex, MutexGuard, PoisonError};
 
 use anyhow::Context as _;
 
-use crate::atomic;
+use super::machine::Release;
 use crate::board::Board;
 use crate::gate::Gate;
+use crate::site::{self, Lastmod};
+use crate::words::Words;
+use crate::{atomic, history};
 
 /// The board's file inside `--state`.
 const BOARD_FILE: &str = "board.json";
@@ -23,8 +26,16 @@ pub(crate) struct State {
     board_file: PathBuf,
     /// Where `observe` writes the observation.
     pub(crate) observation: PathBuf,
+    /// Where `observe` keeps one line per epoch, beside the observation.
+    pub(crate) history: PathBuf,
+    /// The release this server runs; empty unless [`Self::with_release`] said.
+    pub(crate) release: Release,
     /// The version pages show and name their assets by.
     pub(crate) version: String,
+    /// The pages' words, every language, read once at the start.
+    pub(crate) words: Words,
+    /// When each page last changed, as `deploy` wrote it; empty without a deploy.
+    pub(crate) lastmod: Lastmod,
     /// The board. A plain lock, never held across an await.
     board: Mutex<Board>,
     /// Who wrote in the last minute. Taken only while the board's lock is held.
@@ -56,15 +67,26 @@ impl State {
                 return Err(error).with_context(|| format!("reading {}", board_file.display()));
             }
         };
+        let words = Words::load(&site);
+        let lastmod = site::read_lastmod(&site);
         Ok(Self {
+            words,
+            lastmod,
             site,
             board_file,
+            history: history::beside(&observation),
             observation,
+            release: Release::default(),
             version,
             board: Mutex::new(board),
             gate: Mutex::new(Gate::new()),
             written: tokio::sync::Mutex::new(0),
         })
+    }
+
+    /// The same state, running `release`.
+    pub(crate) fn with_release(self, release: Release) -> Self {
+        Self { release, ..self }
     }
 
     /// The board, for as long as the guard lives. Keep that short.

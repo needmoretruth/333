@@ -14,6 +14,7 @@ use n333_core::epoch::unix_now_millis;
 use super::respond::{self, Reply};
 use super::state::State;
 use super::{meeting, pages, values};
+use crate::site::ENGLISH;
 
 /// Answer one request, with the headers every answer carries.
 pub(crate) async fn handle<B>(state: Arc<State>, request: Request<B>) -> Reply
@@ -38,10 +39,10 @@ where
     let readable = get || method == Method::HEAD;
     match path.as_str() {
         "/333/where" => meeting::where_you_are(request.headers()),
-        "/333/where-we-are" if get => meeting::where_we_are(&state),
+        "/333/where-we-are" if get => blocking(state, meeting::where_we_are).await,
         "/333/where-we-are" => refused("GET /333/where-we-are\n"),
         "/333" if get && meeting::wants_html(request.headers()) => {
-            blocking(state, pages::board_page).await
+            blocking(state, |state| pages::board_page(state, &ENGLISH)).await
         }
         "/333" if get => meeting::read_the_board(&state),
         "/333" => refused("GET /333\n"),
@@ -50,8 +51,10 @@ where
             _ => refused("PUT /333/<node name in hex>\n"),
         },
         "/api/network" if readable => blocking(state, pages::network).await,
+        "/api/status" if readable => blocking(state, pages::status_api).await,
         "/api/board" if readable => board_api(&state),
-        _ if readable => blocking(state, move |state| pages::file(state, &path)).await,
+        "/sitemap.xml" if readable => blocking(state, pages::sitemap).await,
+        _ if readable => blocking(state, move |state| pages::any(state, &path)).await,
         _ => {
             let mut reply = refused("GET or HEAD\n");
             reply
@@ -281,5 +284,83 @@ mod tests {
             (old["running"].as_bool(), old["stale"].as_bool()),
             (Some(false), Some(true))
         );
+    }
+
+    async fn get(state: &Arc<State>, path: &str) -> (StatusCode, String) {
+        let request = Request::get(path)
+            .header("accept", "text/html")
+            .body(Full::new(Bytes::new()))
+            .unwrap();
+        let reply = handle(Arc::clone(state), request).await;
+        let status = reply.status();
+        let body = reply.into_body().collect().await.unwrap().to_bytes();
+        (status, String::from_utf8(body.to_vec()).unwrap())
+    }
+
+    #[tokio::test]
+    async fn the_board_and_the_map_are_in_the_page_before_any_script_runs() {
+        let dir = std::env::temp_dir().join(format!("n333-site-pages-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let site = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../site");
+        let state = Arc::new(
+            State::open(
+                &site,
+                &dir.join("state"),
+                dir.join("network.json"),
+                "t".to_owned(),
+            )
+            .unwrap(),
+        );
+        let placed = Request::put(format!("/333/{}", eligible().node_id()))
+            .header("cf-connecting-ip", "192.0.2.8")
+            .header("cf-ipcountry", "CA")
+            .header("cf-iplatitude", "45.4")
+            .header("cf-iplongitude", "-75.7")
+            .body(Full::new(Bytes::from(statement(
+                eligible(),
+                "192.0.2.7:3333",
+            ))))
+            .unwrap();
+        assert_eq!(
+            handle(Arc::clone(&state), placed).await.status(),
+            StatusCode::OK
+        );
+        let hidden = Identity::mine().0;
+        let onion = format!("{}.onion:3333", "a".repeat(56));
+        let (status, _, _) = put(
+            &state,
+            &hidden.node_id().to_string(),
+            statement(&hidden, &onion),
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK);
+
+        let (status, board) = get(&state, "/333").await;
+        assert_eq!(status, StatusCode::OK);
+        assert!(
+            board.contains("<code>333 join 333:192.0.2.7:3333</code>"),
+            "{board}"
+        );
+        assert!(board.contains(" · CA</p>") && board.contains(" · through Tor</p>"));
+        assert!(board.contains("data-board-empty hidden"));
+
+        let (_, map) = get(&state, "/map").await;
+        assert!(map.contains(r#"<span data-c="CA">CA</span></td><td class="n">1</td>"#));
+        assert!(map.contains(r#"<tr><td>Tor</td><td class="n">1</td></tr>"#));
+        assert!(
+            map.contains(r#"<tr class="sum"><td>All of us saying</td><td class="n">2</td></tr>"#)
+        );
+        assert!(
+            map.contains(r#"<circle class="dot" cx="416" cy="180" r="6"><title>1 node</title>"#)
+        );
+        let tor = map.split(r#"<g id="tor-dots">"#).nth(1).unwrap();
+        assert!(tor.starts_with(r#"<circle class="ring""#), "{tor}");
+
+        let (status, korean) = get(&state, "/ko/333").await;
+        assert_eq!(status, StatusCode::OK);
+        assert!(korean.contains(r#"<html lang="ko""#), "{korean}");
+        assert!(korean.contains("<code>333 join 333:192.0.2.7:3333</code>"));
+        assert_eq!(get(&state, "/xx/about").await.0, StatusCode::NOT_FOUND);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

@@ -3,12 +3,13 @@
 # the node's owner (`ubuntu`). It reads the node's files without writing them, never
 # opens identity.key, and asks the running node for `status --json` over its socket.
 #
-# Its binary is a copy the node's owner installs, not the one the site deploys: the
-# site's user must not be able to change what runs in the account that holds the key.
+# Its binary is built by this user, not taken from the site: the site's user must not
+# be able to change what runs in the account that holds the key. 333-observe-follow
+# (packaging/vps/) rebuilds it from GitHub at whatever commit the site runs, so the
+# file this writes and the site that reads it come from the same commit.
 #
-#   cd ~/333/repo && flock -w 3600 /tmp/big-heavy.lock -c "cargo build --release --locked -p n333-site"
-#   install -m 0755 target/release/333-site ~/.local/bin/333-site
 #   sudo install -d -o ubuntu -g ubuntu -m 0755 /var/lib/333-observation    (once)
+#   (install 333-observe-follow as its header says; its first run builds ~/.local/bin/333-site)
 #   cp packaging/site/333-observe.service packaging/site/333-observe.timer ~/.config/systemd/user/
 #   systemctl --user daemon-reload
 #   systemctl --user enable --now 333-observe.timer

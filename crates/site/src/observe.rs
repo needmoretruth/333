@@ -49,6 +49,9 @@
 //! the node holds, so a node known only from those is in it too. Only records whose
 //! signatures verify add a node or an edge. `handover` runs from sponsor to member;
 //! `answered` and `silent` run from verifier to prover.
+//!
+//! The first run in a new epoch also writes one line about the epoch that ended into the
+//! history beside the file (see [`crate::history`]), from the file it is replacing.
 
 mod control;
 mod given;
@@ -63,7 +66,7 @@ use n333_core::epoch::unix_now_millis;
 use serde::{Deserialize, Serialize};
 use serde_json::value::RawValue;
 
-use crate::atomic;
+use crate::{atomic, history};
 
 /// Which shape of file this writes.
 const FORMAT: u32 = 1;
@@ -126,8 +129,12 @@ pub(crate) fn run(args: &Args) -> anyhow::Result<()> {
         );
     }
     let given = given::Given::checked(args.site_node.as_deref(), args.invitation.as_deref())?;
+    let previous = std::fs::read(&args.out).ok();
     let observation = observe(&args.node, &args.out, &given, unix_now_millis());
     let bytes = serde_json::to_vec(&observation).context("writing the observation as JSON")?;
+    if let Some(previous) = previous {
+        remember(&args.out, &previous, observation.epoch);
+    }
     atomic::write(&args.out, &bytes, OUT_MODE)
         .with_context(|| format!("writing {}", args.out.display()))
 }
@@ -155,6 +162,23 @@ fn observe(home: &Path, out: &Path, given: &given::Given, now_ms: u64) -> Observ
         status,
         nodes: drawn.nodes,
         edges: drawn.edges,
+    }
+}
+
+/// Write down the epoch the previous observation was made in, if it has ended. A
+/// failure is logged and goes no further: the history is worth less than the page's
+/// view of now.
+fn remember(out: &Path, previous: &[u8], epoch: u64) {
+    let Some(sample) = history::ended(previous, epoch) else {
+        return;
+    };
+    let path = history::beside(out);
+    if let Err(error) = history::record(&path, &sample) {
+        tracing::warn!(
+            "epoch {} could not be added to {}: {error}",
+            sample.epoch,
+            path.display()
+        );
     }
 }
 

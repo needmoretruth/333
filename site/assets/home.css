@@ -19,7 +19,7 @@
 .has-3d .hero-mark { opacity: 0; height: clamp(11rem, 7rem + 18vw, 19rem); }
 .hero-line { font: 400 var(--caption)/1.25 var(--serif); max-width: 20em; margin: 0 auto 1.4em; color: var(--ink); text-wrap: balance; }
 .hero-foot {
-  position: absolute; left: 0; right: 0; bottom: 22px; margin: 0;
+  position: absolute; left: var(--gutter); right: var(--gutter); bottom: 22px; margin: 0;
   text-align: center; font-size: var(--small); color: var(--faint);
 }
 .hero-foot span { color: var(--dim); }
@@ -60,3 +60,5 @@
 @media (prefers-reduced-motion: reduce) {
   .story.live .captions li { transition: none; transform: none; }
 }
+.hero-foot .line-epoch { display: inline; margin: 0; font: inherit; color: var(--faint); }
+.hero-foot .line-epoch:not(:empty)::before { content: " · "; }

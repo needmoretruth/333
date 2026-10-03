@@ -4,6 +4,52 @@
 
 const EVERY_MS = 15000;
 
+const root = document.documentElement;
+
+/** The page's language, and the path its links in that language begin with. */
+export const lang = root.lang || "en";
+export const base = root.dataset.base || "";
+
+/** The words this page's scripts say, in its language, as the server embedded them. */
+const WORDS = (() => {
+  try {
+    return JSON.parse(document.getElementById("words").textContent) || {};
+  } catch {
+    return {};
+  }
+})();
+
+const rules = {};
+function category(n, type) {
+  try {
+    rules[type] = rules[type] || new Intl.PluralRules(lang, { type });
+    return rules[type].select(n);
+  } catch {
+    return "other";
+  }
+}
+
+/** A number as people read it in this page's language; anything else as it is. */
+export function number(value) {
+  return typeof value === "number" ? value.toLocaleString(lang) : String(value);
+}
+
+/**
+ * One message, filled in. A message with a selector is an object naming its variable
+ * (`$`), whether it counts or ranks (`type`), its default (`*`) and each variant.
+ * Arguments are not escaped here; whoever puts the result into HTML escapes them first.
+ */
+export function say(key, args = {}) {
+  let said = WORDS[key];
+  if (said === undefined) return key;
+  if (said && typeof said === "object") {
+    const n = args[said.$];
+    const picked = typeof n === "number" ? said[`=${n}`] ?? said[category(n, said.type)] : undefined;
+    said = picked ?? said[said["*"]];
+  }
+  return String(said).replace(/\{\$([A-Za-z0-9_-]+)\}/g, (_, name) => (name in args ? number(args[name]) : ""));
+}
+
 /** The observation the server embedded, or null. */
 export function embedded() {
   const node = document.getElementById("network-data");
@@ -69,7 +115,7 @@ function num(value) {
 
 /** A number as people read it, or a dash for one nobody can produce. */
 export function shown(value) {
-  return value === null ? "—" : value.toLocaleString("en-US");
+  return value === null ? "—" : value.toLocaleString(lang);
 }
 
 /** Hours and minutes left, written short. */
@@ -78,7 +124,7 @@ export function left(ms) {
   const minutes = Math.max(0, Math.round((ms - Date.now()) / 60000));
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
-  return h > 0 ? `in ${h} h ${m} min` : `in ${m} min`;
+  return h > 0 ? say("js-in-hours", { h, m }) : say("js-in-minutes", { m });
 }
 
 function header(net) {
@@ -88,7 +134,26 @@ function header(net) {
   const dot = state.querySelector(".dot");
   const word = state.querySelector(".word");
   dot.className = `dot ${f.running ? "ok" : "bad"}`;
-  word.textContent = f.running ? "This site's node is awake" : "This site's node is not running";
+  word.textContent = f.running ? say("js-state-awake") : say("js-state-not-running");
+}
+
+/** Which epoch of this line it is: counted from the first epoch any node was admitted in. */
+export function lineEpoch(net) {
+  const epoch = net && typeof net.epoch === "number" ? net.epoch : null;
+  let first = null;
+  for (const node of (net && net.nodes) || []) {
+    if (typeof node.admitted === "number" && (first === null || node.admitted < first)) first = node.admitted;
+  }
+  return epoch === null || first === null || first > epoch ? null : epoch - first + 1;
+}
+
+/** The epoch number and which of this line's it is, wherever the page shows them. */
+function epochs(net) {
+  const f = figures(net);
+  if (f.epoch === null) return;
+  for (const el of document.querySelectorAll("[data-epoch]")) el.textContent = shown(f.epoch);
+  const n = lineEpoch(net);
+  for (const el of document.querySelectorAll(".line-epoch")) el.textContent = n === null ? "" : say("js-line-epoch", { n });
 }
 
 function countdowns(ends) {
@@ -109,7 +174,7 @@ function copies() {
     const code = button.parentElement.querySelector("code");
     try {
       await navigator.clipboard.writeText(code.textContent.trim());
-      button.textContent = "Copied";
+      button.textContent = say("js-copied");
       button.setAttribute("data-done", "");
     } catch {
       const range = document.createRange();
@@ -117,10 +182,10 @@ function copies() {
       const selection = getSelection();
       selection.removeAllRanges();
       selection.addRange(range);
-      button.textContent = "Selected";
+      button.textContent = say("js-selected");
     }
     setTimeout(() => {
-      button.textContent = "Copy";
+      button.textContent = say("js-copy");
       button.removeAttribute("data-done");
     }, 1800);
   });
@@ -132,7 +197,12 @@ export function start(more) {
   countdowns(null);
   follow((net) => {
     header(net);
-    countdowns(figures(net).ends);
+    // A stale observation's epoch and end time are from when it was made; the server
+    // wrote the ones the clock gives now, so those stay.
+    if (!net.stale) {
+      epochs(net);
+      countdowns(figures(net).ends);
+    }
     if (more) more(net);
   });
   setInterval(() => countdowns(null), 30000);

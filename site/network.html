@@ -1,36 +1,41 @@
 <!doctype html>
-<html lang="en">
+<html lang="{{lang}}" data-base="{{base}}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>The network · 333</title>
-<meta name="description" content="Every 333 node the site's node has seen, the signed handovers and testimony between them, and everything that node reports about the network, updated every 15 seconds.">
-<link rel="canonical" href="https://the333.dev/network">
+<title>{{a:network-meta-title}}</title>
+<meta name="description" content="{{a:network-meta-description}}">
+<meta property="og:title" content="{{a:network-meta-title}}">
+<meta property="og:description" content="{{a:network-meta-description}}">
+<meta property="og:type" content="website">
+{{html:head}}
 <meta name="theme-color" content="#0b0c0f">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/assets/site.css?v={{version}}">
 <link rel="stylesheet" href="/assets/network.css?v={{version}}">
 </head>
 <body class="network">
-<a class="skip" href="#main">Skip to the text</a>
+<a class="skip" href="#main">{{t:skip}}</a>
 <header class="top">
-  <a class="mark" href="/">333</a>
-  <nav aria-label="Pages">
-    <a href="/network" aria-current="page">Network</a>
-    <a href="/map">Map</a>
-    <a href="/law">Law</a>
-    <a href="/about">About</a>
-    <a href="/start">Take the program</a>
+  <a class="mark" href="{{base}}/">333</a>
+  <nav aria-label="{{a:nav-label}}">
+    <a href="{{base}}/network" aria-current="page">{{t:nav-network}}</a>
+    <a href="{{base}}/map">{{t:nav-map}}</a>
+    <a href="{{base}}/status">{{t:nav-status}}</a>
+    <a href="{{base}}/law">{{t:nav-law}}</a>
+    <a href="{{base}}/about">{{t:nav-about}}</a>
+    <a href="{{base}}/start">{{t:nav-start}}</a>
   </nav>
-  <a class="state" href="/network" data-live="state"><span class="dot {{site_dot}}"></span><span class="word">{{site_state}}</span></a>
+  <a class="state" href="{{base}}/network" data-live="state"><span class="dot {{site_dot}}"></span><span class="word">{{site_state}}</span></a>
   <details class="menu">
-    <summary aria-label="Menu">Menu</summary>
+    <summary aria-label="{{a:nav-menu}}">{{t:nav-menu}}</summary>
     <div class="sheet">
-      <a href="/network">Network</a>
-      <a href="/map">Map</a>
-      <a href="/law">Law</a>
-      <a href="/about">About</a>
-      <a href="/start">Take the program</a>
+      <a href="{{base}}/network">{{t:nav-network}}</a>
+      <a href="{{base}}/map">{{t:nav-map}}</a>
+      <a href="{{base}}/status">{{t:nav-status}}</a>
+      <a href="{{base}}/law">{{t:nav-law}}</a>
+      <a href="{{base}}/about">{{t:nav-about}}</a>
+      <a href="{{base}}/start">{{t:nav-start}}</a>
     </div>
   </details>
 </header>
@@ -38,89 +43,92 @@
 <main id="main">
   <section class="net-head wide">
     <div class="net-title">
-      <h1>The network</h1>
-      <p class="dim">Every node this site's node has seen, and the signed records between them. Another node sees something else.</p>
+      <h1>{{t:network-heading}}</h1>
+      <p class="dim">{{t:network-lede}}</p>
     </div>
     <dl class="strip" data-live="figures">
-      <div><dt>Answering</dt><dd>{{answering}}</dd></div>
-      <div><dt>On the roll</dt><dd>{{roll}}</dd></div>
-      <div><dt>Epoch</dt><dd>{{epoch}}</dd></div>
-      <div><dt>Epoch ends</dt><dd><time datetime="{{epoch_ends_utc}}" data-countdown>{{epoch_ends_utc}}</time></dd></div>
+      <div><dt>{{t:figure-answering}}</dt><dd data-figure="answering">{{answering}}</dd></div>
+      <div><dt>{{t:figure-roll}}</dt><dd data-figure="roll">{{roll}}</dd></div>
+      <div><dt>{{t:figure-epoch}}</dt><dd data-figure="epoch"><span data-epoch>{{epoch}}</span>{{html:line_epoch}}</dd></div>
+      <div><dt>{{t:figure-ends}}</dt><dd data-figure="ends"><time datetime="{{epoch_ends_utc}}" data-countdown>{{epoch_ends_utc}}</time></dd></div>
     </dl>
   </section>
 
-  <section class="sky wide" aria-label="Graph of nodes">
+  <section class="sky wide" aria-label="{{a:network-graph-label}}">
     <div class="sky-main">
     <div class="sky-frame">
       <canvas class="chart" aria-hidden="true"></canvas>
       <form class="find" role="search">
-        <label for="find-node">Find your node</label>
+        <label for="find-node">{{t:network-find}}</label>
         <div class="find-row">
-          <input id="find-node" name="node" autocomplete="off" spellcheck="false" inputmode="text" placeholder="Your node’s name" aria-describedby="find-said">
-          <button class="button" type="submit">Find</button>
+          <input id="find-node" name="node" autocomplete="off" spellcheck="false" inputmode="text" placeholder="{{a:network-find-placeholder}}" aria-describedby="find-said">
+          <button class="button" type="submit">{{t:network-find-button}}</button>
         </div>
         <p id="find-said" class="find-said" role="status"></p>
       </form>
-      <div class="zoom" role="group" aria-label="Zoom">
-        <button class="button" type="button" data-zoom="out" aria-label="Zoom out">−</button>
-        <input type="range" min="25" max="400" step="5" value="100" aria-label="Zoom, percent" data-zoom="range">
-        <button class="button" type="button" data-zoom="in" aria-label="Zoom in">+</button>
-        <button class="button" type="button" data-zoom="fit">Fit</button>
+      <div class="zoom" role="group" aria-label="{{a:network-zoom}}">
+        <button class="button" type="button" data-zoom="out" aria-label="{{a:network-zoom-out}}">−</button>
+        <input type="range" min="25" max="400" step="5" value="100" aria-label="{{a:network-zoom-percent}}" data-zoom="range">
+        <button class="button" type="button" data-zoom="in" aria-label="{{a:network-zoom-in}}">+</button>
+        <button class="button" type="button" data-zoom="fit">{{t:network-zoom-fit}}</button>
       </div>
-      <p class="sky-empty" hidden></p>
+      {{html:network_empty}}
     </div>
     <ul class="legend">
-        <li><i class="k founder"></i>Founder</li>
-        <li><i class="k ok"></i>Answering this epoch</li>
-        <li><i class="k quiet"></i>Silent this epoch</li>
-        <li><i class="k later"></i>Counted from a later epoch</li>
-        <li><i class="k seen"></i>Seen, not on the roll</li>
-        <li><i class="l hand"></i>Handed the file</li>
-        <li><i class="l said"></i>Testimony</li>
+        <li><i class="k founder"></i>{{t:network-legend-founder}}</li>
+        <li><i class="k ok"></i>{{t:js-network-state-ok}}</li>
+        <li><i class="k quiet"></i>{{t:js-network-state-quiet}}</li>
+        <li><i class="k later"></i>{{t:js-network-state-later}}</li>
+        <li><i class="k seen"></i>{{t:js-network-state-seen}}</li>
+        <li><i class="l hand"></i>{{t:network-legend-handed}}</li>
+        <li><i class="l said"></i>{{t:network-legend-testimony}}</li>
       </ul>
     </div>
     <aside class="card" aria-live="polite">
-      <p class="card-none dim">Select a node to see what this site's node knows about it.</p>
+      <p class="card-none dim">{{t:js-network-select}}</p>
     </aside>
-    <noscript><p class="dim">The graph needs JavaScript. The same data is at <a href="/api/network">/api/network</a>.</p></noscript>
+    <noscript><p class="dim">{{t:network-needs-script}}</p></noscript>
   </section>
 
   <section class="band wide" aria-labelledby="all-title">
-    <h2 id="all-title">Every node</h2>
+    <h2 id="all-title">{{t:network-all-title}}</h2>
     <div class="table-wrap">
       <table class="nodes">
-        <thead><tr><th scope="col">Name</th><th scope="col">This epoch</th><th scope="col">Given the file</th><th scope="col">Counted from</th><th scope="col">Last answered</th><th scope="col">Said</th><th scope="col">Reached</th></tr></thead>
-        <tbody></tbody>
+        <thead><tr><th scope="col">{{t:js-network-col-name}}</th><th scope="col">{{t:js-network-col-state}}</th><th scope="col">{{t:js-network-col-given}}</th><th scope="col">{{t:js-network-col-counted}}</th><th scope="col">{{t:js-network-col-answered}}</th><th scope="col">{{t:js-network-col-said}}</th><th scope="col">{{t:js-network-col-reached}}</th></tr></thead>
+        <tbody>{{html:network_rows}}</tbody>
       </table>
     </div>
   </section>
 
   <section class="band wide" aria-labelledby="report-title">
-    <h2 id="report-title">Everything this node reports</h2>
-    <p class="center dim">The output of <code>333 status --json</code> on this site's node, as of <time data-asof>—</time>.</p>
-    <div class="report"></div>
+    <h2 id="report-title">{{t:network-report-title}}</h2>
+    <p class="center dim">{{t:network-report-note|asof}}</p>
+    <div class="report">{{html:network_report}}</div>
   </section>
 
   <section class="band column" aria-labelledby="join-title">
-    <h2 id="join-title">Be handed the file by this site's node</h2>
-    <div class="command"><code>333 join {{invitation}}</code><button type="button" data-copy>Copy</button></div>
-    <p class="dim">Then <code>333 name</code> shows your node's name, to find it above.</p>
+    <h2 id="join-title">{{t:network-join-title}}</h2>
+    <div class="command"><code>333 join {{invitation}}</code><button type="button" data-copy>{{t:js-copy}}</button></div>
+    <p class="dim">{{t:network-join-then}}</p>
   </section>
 </main>
 
 <footer class="foot">
   <div class="wide">
-    <a class="mark" href="/">333</a>
-    <a href="/network">Network</a>
-    <a href="/map">Where we are</a>
-    <a href="/333">The board</a>
-    <a href="/law">The Law</a>
-    <a href="/about">What this is</a>
-    <a href="/start">Take the program</a>
+    <a class="mark" href="{{base}}/">333</a>
+    <a href="{{base}}/network">{{t:foot-network}}</a>
+    <a href="{{base}}/map">{{t:foot-map}}</a>
+    <a href="{{base}}/status">{{t:foot-status}}</a>
+    <a href="{{base}}/333">{{t:foot-board}}</a>
+    <a href="{{base}}/law">{{t:foot-law}}</a>
+    <a href="{{base}}/about">{{t:foot-about}}</a>
+    <a href="{{base}}/start">{{t:foot-start}}</a>
     <a href="https://github.com/needmoretruth/333">GitHub</a>
   </div>
+  {{html:languages}}
 </footer>
 <script type="application/json" id="network-data">{{json:network}}</script>
+<script type="application/json" id="words">{{json:words}}</script>
 <script src="/assets/vendor/d3-force-3.0.0/d3-dispatch.min.js"></script>
 <script src="/assets/vendor/d3-force-3.0.0/d3-quadtree.min.js"></script>
 <script src="/assets/vendor/d3-force-3.0.0/d3-timer.min.js"></script>

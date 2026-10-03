@@ -1,5 +1,6 @@
 // The board for people: every verified statement as an invitation to copy, newest first.
-import { start } from "./live.js";
+// The server already wrote the list into the page; this only keeps it current.
+const { start, say, base } = await import(`./live.js${new URL(import.meta.url).search}`);
 
 const list = document.querySelector("[data-board]");
 const empty = document.querySelector("[data-board-empty]");
@@ -16,15 +17,22 @@ function read(id) {
 function render(lines, site) {
   const rows = Array.isArray(lines) ? [...lines].sort((a, b) => b.epoch - a.epoch) : [];
   empty.hidden = rows.length > 0;
-  list.innerHTML = rows.map((l) => `
+  list.innerHTML = rows.map((l) => {
+    const short = esc(l.node.slice(0, 12));
+    const node = `<a href="${esc(base)}/network?node=${short}">${short}</a>`;
+    let line = say("js-board-said", { epoch: String(l.epoch), node });
+    if (l.node === site) line += ` · ${esc(say("js-board-site"))}`;
+    if (l.tor) line += ` · ${esc(say("js-board-tor"))}`;
+    else if (l.country) line += ` · ${esc(l.country)}`;
+    return `
     <li>
-      <div class="command"><code>333 join 333:${esc(l.address)}</code><button type="button" data-copy>Copy</button></div>
-      <p class="dim">Said in epoch ${esc(l.epoch)} by <a href="/network?node=${esc(l.node.slice(0, 12))}">${esc(l.node.slice(0, 12))}</a>${l.node === site ? " · this site's node" : ""}${l.tor ? " · through Tor" : l.country ? ` · ${esc(l.country)}` : ""}</p>
-    </li>`).join("");
+      <div class="command"><code>333 join 333:${esc(l.address)}</code><button type="button" data-copy>${esc(say("js-copy"))}</button></div>
+      <p class="dim">${line}</p>
+    </li>`;
+  }).join("");
 }
 
 const net = read("network-data");
-render(read("board-data"), net && net.site_node);
 start();
 setInterval(async () => {
   try {

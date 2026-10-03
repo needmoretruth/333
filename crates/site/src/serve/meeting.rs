@@ -5,13 +5,10 @@
 //! clients were written against (see `meeting/index.ts` and `crates/net/src/meeting.rs`).
 //! The one difference is a limit that is gone: the Worker's 900 writes a day.
 
-use std::collections::BTreeMap;
-
 use http_body_util::{BodyExt as _, Limited};
 use hyper::body::Body;
 use hyper::{HeaderMap, Request, StatusCode};
 use n333_core::epoch::unix_now_millis;
-use serde::Serialize;
 
 use super::respond::{self, NO_STORE, Reply};
 use super::state::State;
@@ -148,60 +145,10 @@ where
     (!bytes.is_empty()).then_some(bytes)
 }
 
-/// How many of us are where, for the map. Counts only; names nobody.
-#[derive(Serialize)]
-struct Where {
-    /// When this was counted, in milliseconds.
-    as_of: u64,
-    /// How many statements are held.
-    saying: usize,
-    /// How many name an onion address.
-    tor: usize,
-    /// How many the edge could not place.
-    unplaced: usize,
-    /// Countries, most first, then by code.
-    countries: Vec<Country>,
-    /// One `[x, y]` per placed statement, in whole degrees.
-    dots: Vec<[i32; 2]>,
-}
-
-/// One country and how many statements came from it.
-#[derive(Serialize)]
-struct Country {
-    /// Two letters.
-    c: String,
-    /// How many.
-    n: usize,
-}
-
-/// `GET /333/where-we-are`.
+/// `GET /333/where-we-are`: what the map shows, for its script to keep current.
 pub(crate) fn where_we_are(state: &State) -> Reply {
     let now = unix_now_millis();
-    let board = state.board();
-    let mut counted: BTreeMap<String, usize> = BTreeMap::new();
-    let mut found = Where {
-        as_of: now,
-        saying: 0,
-        tor: 0,
-        unplaced: 0,
-        countries: Vec::new(),
-        dots: Vec::new(),
-    };
-    for line in board.alive(now) {
-        found.saying += 1;
-        match line.place() {
-            Some(Place::Tor) => found.tor += 1,
-            None => found.unplaced += 1,
-            Some(Place::At { country, y, x }) => {
-                *counted.entry(country.clone()).or_default() += 1;
-                found.dots.push([*x, *y]);
-            }
-        }
-    }
-    drop(board);
-    found.countries = counted.into_iter().map(|(c, n)| Country { c, n }).collect();
-    found
-        .countries
-        .sort_by(|one, two| two.n.cmp(&one.n).then_with(|| one.c.cmp(&two.c)));
+    let observed = super::values::observation(&state.observation, now);
+    let found = super::counted::count(&state.board(), observed.as_ref(), now);
     respond::json(serde_json::to_string(&found).unwrap_or_else(|_| "null".to_owned()))
 }

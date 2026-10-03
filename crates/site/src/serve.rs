@@ -4,12 +4,20 @@
 //! visitor's address is the per-address minute in [`crate::gate`], which keeps an HMAC
 //! of it in memory and never the address.
 
+mod board_view;
+mod counted;
+mod head;
+mod machine;
+mod map_view;
 mod meeting;
+mod network_view;
 mod pages;
 mod respond;
 mod routes;
+mod sitemap;
 mod state;
 mod statics;
+mod status_view;
 mod template;
 mod values;
 
@@ -30,6 +38,52 @@ use state::State;
 /// for anything else that reaches the port.
 const HEADERS_WITHIN: Duration = Duration::from_secs(10);
 
+/// Where the server listens unless told otherwise. The unit does not say, so this is
+/// also where `deploy` asks a new release whether it serves.
+pub(crate) const LISTEN: &str = "127.0.0.1:8080";
+
+/// The messages the server says itself, for the check that every English message is
+/// used. The scripts say most of these too; a key here that nothing says is a key the
+/// check cannot catch, so this list stays the server's and no longer.
+#[cfg(test)]
+pub(crate) const SAID_BY_SERVER: &[&str] = &[
+    "language-name",
+    "languages",
+    "js-state-awake",
+    "js-state-not-running",
+    "js-line-epoch",
+    "js-copy",
+    "js-board-said",
+    "js-board-site",
+    "js-board-tor",
+    "js-map-read-at",
+    "js-map-tor",
+    "js-map-nowhere",
+    "js-map-nobody",
+    "js-map-all",
+    "js-map-unsaid",
+    "js-map-dot",
+    "js-network-awake",
+    "js-network-not-running",
+    "js-network-empty",
+    "js-network-epoch",
+    "js-network-reach-direct",
+    "js-network-reach-tor-short",
+    "js-network-tag-founder",
+    "js-network-tag-site",
+    "js-network-this-node",
+    "js-network-yes",
+    "js-network-no",
+    "js-network-none",
+    "status-chart-summary",
+    "status-chart-too-few",
+    "status-age",
+    "status-observed-running",
+    "status-observed-not-running",
+    "status-uptime",
+    "status-uptime-value",
+];
+
 /// What `serve` is told.
 #[derive(clap::Args)]
 pub(crate) struct Args {
@@ -43,7 +97,7 @@ pub(crate) struct Args {
     #[arg(long)]
     observation: PathBuf,
     /// Where to listen. Loopback: only Caddy should reach this.
-    #[arg(long, default_value = "127.0.0.1:8080")]
+    #[arg(long, default_value = LISTEN)]
     listen: SocketAddr,
     /// The version pages show and name their assets by.
     #[arg(long, conflicts_with = "version_file")]
@@ -70,12 +124,15 @@ pub(crate) fn run(args: &Args) -> anyhow::Result<()> {
             .to_owned(),
         (None, None) => "dev".to_owned(),
     };
-    let state = Arc::new(State::open(
-        &args.site,
-        &args.state,
-        args.observation.clone(),
-        version,
-    )?);
+    let release = args
+        .version_file
+        .as_deref()
+        .map(machine::Release::beside)
+        .unwrap_or_default();
+    let state = Arc::new(
+        State::open(&args.site, &args.state, args.observation.clone(), version)?
+            .with_release(release),
+    );
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()

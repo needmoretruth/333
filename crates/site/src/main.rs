@@ -31,9 +31,12 @@ mod board;
 mod deploy;
 mod frames;
 mod gate;
+mod history;
 mod observe;
 mod place;
 mod serve;
+mod site;
+mod words;
 
 use std::process::ExitCode;
 

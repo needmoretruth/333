@@ -8,14 +8,24 @@
   var guessed = document.getElementById("guessed");
   if (!pick || !machine || !form || !guessed) return;
 
+  // The page's words, as the server embedded them in the page's language.
+  var WORDS = {};
+  try { WORDS = JSON.parse(document.getElementById("words").textContent) || {}; } catch (e) { WORDS = {}; }
+  function say(key, args) {
+    var said = typeof WORDS[key] === "string" ? WORDS[key] : key;
+    return said.replace(/\{\$([A-Za-z0-9_-]+)\}/g, function (_, name) {
+      return args && name in args ? String(args[name]) : "";
+    });
+  }
+
   // The names the release attaches, and nothing else.
   var MACHINES = {
-    "linux-x86_64": { said: "Linux on x86-64", part: "x86_64-linux", family: "unix" },
-    "linux-aarch64": { said: "Linux on 64-bit ARM", part: "aarch64-linux", family: "unix" },
-    "linux-armv6": { said: "Linux on 32-bit ARM", part: "armv6-linux", family: "unix" },
-    "macos-aarch64": { said: "a Mac with Apple silicon", part: "aarch64-macos", family: "unix" },
-    "macos-x86_64": { said: "a Mac with an Intel chip", part: "x86_64-macos", family: "unix" },
-    "windows-x86_64": { said: "Windows", part: "x86_64-windows.exe", family: "windows" }
+    "linux-x86_64": { said: say("js-start-machine-linux-x86_64"), part: "x86_64-linux", family: "unix" },
+    "linux-aarch64": { said: say("js-start-machine-linux-aarch64"), part: "aarch64-linux", family: "unix" },
+    "linux-armv6": { said: say("js-start-machine-linux-armv6"), part: "armv6-linux", family: "unix" },
+    "macos-aarch64": { said: say("js-start-machine-macos-aarch64"), part: "aarch64-macos", family: "unix" },
+    "macos-x86_64": { said: say("js-start-machine-macos-x86_64"), part: "x86_64-macos", family: "unix" },
+    "windows-x86_64": { said: say("js-start-machine-windows-x86_64"), part: "x86_64-windows.exe", family: "windows" }
   };
 
   function fileName(key, light) {
@@ -59,18 +69,15 @@
   function tell(seen) {
     var text;
     if (seen.phone) {
-      text = "This looks like a phone or a tablet, and the program is for a computer that " +
-        "stays on. Choose that computer here.";
+      text = say("js-start-phone");
     } else if (!seen.key) {
-      text = "This browser does not say what it is running on. Choose your machine here.";
+      text = say("js-start-unknown");
     } else if (seen.sure) {
-      text = "This browser says it is on " + MACHINES[seen.key].said + ", so that is chosen here.";
+      text = say("js-start-sure", { machine: MACHINES[seen.key].said });
     } else if (seen.key.indexOf("macos") === 0) {
-      text = "This browser says it is on a Mac and not which chip, so Apple silicon is chosen " +
-        "here. The installer asks the machine itself.";
+      text = say("js-start-mac");
     } else {
-      text = "This browser says it is on Linux and not which processor, so x86-64 is chosen " +
-        "here. The installer asks the machine itself.";
+      text = say("js-start-linux");
     }
     guessed.textContent = text;
     if (seen.key && !touched) machine.value = seen.key;
@@ -100,7 +107,7 @@
     each('tr[data-row="' + key + '"] th', function (el) {
       var mark = document.createElement("span");
       mark.className = "guess";
-      mark.textContent = "Chosen above";
+      mark.textContent = say("js-start-chosen");
       el.appendChild(mark);
     });
   }

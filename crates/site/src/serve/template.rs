@@ -1,18 +1,32 @@
-//! Putting live values into the HTML pages.
+//! Putting live values and the page's words into the HTML pages.
 //!
-//! Two forms and nothing else, so a page author can see at a glance what is escaped how:
+//! Few forms, so a page author can see at a glance what is escaped how:
 //!
 //! - `{{name}}` — the value as HTML text, with `& < > " '` escaped, safe in text and in
 //!   a quoted attribute.
 //! - `{{json:name}}` — the value as JSON, safe inside `<script type="application/json">`:
 //!   `<`, `>`, `&`, U+2028 and U+2029 are written as `\uXXXX`, which every JSON reader
 //!   reads back as the same character, so nothing in it can end the script element.
+//! - `{{html:name}}` — HTML the server made itself (a table's rows, the head's links),
+//!   put in as it is.
+//! - `{{t:key}}` — the message `key` in the page's language, as HTML, put in as it is:
+//!   the catalogs are ours, and their markup (`<a>`, `<code>`, `<b>`) is meant.
+//! - `{{a:key}}` — the same message as plain text, escaped, for an attribute or
+//!   `<title>`.
 //!
-//! A token this server does not know is left as it is, and named in the log once, so a
-//! typo shows on the page instead of disappearing. Only `.html` files are templated.
+//! A message can be handed values: `{{t:key|answering|epoch}}` gives it `$answering`
+//! and `$epoch`, each the value of that name, escaped for HTML first unless it is an
+//! `html:` value. Every message is also handed `$base`, the language's path prefix, so
+//! a link in a catalog stays in the reader's language.
+//!
+//! A token this server does not know, or a key no catalog has, is left as it is and
+//! named in the log once, so a typo shows on the page instead of disappearing. Only
+//! `.html` files are templated.
 
 use std::collections::{BTreeMap, HashSet};
 use std::sync::{Mutex, OnceLock, PoisonError};
+
+use crate::words::{Arg, Speaker};
 
 /// The values one page is rendered with.
 #[derive(Debug, Default)]
@@ -21,6 +35,8 @@ pub(crate) struct Values {
     text: BTreeMap<&'static str, String>,
     /// Values already written as JSON, by name.
     json: BTreeMap<&'static str, String>,
+    /// HTML the server made, by name.
+    html: BTreeMap<&'static str, String>,
 }
 
 impl Values {
@@ -33,10 +49,28 @@ impl Values {
     pub(crate) fn json(&mut self, name: &'static str, json: String) {
         self.json.insert(name, json);
     }
+
+    /// Offer `html`, which this server made and is trusted, as `{{html:name}}`.
+    pub(crate) fn html(&mut self, name: &'static str, html: String) {
+        self.html.insert(name, html);
+    }
+
+    /// A value as a message is handed it: escaped text, or HTML as it is. For an
+    /// attribute (`plain`), text as it is; the whole message is escaped afterwards.
+    fn arg(&self, name: &str, plain: bool) -> Option<String> {
+        if let Some(text) = self.text.get(name) {
+            return Some(if plain {
+                text.clone()
+            } else {
+                html_escaped(text)
+            });
+        }
+        self.html.get(name).cloned()
+    }
 }
 
 /// The page with every known token replaced.
-pub(crate) fn render(page: &str, values: &Values) -> String {
+pub(crate) fn render(page: &str, values: &Values, words: &Speaker<'_>) -> String {
     let mut out = String::with_capacity(page.len());
     let mut rest = page;
     while let Some(start) = rest.find("{{") {
@@ -48,7 +82,7 @@ pub(crate) fn render(page: &str, values: &Values) -> String {
             return out;
         };
         let token = inner.get(..end).unwrap_or_default();
-        match replacement(token, values) {
+        match replacement(token, values, words) {
             Some(value) => {
                 out.push_str(&value);
                 rest = inner.get(end + 2..).unwrap_or_default();
@@ -68,21 +102,50 @@ pub(crate) fn render(page: &str, values: &Values) -> String {
     out
 }
 
-/// What a token becomes, if it names a value.
-fn replacement(token: &str, values: &Values) -> Option<String> {
+/// What a token becomes, if it names a value or a message.
+fn replacement(token: &str, values: &Values, words: &Speaker<'_>) -> Option<String> {
     if let Some(name) = token.strip_prefix("json:") {
         return values.json.get(name).map(|json| script_safe(json));
+    }
+    if let Some(name) = token.strip_prefix("html:") {
+        return values.html.get(name).cloned();
+    }
+    if let Some(message) = token.strip_prefix("t:") {
+        return said(message, values, words, false);
+    }
+    if let Some(message) = token.strip_prefix("a:") {
+        return said(message, values, words, true).map(|text| html_escaped(&text));
     }
     values.text.get(token).map(|text| html_escaped(text))
 }
 
-/// Could this be a token somebody meant? Letters, digits, `_` and one `json:` prefix.
+/// A message token, `key|name|name`, said with the values it names.
+fn said(message: &str, values: &Values, words: &Speaker<'_>, plain: bool) -> Option<String> {
+    let mut parts = message.split('|');
+    let key = parts.next()?;
+    let mut args = Vec::new();
+    for name in parts {
+        args.push((name, Arg::Text(values.arg(name, plain)?)));
+    }
+    words.say(key, &args)
+}
+
+/// Could this be a token somebody meant? A value's name, maybe after `json:` or `html:`,
+/// or a message's key after `t:` or `a:`.
 fn is_name(token: &str) -> bool {
-    let name = token.strip_prefix("json:").unwrap_or(token);
+    let (name, extra) = match token.split_once(':') {
+        Some(("json" | "html", name)) => (name, ""),
+        Some(("t" | "a", key)) => (key, "-|"),
+        Some(_) => return false,
+        None => (token, ""),
+    };
     !name.is_empty()
-        && name
-            .bytes()
-            .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'_')
+        && name.bytes().all(|byte| {
+            byte.is_ascii_lowercase()
+                || byte.is_ascii_digit()
+                || byte == b'_'
+                || extra.as_bytes().contains(&byte)
+        })
 }
 
 /// Say once that a page asks for a value nobody gives.
@@ -132,6 +195,8 @@ pub(crate) fn script_safe(json: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::site::ENGLISH;
+    use crate::words::Words;
 
     #[test]
     fn text_is_html_escaped_and_json_cannot_end_its_script() {
@@ -144,7 +209,8 @@ mod tests {
         let page = "<p title=\"{{site_node}}\">{{site_node}}</p>\
                     <script type=\"application/json\">{{json:board}}</script>{{nobody}}";
 
-        let out = render(page, &values);
+        let words = Words::repository();
+        let out = render(page, &values, &words.speaker(&ENGLISH));
         assert_eq!(
             out,
             "<p title=\"&lt;b&gt;&quot;333&quot; &amp; &#39;x&#39;&lt;/b&gt;\">\
@@ -160,5 +226,23 @@ mod tests {
             .unwrap();
         let back: Vec<String> = serde_json::from_str(inside).unwrap();
         assert_eq!(back, vec!["</script>&\u{2028}".to_owned()]);
+    }
+
+    #[test]
+    fn a_message_is_html_in_text_and_escaped_in_an_attribute() {
+        let words = Words::repository();
+        let english = words.speaker(&ENGLISH);
+        let mut values = Values::default();
+        values.text("answering", "<3>");
+        values.text("epoch", "9");
+        let page = "<b title=\"{{a:js-state-awake}}\">{{t:home-join-others}}</b>\
+                    {{t:home-hero-foot|answering|epoch}}{{t:no-such-key}}";
+        assert_eq!(
+            render(page, &values, &english),
+            "<b title=\"This site&#39;s node is awake\">Windows, Light, and installing by \
+             hand are on <a href=\"/start\">Take the program</a>.</b>\
+             <span data-figure=\"answering\">&lt;3&gt;</span> answering in epoch \
+             <span data-figure=\"epoch\">9</span>{{t:no-such-key}}"
+        );
     }
 }

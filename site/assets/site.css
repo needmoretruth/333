@@ -214,6 +214,13 @@ details.more > div { padding: 0 16px 6px; }
 .foot a { color: var(--dim); text-decoration: none; }
 .foot a:hover { color: var(--ink); }
 .foot .mark { margin-right: 8px; }
+.foot .langs { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 20px; }
+.foot .langs a[aria-current] { color: var(--ink); }
+/* Which epoch of this line it is, under or beside the epoch number. */
+.line-epoch { display: block; margin-top: 4px; font: 400 var(--small)/1.3 var(--sans); color: var(--faint); white-space: normal; }
+.line-epoch:empty { display: none; }
+/* Words that say in text what a canvas only draws, for readers that cannot see it. */
+.visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
 /* Long reading pages */
 .reading { padding: clamp(48px, 7vw, 96px) 0 clamp(72px, 9vw, 120px); }
