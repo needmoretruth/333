@@ -2128,6 +2128,7 @@ dependencies = [
  "http",
  "http-body",
  "httparse",
+ "httpdate",
  "itoa",
  "pin-project-lite",
  "smallvec",
@@ -2905,6 +2906,29 @@ dependencies = [
  "clap",
  "sha2",
  "spdx",
+]
+
+[[package]]
+name = "n333-site"
+version = "0.7.0"
+dependencies = [
+ "anyhow",
+ "base64 0.22.1",
+ "clap",
+ "hmac",
+ "http-body-util",
+ "humantime",
+ "hyper",
+ "hyper-util",
+ "n333-core",
+ "n333-store",
+ "rand_core 0.6.4",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

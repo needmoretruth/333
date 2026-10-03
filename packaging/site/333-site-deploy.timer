@@ -1,0 +1,14 @@
+# Runs 333-site-deploy.service every five minutes, as the user `the333`. Install it
+# beside 333-site.service; the steps are at the top of that file.
+#
+#   systemctl --user list-timers   when it runs next
+
+[Unit]
+Description=Deploy the333.dev from origin/main every five minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+
+[Install]
+WantedBy=timers.target

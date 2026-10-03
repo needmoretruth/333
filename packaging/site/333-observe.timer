@@ -1,0 +1,13 @@
+# Runs 333-observe.service every 15 seconds, as the node's owner. Install it beside
+# 333-observe.service; the steps are at the top of that file.
+
+[Unit]
+Description=Observe this machine's 333 node every 15 seconds
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=15s
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target

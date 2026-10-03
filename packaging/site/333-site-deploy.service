@@ -1,0 +1,30 @@
+# Builds and switches to whatever `main` holds, run by 333-site-deploy.timer as the
+# user `the333`. Install it beside 333-site.service; the steps are at the top of that file.
+#
+#   systemctl --user start 333-site-deploy.service   deploy now instead of waiting
+#   journalctl --user -u 333-site-deploy             what the last runs did
+#
+# A commit that fails to build is written to ~/releases/.failed and not built again;
+# the running release stays. Delete that file to try the same commit once more.
+
+[Unit]
+Description=Deploy the333.dev from origin/main
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/releases/current/333-site deploy --repo %h/repo --releases %h/releases --unit 333-site.service
+# cargo and the toolchain rustup installed for this user.
+Environment=PATH=%h/.cargo/bin:/usr/local/bin:/usr/bin:/bin
+# Up to an hour waiting for the machine's build lock, then the build itself.
+TimeoutStartSec=2h
+# A build shares two cores with a node and a web server; it goes last.
+Nice=15
+CPUWeight=20
+IOWeight=20
+UMask=0022
+NoNewPrivileges=yes
+LockPersonality=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes

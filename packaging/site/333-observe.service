@@ -1,0 +1,43 @@
+# Writes the public observation of this machine's node to
+# /var/lib/333-observation/network.json, run every 15 seconds by 333-observe.timer as
+# the node's owner (`ubuntu`). It reads the node's files without writing them, never
+# opens identity.key, and asks the running node for `status --json` over its socket.
+#
+# Its binary is a copy the node's owner installs, not the one the site deploys: the
+# site's user must not be able to change what runs in the account that holds the key.
+#
+#   cd ~/333/repo && flock -w 3600 /tmp/big-heavy.lock -c "cargo build --release --locked -p n333-site"
+#   install -m 0755 target/release/333-site ~/.local/bin/333-site
+#   sudo install -d -o ubuntu -g ubuntu -m 0755 /var/lib/333-observation    (once)
+#   cp packaging/site/333-observe.service packaging/site/333-observe.timer ~/.config/systemd/user/
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now 333-observe.timer
+#
+# The site node's name and invitation can be given outright, and win over what the
+# node's files suggest (a new founder's chain is empty). Optional; checked strictly:
+#
+#   cat > ~/.config/333-observe.env <<'EOF'
+#   THE333_SITE_NODE=333<61 more lower-case hex digits>
+#   THE333_INVITATION=333:158.69.112.10:3333
+#   EOF
+#
+#   journalctl --user -u 333-observe    what it said
+
+[Unit]
+Description=Write the public observation of this machine's 333 node
+
+[Service]
+Type=oneshot
+# Read by 333-site itself; `-` because the file is optional.
+EnvironmentFile=-%h/.config/333-observe.env
+ExecStart=%h/.local/bin/333-site observe --node %h/.local/share/333 --out /var/lib/333-observation/network.json
+UMask=0022
+NoNewPrivileges=yes
+LockPersonality=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+# A Unix socket to the node, and nothing on any network.
+RestrictAddressFamilies=AF_UNIX
