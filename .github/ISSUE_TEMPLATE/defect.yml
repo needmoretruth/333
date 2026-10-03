@@ -13,8 +13,8 @@ body:
       label: What did you do?
       description: The commands you ran, or what you pressed, in the order you did it.
       placeholder: |
-        333 id
-        333 serve
+        333 name
+        333 run
     validations:
       required: true
   - type: textarea

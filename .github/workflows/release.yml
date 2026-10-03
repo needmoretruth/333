@@ -41,7 +41,7 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           cat > notes.md <<'NOTES'
-          Download the one that matches your machine, make it executable, and run `333 id`. Standard has the screen and carries Tor. Light is the smallest thing that still keeps the vigil, for a machine that is struggling or a system nothing else has been built for. What each command does, and how to build it yourself instead, is in the README.
+          Download the one that matches your machine, make it executable, and run `333`; it says what to do next. Standard has the screen and carries Tor. Light is the smallest thing that still runs a node, for a machine that is struggling or a system nothing else has been built for. What each command does, and how to build it yourself instead, is in the README.
 
           **Checking the file you took.** Download `SHA256SUMS` into the same directory and run
 
@@ -57,12 +57,12 @@ jobs:
 
           says more: that this repository's release workflow built that file, and from which commit. Neither says the code does what it should. That is what the source is for.
 
-          Each file was started on the machine that built it before it was attached: asked its version, given a name, and, where that machine could run it natively, made to keep a vigil on 127.0.0.1 and answer a knock. What it printed is in the summary of each build:
+          Each file was started on the machine that built it before it was attached: asked its version, given a name, and, where that machine could run it natively, made to run a node on 127.0.0.1 and answer a knock. What it printed is in the summary of each build:
           NOTES
           printf '%s\n' "$RUN_URL" >> notes.md
           cat >> notes.md <<'NOTES'
 
-          A report is the only way anybody learns that one of these files works on a machine like yours. If you keep a vigil on one, say what happened, including that it worked: https://github.com/needmoretruth/333/issues/new?template=kept-a-vigil.yml
+          A report is the only way anybody learns that one of these files works on a machine like yours. If you run a node on one, say what happened, including that it worked: https://github.com/needmoretruth/333/issues/new?template=kept-a-vigil.yml
           NOTES
           gh release create "$GITHUB_REF_NAME" --verify-tag --title "$GITHUB_REF_NAME" --notes-file notes.md
       # The binaries below are statically linked and carry other people's packages,

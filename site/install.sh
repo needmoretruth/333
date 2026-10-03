@@ -197,6 +197,6 @@ case ":${PATH:-}:" in
     ;;
 esac
 
-say "next     $run id"
-say "         That makes this machine's name. What comes after it is on https://the333.dev"
-say "         under 'Start here'."
+say "next     $run join <invitation>   (one is on https://the333.dev/start)"
+say "         $run start                 (runs it in the background)"
+say "         $run                       (says what state it is in)"

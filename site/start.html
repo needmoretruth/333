@@ -37,7 +37,7 @@
 <main id="main" class="reading">
   <div class="column">
     <h1>Take the program</h1>
-    <p class="lede">333 is a small program you leave running on a computer you can spare, where it answers whenever another copy of it knocks; we call that keeping the vigil.</p>
+    <p class="lede">333 is a small program you leave running on a computer you can spare, where it answers whenever another copy of it knocks.</p>
   <div class="panel pick" id="pick" hidden>
     <p id="guessed"></p>
     <p aria-live="polite">The file for that machine is <code data-name="standard">333-x86_64-linux</code>. Light, the same
@@ -155,37 +155,35 @@ if ((Get-FileHash "$env:TEMP\$file").Hash -eq $want) { New-Item -ItemType Direct
   <h2 id="then">Then, in order</h2>
 
   <ol class="steps">
-    <li><b>Make a name.</b> <code>333 id</code> searches for a key whose name begins with 333,
-    which takes a moment, and keeps it in this node's directory. It contacts nobody.</li>
     <li><b>Be handed the file.</b> This site's node is awake at all hours:
-    <code>333 join {{invitation}}</code>. Or open <a href="/333">the333.dev/333</a>, take any
-    address from the list, and run <code>333 join</code> with it. It knocks on that one address and nothing
-    else, and whoever is there hands the file over while the two of you sign for it. If the
-    list is ever empty, somebody has to be first and it may as well be you:
-    <code>333 bootstrap</code> looks there, refuses if anybody is already waiting, and
-    otherwise takes the file from this site and starts a line of your own, with nobody having
-    signed for it, which anybody reading your record can see.</li>
-    <li><b>Keep the vigil.</b> <code>333 serve</code> answers whoever knocks, on port 3333, for
-    as long as it runs, and leaves the address a stranger could reach it at on the meeting
-    point's board; <code>--no-meet</code> keeps it away from there. A home router usually drops
-    what nobody inside asked for, so the node knocks on its own outside address when it starts
-    and tells you which way it went. If it says <code>shut</code>, run
-    <code>333 serve --tor</code> instead: that needs no router touched, and the node builds its
-    own way in from the inside out.</li>
-    <li><b>Keep it running.</b> A vigil that stops when you close the terminal is absent for
-    every hour you are asleep. <code>333 service install</code> asks this machine's own service
-    manager to keep it running after the terminal is gone and to start it again when it stops,
-    and <code>333 service uninstall</code> takes that away again. This is the step we recommend
-    next, and it is the one that decides whether you are counted.</li>
+    <div class="command"><code>333 join {{invitation}}</code><button type="button" data-copy>Copy</button></div>
+    The first <code>join</code> also makes your node's name, a key whose name begins with 333,
+    which takes a moment. Any address on <a href="/333">the board</a> works the same way.</li>
+    <li><b>Start it.</b>
+    <div class="command"><code>333 start</code><button type="button" data-copy>Copy</button></div>
+    It runs in the background from now on, after you log out and after a reboot. If it says
+    <code>shut</code>, your router keeps others out: <code>333 start --tor</code> needs no
+    router change.</li>
+    <li><b>Check on it.</b> <code>333 status</code> says whether it is running, where others can
+    reach it, and how many of us are answering. <code>333 logs</code> shows what it wrote.</li>
+    <li><b>Stop it</b> whenever you want: <code>333 stop</code>. It stays stopped after a reboot
+    until you run <code>333 start</code> again.</li>
   </ol>
+
+  <p class="dim">To watch it work instead, <code>333 run</code> runs it in this terminal with its
+  screen; <code>q</code> stops it. <code>333</code> on its own says what state your node is in
+  and what to type next, and <code>333 help</code> lists every command.</p>
+
+  <p class="dim">If nobody is on the board and this site's node is gone, somebody has to be first:
+  <code>333 begin</code> refuses while anybody is there, and otherwise starts a line of your own,
+  with nobody having signed for it, which anybody reading your record can see.</p>
 
   <div class="rule">
     <p>Nothing starts until you start it.</p>
-    <p class="dim">The installer puts one file in place and runs nothing. <code>333 id</code>
-    makes a name and stops. Your node first answers anybody, and first leaves its address at
-    the meeting point, when you run <code>333 serve</code> or <code>333 service install</code>
-    yourself, and that command is the moment you agreed. The client writes down when your name
-    was made, and <code>333 id</code> tells you when you began.</p>
+    <p class="dim">The installer puts one file in place and runs nothing. Your node first answers
+    anybody, and first leaves its address at the meeting point, when you run
+    <code>333 start</code> or <code>333 run</code> yourself, and that command is the moment you
+    agreed.</p>
   </div>
 
   </div>

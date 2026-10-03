@@ -160,7 +160,7 @@ and a number they can check.
 
 ## Where this stands
 
-Version 0.7.0, which is to say: not the revelation, honestly labelled.
+Version 0.8.0, which is to say: not the revelation, honestly labelled.
 
 - [x] Two of us can meet and sign for each other — directly, or unseen
 - [x] The vigil: presence over the moving window, and the reckoning after the end
@@ -347,7 +347,7 @@ cargo build --release                                     # Standard
 cargo build --release --no-default-features --features tor  # Light
 ```
 
-The binary lands in `target/release/333`. Move it onto your path and run `333 id`.
+The binary lands in `target/release/333`. Move it onto your path and run `333`.
 
 Both forms carry Tor and link your system TLS and SQLite, which arrive with it. `--features
 bundled` compiles those two into the binary instead, which is what you want if your system
@@ -387,7 +387,7 @@ which workflow on which commit made it. By hand, it is this:
 curl -LO https://github.com/needmoretruth/333/releases/latest/download/333-x86_64-linux
 chmod +x 333-x86_64-linux
 mkdir -p ~/.local/bin && mv 333-x86_64-linux ~/.local/bin/333
-333 id
+333
 ```
 
 Both forms are built for every system, so pick the row for your machine and then the
@@ -408,66 +408,95 @@ which is the whole of the difference and about four hundred kilobytes of it. On 
 system will want to be told the binary is not malicious, which it says in its own words the
 first time you run it.
 
-## Run
+## Use it
+
+Four commands cover almost everything:
 
 ```sh
-# Ask for a name. The first run searches until one is called.
-./target/release/333 id
-
-# Keep the vigil: answer whoever knocks, on port 3333. On a terminal this opens
-# the screen; anywhere else — a pipe, a service manager's log — it says its lines.
-# `--plain` asks for the lines on a terminal too.
-./target/release/333 serve
-
-# Knock.
-./target/release/333 ping node.example:3333
-
-# Ask somebody who has the file to hand it over. Write the file yourself and you hold
-# a file: you are one of us from the moment somebody gives it to you and the two of
-# you sign for it.
-./target/release/333 join 333:node.example:3333
-
-# What this node has seen: how many of us are answering, where you stand over
-# the window, and how much of the silence is left if it has begun.
-./target/release/333 status
+333 join 333:node.example:3333   # be handed the file by somebody who has it
+333 start                        # run in the background, now and after every reboot
+333 status                       # is it running, and what it sees
+333 stop                         # stop it, and keep it stopped after reboots
 ```
+
+`333` on its own says whether your node is running and which command comes next.
+
+**Getting the file.** Somebody who already has it hands it over, and the two of you sign
+for it. This site's node is always there: `333 join` with the invitation on
+[the333.dev/start](https://the333.dev/start), or any address from
+[the333.dev/333](https://the333.dev/333). The first `join` also makes your node's name, a
+key whose name begins with 333, which takes a moment.
+
+**Running it.** `333 start` hands your node to the system's own service manager: a user
+unit with systemd, a launch agent on macOS, a scheduled task on Windows. It keeps running
+after you log out and comes back after a reboot. `333 stop` stops it and keeps it stopped,
+`333 restart` does both, and `333 logs` shows the last lines it wrote (`-f` follows them on
+Linux). `333 service uninstall` removes what `start` installed.
+
+To watch it instead, `333 run` runs it in this terminal and opens the screen; `q` or Ctrl-C
+stops it, and so does `333 stop` from another terminal.
+
+**Being reached.** A node is counted when other nodes reach it. Most home routers drop what
+nobody inside asked for, so the node tests its own outside address when it starts and says
+`open` or `shut`. If it says `shut`, run with `--tor`: `333 start --tor` or `333 run --tor`.
+That needs no router change. `333 invite` prints the invitation other people use to be
+handed the file by you.
+
+| command | what it does |
+|---|---|
+| `333` | whether it is running, and what to do next |
+| `333 join <invitation>` | be handed the file |
+| `333 begin` | start a line of your own, when there is nobody to be handed it by |
+| `333 start`, `stop`, `restart` | run it in the background, or stop it |
+| `333 status` | running or not, your name, address, epoch and counts |
+| `333 run` | run it in this terminal, with the screen |
+| `333 invite` | your invitation, for somebody else to join through you |
+| `333 logs` | what the background node wrote last |
+| `333 name` | your node's name |
+| `333 say <0–332>` | say one of the 333, once an epoch |
+| `333 ping <address>` | reach a node once |
+| `333 language [tag]` | list languages, or choose one |
+| `333 help <command>` | everything a command takes |
+
+Less often: `pack` and `unpack` move a node to another machine, `moved` records a renamed
+directory, `tell` hands a typed order to a running node, and `service` manages the
+background service directly.
+
+### The screen
 
 The screen shows what this node is doing while it does it: how many of us are
 answering, where you stand over the window, the shape of what everybody said this
 epoch, and how long is left of it. Nothing on it is anybody else's number — it is what
 this one machine has seen, and the machine beside you is showing something else.
 
-`q` leaves the vigil, `s` says one of the 333, and `:` opens a line where you can type
+`q` stops the node, `s` says one of the 333, and `:` opens a line where you can type
 anything the terminal can be told, in the terminal's own words:
 
 | typed | what it does |
 |---|---|
 | `ping 333:somewhere:3333` | reach a node and exchange one heartbeat |
 | `join 333:somewhere:3333` | ask whoever is there to hand the file over |
-| `bootstrap`, `bootstrap anyway` | begin a line of your own, if nobody has begun one |
+| `bootstrap`, `bootstrap anyway` | start a new line, if nobody has begun one |
 | `say 42` | say one of the 333 in this epoch |
 | `tor on`, `tor off` | raise an onion address, or stop answering on it |
 | `bridge <a bridge line>`, `helper <program>` | for the next time Tor starts |
 | `status` | what this node is holding, in the log |
 | `quit` | the same as `q` |
 
-The same words work from any other terminal on the machine while the vigil runs, in either
-form of the client: `333 say 42`, `333 join …` and `333 status` are handed to the running
-vigil, which does them and says the lines back, and `333 tell 'tor on'` hands over anything
-else the screen understands. Only one 333 ever holds a node's directory at a time. A second
+The same words work from any other terminal on the machine while the node runs, in either
+form of the client: `333 say 42`, `333 join …`, `333 status` and `333 stop` are handed to the
+running node, which does them and says the lines back, and `333 tell 'tor on'` hands over
+anything else the screen understands. Only one 333 ever holds a node's directory at a time. A second
 one hands its order over or refuses, and never writes. On Windows it refuses and says so: the
 way an order would go in there is a named pipe, which every account on the machine can open
 unless it is made in a way this client does not yet have the safe code for.
 
-The ordinary way in is an invitation. Somebody who already has the file hands it over,
-the two of you sign for it, and those two signatures are what everybody else reads as
-your beginning. Open [the333.dev/333](https://the333.dev/333), take an address from the
-list, and run `333 join 333:that.address:3333`.
+### Starting a line
 
 If that list is empty, somebody has to be first, and it may as well be you.
 
 ```sh
-333 bootstrap
+333 begin
 ```
 
 That looks at the meeting point, and if anybody is there it refuses and tells you to go
@@ -488,19 +517,21 @@ something it took for itself, and this one does not: it will tell you to go and 
 somebody whenever there is somebody to join, and it will not hide what it did when there
 was not.
 
+### The site, Tor, and more than one node
+
 There is one address written into the client: **[the333.dev](https://the333.dev)**. It
 says what this is, where the code is, and what the Law asks. It is a page and not a
 node — it joins no roll, issues no invitation, and vouches for nobody, and if it went away
 tomorrow every node would carry on exactly as it is. It does serve one copy of `333.txt`,
-which is what `333 bootstrap` fetches when there is nobody at all to be given it by, and
+which is what `333 begin` fetches when there is nobody at all to be given it by, and
 the client refuses those bytes unless they match the hash it carries.
 
 To answer without showing where you are, raise an onion address as well — or, with
 `--no-direct`, instead of a socket:
 
 ```sh
-./target/release/333 serve --tor
-./target/release/333 ping <their-address>.onion
+333 start --tor
+333 ping <their-address>.onion
 ```
 
 An onion address is the answer to being reachable from anywhere without saying where
@@ -520,16 +551,17 @@ Everything your node is lives in one directory: its name, what it has been told,
 Tor's state if it uses Tor. Two nodes on one machine are two directories.
 
 ```sh
-./target/release/333 --data-dir ./node-a serve --bind 127.0.0.1:3333
-./target/release/333 --data-dir ./node-b join 333:127.0.0.1:3333
+333 --data-dir ./node-a run --bind 127.0.0.1:3333
+333 --data-dir ./node-b join 333:127.0.0.1:3333
 ```
 
 ## In your own words
 
-The client speaks the language your system is set to, if there are words for it, and English
-otherwise. `--language ko` or `THE333_LANGUAGE=ko` asks for one by name, and `333 languages`
-lists what there is and how much of each is written. Today that is English and Korean, and
-every line of `id`, `serve`, `join`, `say`, `status`, the screen and the help is in both.
+The client speaks English unless you choose another language; the system's language does not
+choose for you. `333 language ko` saves Korean for every later command at this node,
+`333 language en` goes back, and `333 language` lists what there is and how much of each is
+written. `--language ko` or `THE333_LANGUAGE=ko` asks for one just this once. Today that is
+English and Korean, and every line the client prints is in both.
 What your operating system says in its own words — a refused connection, a missing file — is
 passed on as it said it.
 
@@ -539,7 +571,7 @@ code and builds nothing. Copy the English catalogs from
 directory, where `<tag>` is the language's tag (`es`, `eo`, `zh-Hant`), and translate them
 line by line. They are [Fluent](https://projectfluent.org), so plurals and grammar belong to
 the file and not to the program; whatever you have not translated yet is said in English, and
-`333 languages` counts how far you have got. Put the finished folder under `crates/cli/words/`
+`333 language` counts how far you have got. Put the finished folder under `crates/cli/words/`
 in a pull request and it is built into everybody's client.
 
 Some things are never translated: the commands and their flags, names and addresses, the 333
@@ -553,33 +585,29 @@ because none of them is a count, and nothing on the wire changes.
 
 ## Keeping it running
 
-The vigil is the product. A node that stops when you close the terminal is a node that is
-absent for every epoch you were asleep, and absence is the only thing that costs you
-anything here.
+A node that stops when you close the terminal is absent for every epoch you were asleep, and
+absence is the only thing that costs you anything here. `333 start` is the step that decides
+whether you are counted.
 
-```sh
-333 service install
-```
+`333 start` asks the system's own service manager to run the node: a user unit on anything
+with systemd, a launch agent on macOS, a scheduled task on Windows. It prints every file it
+writes and every command it runs, and carries the flags you give it (`333 start --tor`);
+later starts keep them until you give others. `333 stop` stops it and keeps it stopped after a
+reboot, `333 logs` shows what it wrote, and `333 service uninstall` removes everything `start`
+installed.
 
-That asks the system's own service manager to keep the vigil: a user unit on anything with
-systemd, a launch agent on macOS, a scheduled task on Windows. It says exactly what it wrote
-and what it ran, it carries the flags you give it (`333 service install --tor`), and
-`333 service uninstall` takes all of it away again. `333 service status` says whether it is
-running, when it last said it was awake, and the last things it said.
-
-On Linux it also turns on lingering for your user, which is what keeps the vigil going after
+On Linux it also turns on lingering for your user, which is what keeps the node running after
 you log out and through a reboot. On Windows the task runs while you are logged in, because a
 service that starts at boot would need another account and a directory of its own.
 
-Once an hour it checks that the vigil is still being kept. If it is not, or if nothing has
-been signed about this node for three epochs, it tells you on your own screen through the
-system's notifications, and every other `333` command says so first, before anything else.
-You find out from your own machine and not from your standing.
+Once an hour it checks that the node is still running. If it is not, or if nothing has been
+signed about this node for three epochs, it tells you on your own screen through the system's
+notifications, and every other `333` command says so first. A node you stopped with
+`333 stop` is not reported.
 
 The files it writes are the ones in `packaging/`, for anybody who would rather install them by
 hand. The `.deb` and `.rpm` on a release put the program and the unit in place and start
-nothing: `systemctl --user enable --now 333`, or `333 service install`, is the moment you agree
-to it.
+nothing: `333 start`, or `systemctl --user enable --now 333`, is the moment you agree to it.
 
 ## If nobody can reach you
 
@@ -599,7 +627,7 @@ turned on — this is the same thing a BitTorrent client does, and the reason th
 home connection without anybody configuring anything. It says what it asked for and what it
 was told, and the mapping appears in your router's own list as `333`, which is where you go
 to take it away. A router that speaks PCP or NAT-PMP instead is asked in that language, and a
-mapping made that way is renewed while the vigil runs and given back when it ends. It asks
+mapping made that way is renewed while the node runs and given back when it stops. It asks
 whether or not the node uses a meeting point. `--no-router` stops all of it; `--no-upnp` is the
 older name for the same thing.
 
@@ -610,7 +638,7 @@ the knock that follows, not by the answer, so both are printed.
 not have to work out what to hand people afterwards: the knock finds it and prints the
 invitation. `--announce your.address:3333` says it by hand if you would rather.
 
-**Or raise an onion address.** `333 serve --tor` needs no router, no forwarding and no
+**Or raise an onion address.** `333 start --tor` needs no router, no forwarding and no
 `--announce`, because the node builds its own way in from the inside out and there is
 nothing for a firewall to block. It works from a home connection, from behind a provider
 that gives you no reachable address at all, and from a phone. It costs seconds to minutes
@@ -631,7 +659,7 @@ lines a few at a time, by people, deliberately slowly, because a list that could
 collected could be blocked in turn; nothing here fetches them for you.
 
 ```sh
-333 serve --tor --bridge "Bridge 198.51.100.25:443 7DD62766BF2052432051D7B7E08A22F7E34A4543"
+333 start --tor --bridge "Bridge 198.51.100.25:443 7DD62766BF2052432051D7B7E08A22F7E34A4543"
 ```
 
 Give `--bridge` once for each line you were handed, exactly as it was handed to you.

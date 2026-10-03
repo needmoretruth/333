@@ -163,7 +163,7 @@
         Write-Host '         new PowerShell window.'
     }
 
-    Write-Host "next     $run id"
-    Write-Host '         That makes this machine''s name. What comes after it is on https://the333.dev'
-    Write-Host "         under 'Start here'."
+    Write-Host "next     $run join <invitation>   (one is on https://the333.dev/start)"
+    Write-Host "         $run start                 (runs it while you are logged in)"
+    Write-Host "         $run                       (says what state it is in)"
 } @args
