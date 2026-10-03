@@ -1,5 +1,5 @@
-# How the333.dev is served: one Worker, the static pages beside it, and a small board of
-# signed statements about where nodes can be reached.
+# How the333.dev was served until 2026-10-03: one Worker, the static pages beside it, and a
+# small board of signed statements about where nodes can be reached. crates/site serves it now.
 #
 # The account this deploys into is not named here. It is passed in at deploy time, because an
 # account identifier is the one part of this file that is nobody else's business and this

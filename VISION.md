@@ -538,9 +538,11 @@ visible in the history.*
 
 **Rust for the client.** Everything under `crates/` is Rust and stays Rust, with no build
 scripts and no tooling in another language. What is not under `crates/` is not Rust and was
-never going to be: `meeting/` is six hundred lines of TypeScript running on somebody else's
-edge, `site/` is the pages it serves, and `.github/workflows/` is YAML because that is what
-the machine running it reads. None of those is a place to move client logic into.
+never going to be: `site/` is pages and the scripts that draw them, `meeting/` is the
+TypeScript the meeting point ran as on somebody else's edge until 2026-10-03, kept because it
+is what released clients were written against, and `.github/workflows/` is YAML because that
+is what the machine running it reads. None of those is a place to move client logic into.
+`crates/site`, which serves the site and the meeting point now, is Rust and ships to nobody.
 
 **One file, one responsibility, four hundred lines.** Counted up to `#[cfg(test)]`; the
 tests below that line live beside the code they test and are not counted. A function fits

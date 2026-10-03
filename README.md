@@ -17,9 +17,10 @@
 > in it is a request, and none of it is confined to this repository.
 
 **[the333.dev](https://the333.dev)** is the one address written into the client, and this
-repository is where everything actually lives. The site is a shop window: it says what this
-is, it carries the Law, and it does one job the repository cannot do, which is sit still at
-a known address so that two nodes on two different networks can find each other.
+repository is where everything actually lives. The site says what this is, carries the Law,
+shows the network as the site's own node sees it, and does one job the repository cannot do,
+which is sit still at a known address so that two nodes on two different networks can find
+each other.
 
 The part that does that job is **[the333.dev/333](https://the333.dev/333)**. Nodes leave the
 statements they sign about where they can be reached; it keeps each one for two epochs, and
