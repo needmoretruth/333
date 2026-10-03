@@ -223,7 +223,7 @@ mod tests {
             [
                 (
                     words!("serve-reach-unanswered-at-the-end", time = "two hours"),
-                    "closed   the router had not answered when the vigil ended. Whatever it\n\
+                    "closed   the router had not answered when the node stopped. Whatever it\n\
                      \x20        agreed to runs out by itself within two hours.",
                 ),
                 (
@@ -231,7 +231,7 @@ mod tests {
                     "shut     the router says this household is at 100.64.0.9, which is not an\n\
                      \x20        address on the open internet: another router, or the provider's\n\
                      \x20        shared address, stands between it and everybody else, and\n\
-                     \x20        nothing here can ask that one. `333 serve --tor` needs no router\n\
+                     \x20        nothing here can ask that one. `333 run --tor` needs no router\n\
                      \x20        change at all.",
                 ),
                 (
@@ -272,9 +272,8 @@ mod tests {
                     "shut     nothing answered at 203.0.113.7:3333, so as far as the outside world can\n\
                      \x20        tell this node is not listening. Either the router in front of it\n\
                      \x20        was never told to send port 3333 here, or it will not let a machine\n\
-                     \x20        inside it dial its own outside address. `333 serve --tor` needs no\n\
-                     \x20        router change at all and works from any network, including the\n\
-                     \x20        ones that hand out no reachable address in the first place.",
+                     \x20        inside it dial its own outside address. `333 run --tor` needs no\n\
+                     \x20        router change and works on any network.",
                 ),
             ]
         });

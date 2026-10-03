@@ -1,4 +1,4 @@
-### `333 serve`: trading with the other nodes once an epoch, and asking whoever was drawn.
+### `333 run`: trading with the other nodes once an epoch, and asking whoever was drawn.
 
 hours-asking-failed-gathering = gathering what this node could pass on: { $why }
     .keyword = failed

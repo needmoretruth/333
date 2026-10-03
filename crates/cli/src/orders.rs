@@ -49,7 +49,7 @@ pub(crate) enum Order {
     /// Say what this node is holding, in the log rather than on the dials, or to the
     /// terminal that asked, in the way it asked for.
     Status(Show),
-    /// Leave the screen. The node stops with it.
+    /// Stop the node: in the screen, by leaving it; from another terminal, by asking.
     Leave,
 }
 
@@ -149,7 +149,8 @@ impl Order {
             // Every word `333 status` takes, and nothing else: a word read as nothing
             // would answer something other than what was asked.
             "status" => match rest.to_ascii_lowercase().as_str() {
-                "" => Ok(Self::Status(Show::Everything)),
+                "" => Ok(Self::Status(Show::Short)),
+                "--all" | "all" => Ok(Self::Status(Show::Everything)),
                 "--sources" | "sources" => Ok(Self::Status(Show::Sources)),
                 "--json" | "json" => Ok(Self::Status(Show::Json)),
                 _ => Err(missing(Wanted::StatusWord)),
@@ -175,13 +176,17 @@ mod tests {
             Ok(Order::Join("333:somewhere:3333".into()))
         );
         assert_eq!(Order::read("say 42"), Ok(Order::Say("42".into())));
-        assert_eq!(Order::read("status"), Ok(Order::Status(Show::Everything)));
+        assert_eq!(Order::read("status"), Ok(Order::Status(Show::Short)));
     }
 
     #[test]
     fn status_takes_the_flags_the_command_takes_and_nothing_else() {
         // What another terminal sends for `333 status --json`, and must be read as it.
         assert_eq!(Order::read("status --json"), Ok(Order::Status(Show::Json)));
+        assert_eq!(
+            Order::read("status --all"),
+            Ok(Order::Status(Show::Everything))
+        );
         assert_eq!(
             Order::read("status --sources"),
             Ok(Order::Status(Show::Sources))
@@ -272,7 +277,7 @@ mod tests {
                 ),
                 (
                     NotAnOrder::Wants(Wanted::StatusWord).to_string(),
-                    "that wants nothing, --sources or --json after it",
+                    "that wants nothing, --all, --sources or --json after it",
                 ),
             ]
         });

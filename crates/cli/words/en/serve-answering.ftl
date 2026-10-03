@@ -1,4 +1,4 @@
-### `333 serve`: what a peer can ask for at the door, and what this node does about it.
+### `333 run`: what a peer can ask for at the door, and what this node does about it.
 
 serve-answering-asked = epoch { $epoch } by { $verifier }
     .keyword = asked

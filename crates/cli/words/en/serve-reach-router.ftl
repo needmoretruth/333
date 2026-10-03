@@ -1,4 +1,4 @@
-### `333 serve`: asking the router, keeping what it lent, and giving it back.
+### `333 run`: asking the router, keeping what it lent, and giving it back.
 
 serve-reach-router-opened-upnp = the router says port { $port } { $on } now comes to this machine. It
     is listed there as `333` if you want to take it away again. Whether
@@ -12,8 +12,8 @@ serve-reach-router-opened-upnp-for = the router says port { $port } { $on } now 
 
 serve-reach-router-opened-lease = asked the router at { $router } over { $way } for port { $port } for { $asked_for }. It says port
     { $granted_port } { $on } now comes here, for { $granted }. This node asks again before that
-    runs out and gives it back when the vigil ends; stopped any other
-    way, the router drops it by itself when the time is up. Whether
+    runs out and gives it back when the node stops; if the node is
+    killed instead, the router drops it when the time is up. Whether
     anything arrives is the next line.
     .keyword = opened
 
@@ -27,8 +27,8 @@ serve-reach-router-refused = the router would not open port { $port }: { $why }
     .keyword = closed
 
 serve-reach-router-let-go = the router let port { $port } go: it was not asked again in time, so nobody
-    outside can reach this node on it now. Starting the vigil again
-    asks again.
+    outside can reach this node on it now. Restarting the node asks
+    again.
     .keyword = closed
 
 serve-reach-router-given-back = port { $port } is given back to the router over { $way }; it no longer

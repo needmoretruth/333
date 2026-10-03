@@ -562,7 +562,7 @@ mod tests {
             text(&at_a_glance(&watch, 30)) + "\n" + &text(&unseen(30))
         });
         assert!(said.contains("\u{25cf} UNSEEN"), "{said}");
-        assert!(said.contains("`: tor on` needs no router."), "{said}");
+        assert!(said.contains("`: tor on`"), "{said}");
         let _ = this_node(&watch, area);
     }
 

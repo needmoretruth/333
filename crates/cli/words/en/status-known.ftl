@@ -25,7 +25,7 @@ status-known-either = Either this directory was copied and the copy was started,
     of its key.
 
 status-known-nowhere = nowhere to knock yet. An invitation given to `333 ping` or
-    `333 join` is kept, and the vigil knocks there from then on.
+    `333 join` is kept, and the node knocks there from then on.
     .keyword = KNOWN
 
 status-known-held = { $held ->

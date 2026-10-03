@@ -38,6 +38,7 @@ pub(crate) mod catalog;
 pub(crate) mod choose;
 pub(crate) mod count;
 pub(crate) mod layout;
+pub(crate) mod saved;
 pub(crate) mod spoken;
 
 use std::borrow::Cow;
@@ -307,7 +308,7 @@ fn process() -> &'static Words {
 /// program has to be the JSON and nothing ahead of it, in every language and base.
 pub(crate) fn install(language: Option<&str>, count_in: Option<Base>, root: &Path) {
     let env = |name: &str| std::env::var(name).ok().filter(|value| !value.is_empty());
-    let asked = choose::asked(language, &env);
+    let asked = choose::asked(language, &env, saved::read(root));
     let beside = catalog::beside(root);
     let found = choose::matching(&asked.tag, &catalog::tags(Some(&beside)));
     let tag = found.as_deref().unwrap_or(catalog::ENGLISH);

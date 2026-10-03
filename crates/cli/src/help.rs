@@ -15,6 +15,7 @@
 //! are. What it says when a command line is refused is in [`refused`].
 
 mod frame;
+mod listing;
 pub(crate) mod refused;
 
 use clap::builder::StyledStr;
@@ -31,7 +32,7 @@ pub(crate) fn spoken(command: Command) -> Command {
     let long = crate::version::long();
     let command = in_words(command.version(long.clone()).long_version(long));
     let english = crate::words::current().tag().eq_ignore_ascii_case(ENGLISH);
-    built(command, english)
+    listing::listed(built(command, english, true), english)
 }
 
 /// One command and everything under it, with each key in the definition replaced by
@@ -47,6 +48,9 @@ fn in_words(command: Command) -> Command {
     if let Some(key) = key(command.get_long_about()) {
         command = command.long_about(said(&key));
     }
+    if let Some(key) = key(command.get_after_help()) {
+        command = command.after_help(said(&key));
+    }
     command.mut_args(explained).mut_subcommands(in_words)
 }
 
@@ -58,6 +62,10 @@ fn explained(arg: Arg) -> Arg {
     }
     if let Some(key) = key(arg.get_long_help()) {
         arg = arg.long_help(said(&key));
+    }
+    if let Some(heading) = arg.get_help_heading().filter(|h| h.starts_with("help-")) {
+        let heading = said(heading);
+        arg = arg.help_heading(heading);
     }
     arg
 }
@@ -76,7 +84,12 @@ fn key(text: Option<&StyledStr>) -> Option<String> {
 /// `Command::build`, which would give `help` a copy of every command instead of their
 /// names. Nothing is added or taken away after that: clap has written down where each
 /// flag is.
-fn built(command: Command, english: bool) -> Command {
+///
+/// Under the first command, the flags every command takes are said in one line each,
+/// and the advanced ones not at all: they are the first command's, and listed there.
+/// Copied into every command with their whole account, they made `333 status --help`
+/// a page of essays about flags nobody running `status` had asked about.
+fn built(command: Command, english: bool, first: bool) -> Command {
     let mut command = command;
     let _ = command.render_usage();
     let helping = command.get_name() == "help";
@@ -84,8 +97,17 @@ fn built(command: Command, english: bool) -> Command {
     if helping {
         command = command.about(said("help-print-this"));
     }
+    if !first {
+        let advanced = said("help-frame-advanced");
+        command = command.mut_args(|arg| shared_in_brief(arg, &advanced));
+    }
+    // Whether `--help` says more than `-h`, now that some of it was taken away.
+    let more = command.get_long_about().is_some()
+        || command.get_arguments().any(|arg| {
+            !arg.is_hide_set() && arg.get_id() != "help" && arg.get_long_help().is_some()
+        });
     let mut command = command.mut_args(|arg| {
-        let arg = own(arg, helping);
+        let arg = own(arg, helping, more);
         if english {
             arg
         } else {
@@ -96,19 +118,34 @@ fn built(command: Command, english: bool) -> Command {
         command = frame::command(command);
     }
     for sub in command.get_subcommands_mut() {
-        *sub = built(std::mem::take(sub), english);
+        *sub = built(std::mem::take(sub), english, false);
     }
     command
 }
 
-/// A flag clap makes for itself, in words; any other as it is.
-fn own(arg: Arg, helping: bool) -> Arg {
+/// A flag every command takes, as a command under the first one shows it: in one line,
+/// or not at all when it is one of the advanced ones.
+fn shared_in_brief(arg: Arg, advanced: &str) -> Arg {
+    if !arg.is_global_set() {
+        return arg;
+    }
+    if arg.get_help_heading() == Some(advanced) {
+        return arg.hide(true);
+    }
+    arg.long_help(None::<&'static str>)
+}
+
+/// A flag clap makes for itself, in words; any other as it is. `more` is whether the
+/// longer help says more than the shorter.
+fn own(arg: Arg, helping: bool, more: bool) -> Arg {
     let id = arg.get_id().as_str().to_owned();
     match (id.as_str(), arg.get_action()) {
-        ("help", ArgAction::Help) if arg.get_long_help().is_some() => arg
+        ("help", ArgAction::Help) if more => arg
             .help(said("help-print-help-more"))
             .long_help(said("help-print-help-summary")),
-        ("help", ArgAction::Help) => arg.help(said("help-print-help")),
+        ("help", ArgAction::Help) => arg
+            .help(said("help-print-help"))
+            .long_help(None::<&'static str>),
         ("version", ArgAction::Version) => arg.help(said("help-print-version")),
         // The one argument of clap's own `help`.
         ("subcommand", _) if helping => arg.help(said("help-print-for")),

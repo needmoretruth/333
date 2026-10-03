@@ -7,14 +7,19 @@ pub(crate) mod bootstrap;
 pub(crate) mod elsewhere;
 pub(crate) mod hours;
 pub(crate) mod id;
+pub(crate) mod invite;
 pub(crate) mod join;
 pub(crate) mod languages;
+pub(crate) mod logs;
 pub(crate) mod moved;
+pub(crate) mod overview;
 pub(crate) mod pack;
 pub(crate) mod ping;
+pub(crate) mod running;
 pub(crate) mod say;
 pub(crate) mod serve;
 pub(crate) mod service;
+pub(crate) mod start;
 pub(crate) mod status;
 pub(crate) mod unpack;
 mod unseen;
@@ -384,7 +389,7 @@ mod tests {
                      \x20        works and being reached does not, and only the second one is counted:\n\
                      \x20        whoever is drawn to ask has to arrive. Two things do this. A router\n\
                      \x20        that does not send port 3333 to this machine, and an address nobody\n\
-                     \x20        was given. `serve --tor` needs neither — an onion address is reachable\n\
+                     \x20        was given. `run --tor` needs neither — an onion address is reachable\n\
                      \x20        from behind any router, and this client already carries Tor.",
                 ),
                 (

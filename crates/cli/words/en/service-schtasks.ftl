@@ -9,10 +9,10 @@ service-schtasks-cannot-pass = `{ $word }` has a " or a % in it, which cmd.exe c
 service-schtasks-no-user = Windows did not say who this user is {
     ""}(%USERDOMAIN% and %USERNAME%)
 
-service-schtasks-logon = Windows keeps the vigil while you are logged in, from the moment you {
+service-schtasks-logon = Windows runs the node while you are logged in, from the moment you {
     ""}log
-    in. A service kept from boot would run as an account of its own, and a
-    node lives in your own directory, where that account has no business.
+    in. A service run from boot would need an account of its own, and a
+    node lives in your own directory.
     What it says is in { $log }.
     .keyword = logon
 

@@ -202,11 +202,10 @@ mod tests {
                         on = on(),
                         granted = "one hour",
                     ),
-                    "opened   asked the router at 192.168.1.1 over PCP for port 3333 for two hours. \
-                     It says port\n\
+                    "opened   asked the router at 192.168.1.1 over PCP for port 3333 for two hours. It says port\n\
                      \x20        3334 on 203.0.113.7 now comes here, for one hour. This node asks again before that\n\
-                     \x20        runs out and gives it back when the vigil ends; stopped any other\n\
-                     \x20        way, the router drops it by itself when the time is up. Whether\n\
+                     \x20        runs out and gives it back when the node stops; if the node is\n\
+                     \x20        killed instead, the router drops it when the time is up. Whether\n\
                      \x20        anything arrives is the next line.",
                 ),
                 (
@@ -227,8 +226,8 @@ mod tests {
                 (
                     words!("serve-reach-router-let-go", port = Arg::exact(3333)),
                     "closed   the router let port 3333 go: it was not asked again in time, so nobody\n\
-                     \x20        outside can reach this node on it now. Starting the vigil again\n\
-                     \x20        asks again.",
+                     \x20        outside can reach this node on it now. Restarting the node asks\n\
+                     \x20        again.",
                 ),
                 (
                     words!(

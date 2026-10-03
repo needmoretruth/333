@@ -87,6 +87,35 @@ pub(crate) fn take(mistrust: &Mistrust, home: &Path) -> anyhow::Result<Taken> {
     }
 }
 
+/// Whether some other program holds the directory at `home`, found out without making
+/// or keeping anything: the lock is tried, and let go at once if it was free.
+///
+/// What a system with no socket to ask a running node through has instead. Where there
+/// is one, asking it is better: this cannot tell a node from any other command.
+pub(crate) fn held(home: &Path) -> bool {
+    let Ok(file) = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(home.join(LOCK_FILE))
+    else {
+        return false;
+    };
+    matches!(file.try_lock(), Err(TryLockError::WouldBlock))
+}
+
+/// When whoever holds the directory at `home` took it, in seconds since 1970.
+///
+/// The process that takes the lock writes its number into the file once, and nobody
+/// writes it again while the lock is held, so the file's time is when it was taken.
+pub(crate) fn taken_at(home: &Path) -> Option<u64> {
+    let written = std::fs::metadata(home.join(LOCK_FILE))
+        .ok()?
+        .modified()
+        .ok()?;
+    let since = written.duration_since(std::time::UNIX_EPOCH).ok()?;
+    Some(since.as_secs())
+}
+
 /// Replace whatever number is in the lock file with this process's.
 fn write_our_number(mut file: &File) -> std::io::Result<()> {
     file.set_len(0)?;
@@ -136,6 +165,19 @@ mod tests {
 
     fn trusting() -> Mistrust {
         Mistrust::new_dangerously_trust_everyone()
+    }
+
+    #[test]
+    fn a_held_directory_is_seen_as_held_and_a_free_one_is_left_free() {
+        let home = scratch("held");
+        assert!(!held(&home), "nothing is there to hold");
+        let claim = take(&trusting(), &home).unwrap();
+        assert!(held(&home));
+        assert!(taken_at(&home).is_some());
+        drop(claim);
+        assert!(!held(&home));
+        assert!(matches!(take(&trusting(), &home), Ok(Taken::Ours(_))));
+        let _ = std::fs::remove_dir_all(&home);
     }
 
     #[test]

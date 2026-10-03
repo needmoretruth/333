@@ -168,22 +168,22 @@ mod tests {
         assert_eq!(
             said,
             [
-                "done     carried out by the vigil kept in this directory (process 1234).",
-                "failed   the vigil kept in this directory did not do that.",
+                "done     carried out by the node running in this directory (process 1234).",
+                "failed   the node running in this directory did not do that.",
                 "busy     another 333 (process 1234) is still finding\n\
                  \x20        this node's name. Run this again when it has one.",
-                "busy     another 333 (process 1234) is already keeping the vigil here, and\n\
-                 \x20        one directory is one node. It can be told things from here:\n\
-                 \x20        `333 say 7`, `333 join <invitation>`, `333 tell 'tor on'`. A\n\
-                 \x20        second node needs a directory of its own, given with --data-dir.",
-                "busy     another 333 (process 1234) is keeping the vigil here, and\n\
+                "busy     another 333 (process 1234) is already running here, and one directory is one\n\
+                 \x20        node. It can be told things from here: `333 say 7`,\n\
+                 \x20        `333 join <invitation>`, `333 tell 'tor on'`, `333 stop`. A second\n\
+                 \x20        node needs a directory of its own, given with --data-dir.",
+                "busy     another 333 (process 1234) is running here, and\n\
                  \x20        it looks for people only where it always does.\n\
                  \x20        Leave --meet out.",
-                "unheard  nobody is keeping the vigil in this directory, so there is nobody to\n\
-                 \x20        tell. `333 serve` keeps it, and then this works.",
+                "unheard  no node is running in this directory, so there is nobody to tell.\n\
+                 \x20        `333 start` or `333 run` starts it, and then this works.",
                 "busy     another 333 (process 1234) has this node's\n\
-                 \x20        directory and is not a vigil that can be handed this. Nothing here\n\
-                 \x20        was read or written. Run this again when it has finished.",
+                 \x20        directory and is not a running node that can be handed this. Nothing\n\
+                 \x20        here was read or written. Run this again when it has finished.",
                 "busy     another 333 has this node's\n\
                  \x20        directory. On this system a running 333 cannot be handed anything\n\
                  \x20        from another terminal yet, so nothing here was read or written. Type\n\

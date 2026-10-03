@@ -219,7 +219,7 @@ mod tests {
                  \x20        It is not encrypted, because a password would be one more thing to\n\
                  \x20        lose, and losing it would lose the name as surely as losing the file.\n\
                  \x20        It is readable by you alone, as this directory is.",
-                "packed   1,048,576 bytes: the files as they are, and half a kilobyte for each.\n\
+                "packed   1,048,576 bytes.\n\
                  \x20        nothing in /tmp/333-node will act as this node again.",
                 "next     on the other machine: 333 unpack node.333\n\
                  \x20        if the move is abandoned: 333 --data-dir /tmp/333-node pack --undo",

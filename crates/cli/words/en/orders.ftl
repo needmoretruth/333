@@ -11,4 +11,4 @@ orders-wants-signal = which of the 333
 orders-wants-on-or-off = on or off
 orders-wants-bridge-line = a bridge line
 orders-wants-program = a program name or path
-orders-wants-status-word = nothing, --sources or --json
+orders-wants-status-word = nothing, --all, --sources or --json

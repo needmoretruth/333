@@ -176,6 +176,31 @@ impl Sources {
         self.said.insert((epoch.0, address.to_owned()));
     }
 
+    /// Where this node lately signed that it can be reached: every address it signed in
+    /// its last two epochs of signing, the latest first.
+    ///
+    /// Two rather than one, because a node with a socket and an onion address signs the
+    /// second when Tor is up, which can be an epoch after the first.
+    #[must_use]
+    pub(crate) fn lately_said(&self) -> Vec<String> {
+        let Some(&(last, _)) = self.said.iter().next_back() else {
+            return Vec::new();
+        };
+        let mut lately: Vec<(u64, &String)> = Vec::new();
+        for (epoch, address) in self.said.iter().rev() {
+            if *epoch + 1 < last {
+                break;
+            }
+            if !lately.iter().any(|(_, held)| *held == address) {
+                lately.push((*epoch, address));
+            }
+        }
+        lately
+            .into_iter()
+            .map(|(_, address)| address.clone())
+            .collect()
+    }
+
     /// Did this node sign that it was at `address` in `epoch`?
     pub(crate) fn is_mine(&self, address: &str, epoch: Epoch) -> Mine {
         if self.said.contains(&(epoch.0, address.to_owned())) {
@@ -318,6 +343,20 @@ impl Counts {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn what_this_node_lately_said_is_its_last_two_epochs_of_saying_latest_first() {
+        let mut sources = Sources::from(Epoch(10));
+        assert!(sources.lately_said().is_empty());
+        sources.said("192.0.2.1:3333", Epoch(11));
+        sources.said("192.0.2.9:3333", Epoch(20));
+        sources.said("abc.onion:3333", Epoch(21));
+        sources.said("192.0.2.9:3333", Epoch(21));
+        assert_eq!(
+            sources.lately_said(),
+            ["abc.onion:3333", "192.0.2.9:3333"].map(str::to_owned)
+        );
+    }
 
     #[test]
     fn in_english_every_moved_line_says_exactly_what_it_said_before() {

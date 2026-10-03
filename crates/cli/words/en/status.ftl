@@ -80,7 +80,7 @@ status-waiting = Nobody has answered for { $silent }. This node has said nothing
     ""}it and will
     not until { $needed }, and only then if it is running for every one of them.
 
-status-nobody-keeping = NOBODY IS KEEPING 333
+status-nobody-keeping = NOBODY IS ANSWERING
 
     You are the only one here. Nobody has answered this node through {
     $watched } of

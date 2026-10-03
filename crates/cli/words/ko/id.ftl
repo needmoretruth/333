@@ -4,4 +4,4 @@ id-name = { $name }
     .keyword = 이름
 
 id-home = { $home }
-    .keyword = 집
+    .keyword = 위치

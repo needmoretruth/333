@@ -81,7 +81,7 @@ mod tests {
         });
         assert_eq!(
             said,
-            "unseen   the vigil is kept, and nothing has been signed about this node in any\n\
+            "unseen   the node is running, and nothing has been signed about it in any\n\
              \x20        epoch: it reaches out and nobody reaches it. `333 status` says why\n\
              \x20        and what to do."
         );

@@ -1,7 +1,8 @@
 //! The 333 command line client.
 //!
-//! Three things it can do at this version: show this node's name, listen for
-//! heartbeats, and reach another node to exchange one.
+//! What a person reaches for first is `333`, `333 start`, `333 stop` and `333 status`:
+//! whether this node is running, running it in the background, and stopping it. The
+//! rest is what a node can be asked to do while it runs, and moving one.
 //!
 //! Reaching a peer is direct by default. Tor is carried for the nodes that need
 //! their own address unseen, and starting it is the slowest thing this program can
@@ -110,21 +111,18 @@ async fn run() -> anyhow::Result<ExitCode> {
     // Before anything is said, because everything that is said is said in these.
     words::install(cli.language.as_deref(), cli.count_in, common.paths.root());
 
+    // `333` alone says how this node is, and reads only what it can without taking the
+    // directory.
+    let Some(command) = cli.command else {
+        commands::check_the_clock(n333_core::Epoch::now());
+        return commands::overview::run(&common).await;
+    };
+
     // First of all, because it is the one thing a person who has stopped being counted
-    // most needs to hear, and they hear it from whichever command they typed. Not from
-    // the ones that keep the vigil or set it up: those are the answer to it. And not
-    // while a vigil answers in this directory: it is being kept, whatever the stamp says.
-    let keeps_or_installs = matches!(
-        cli.command,
-        Command::Serve { .. }
-            | Command::Service {
-                order: commands::service::Order::Install { .. }
-                    | commands::service::Order::Uninstall
-                    | commands::service::Order::Check
-            }
-    );
-    if !keeps_or_installs && !control::answering(common.paths.root()).await {
-        let read_by_a_program = matches!(cli.command, Command::Status { json: true, .. });
+    // most needs to hear, and they hear it from whichever command they typed. Not while
+    // a node answers in this directory: it is running, whatever the stamp says.
+    if !answers_it_already(&command) && !control::answering(common.paths.root()).await {
+        let read_by_a_program = matches!(command, Command::Status { json: true, .. });
         commands::service::say_if_not_kept(common.paths.root(), read_by_a_program);
     }
 
@@ -133,31 +131,32 @@ async fn run() -> anyhow::Result<ExitCode> {
     // why.
     commands::check_the_clock(n333_core::Epoch::now());
 
-    // The service manager is asked, and the awake stamp read, and nothing in the node's
-    // directory is opened, so none of it waits for the directory or makes it.
-    if let Command::Service { order } = cli.command {
-        return commands::service::run(&common, order)
-            .await
-            .map(|()| ExitCode::SUCCESS);
-    }
+    let command = match without_the_directory(&common, command).await? {
+        Ok(code) => return Ok(code),
+        Err(command) => command,
+    };
 
-    // The catalogs are read, and nothing of the node, so a running vigil need not be asked.
-    if let Command::Languages = cli.command {
-        return commands::languages::run(&common).map(|()| ExitCode::SUCCESS);
-    }
-
-    // Unpacking takes the directory itself: it may not exist yet, and it has to be
-    // empty when the node is renamed into it, which a lock file inside it would not be.
-    if let Command::Unpack { file } = &cli.command {
-        return commands::unpack::run(&common, file).await;
+    // Whether it is running comes first, and only this terminal can say how: the page
+    // after it may be handed back by the running node itself.
+    if matches!(
+        command,
+        Command::Status {
+            all: false,
+            sources: false,
+            json: false
+        }
+    ) && identity_file::holds_a_name(common.paths.root())
+    {
+        let running = commands::running::here(common.paths.root()).await;
+        aloud::line(&running.line(n333_core::epoch::unix_now_seconds()));
     }
 
     // Before the directory is taken, which would make it: a command that only reads a
     // node, pointed at a directory with none, says so and makes nothing.
-    cli.command.needs_a_node_in(common.paths.root())?;
+    command.needs_a_node_in(common.paths.root())?;
     // Nobody keeps a vigil in a directory that is not there, and there is nothing to
     // take.
-    if matches!(cli.command, Command::Tell { .. }) && !common.paths.root().exists() {
+    if matches!(command, Command::Tell { .. }) && !common.paths.root().exists() {
         return Ok(commands::elsewhere::nobody_to_tell());
     }
 
@@ -165,11 +164,11 @@ async fn run() -> anyhow::Result<ExitCode> {
     let _claim = match claim::take(&common.mistrust(), common.paths.root())? {
         Taken::Ours(claim) => claim,
         Taken::Theirs(holder) => {
-            return commands::elsewhere::run(&common, holder, cli.command.wanted()).await;
+            return commands::elsewhere::run(&common, holder, command.wanted()).await;
         }
     };
 
-    let done = match cli.command {
+    let done = match command {
         Command::Id => commands::id::run(&common),
         Command::Serve {
             bind,
@@ -203,8 +202,9 @@ async fn run() -> anyhow::Result<ExitCode> {
             Ok(index) => commands::say::run(&common, index).await,
             Err(e) => Err(e),
         },
-        Command::Status { sources, json } => {
-            commands::status::run(&common, commands::status::Show::of(sources, json)).await
+        Command::Status { all, sources, json } => {
+            let show = commands::status::Show::of(all, sources, json);
+            commands::status::run(&common, show).await
         }
         Command::Join { address } => commands::join::run(&common, &address).await,
         Command::Ping { address } => commands::ping::run(&common, &address).await,
@@ -212,9 +212,64 @@ async fn run() -> anyhow::Result<ExitCode> {
         Command::Moved => commands::moved::run(&common),
         Command::Tell { .. } => return Ok(commands::elsewhere::nobody_to_tell()),
         // Dispatched above, before the directory is taken.
-        Command::Service { .. } | Command::Unpack { .. } | Command::Languages => Ok(()),
+        Command::Service { .. }
+        | Command::Unpack { .. }
+        | Command::Languages { .. }
+        | Command::Start { .. }
+        | Command::Stop
+        | Command::Restart { .. }
+        | Command::Logs { .. }
+        | Command::Invite => Ok(()),
     };
     done.map(|()| ExitCode::SUCCESS)
+}
+
+/// Whether a command is itself the answer to a node not running: the ones that run it
+/// or set it up, and the ones whose first line says whether it is running.
+fn answers_it_already(command: &Command) -> bool {
+    matches!(
+        command,
+        Command::Serve { .. }
+            | Command::Start { .. }
+            | Command::Stop
+            | Command::Restart { .. }
+            | Command::Logs { .. }
+            | Command::Status {
+                all: false,
+                sources: false,
+                json: false
+            }
+            | Command::Service {
+                order: commands::service::Order::Install { .. }
+                    | commands::service::Order::Uninstall
+                    | commands::service::Order::Check
+            }
+    )
+}
+
+/// Do a command that asks the service manager, reads the catalogs, or reads only files
+/// a running node writes whole, and so neither waits for the node's directory nor makes
+/// it; or hand any other command back.
+///
+/// Unpacking is one of these too: it takes the directory itself, which may not exist
+/// yet and has to be empty when the node is renamed into it, which a lock file inside
+/// it would not be.
+async fn without_the_directory(
+    common: &Common,
+    command: Command,
+) -> anyhow::Result<Result<ExitCode, Command>> {
+    let done = |done: anyhow::Result<()>| done.map(|()| Ok(ExitCode::SUCCESS));
+    match command {
+        Command::Service { order } => done(commands::service::run(common, order).await),
+        Command::Languages { tag } => done(commands::languages::run(common, tag.as_deref())),
+        Command::Start { flags } => commands::start::start(common, &flags).await.map(Ok),
+        Command::Stop => commands::start::stop(common).await.map(Ok),
+        Command::Restart { flags } => commands::start::restart(common, &flags).await.map(Ok),
+        Command::Logs { follow } => commands::logs::run(follow).map(Ok),
+        Command::Invite => commands::invite::run(common).map(Ok),
+        Command::Unpack { file } => commands::unpack::run(common, &file).await.map(Ok),
+        other => Ok(Err(other)),
+    }
 }
 
 /// Did this end because whoever was reading the output closed the pipe?

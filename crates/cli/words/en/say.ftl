@@ -4,8 +4,8 @@ say-not-one = there are { $count } of them, numbered 0 to { $last }. "{ $typed }
 
 say-no-such = there are { $count } of them, numbered 0 to { $last }. There is no { $index }.
 
-say-not-joined = nobody has handed you the file, so there is nobody to say it to and
-    nobody who would count it. `333 join` is the whole of it.
+say-not-joined = nobody has handed you the file yet, so nothing you say is
+    counted. Get it first: `333 join <invitation>`.
 
 say-already = you already said #{ $index } in epoch { $epoch }. One each, and saying it again would
     not replace it: the first thing a node says is the thing it said.

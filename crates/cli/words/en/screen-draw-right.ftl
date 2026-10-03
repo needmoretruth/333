@@ -1,3 +1,3 @@
-### The screen's right column: the vigil's lines.
+### The screen's right column: what the node is doing, line by line.
 
-screen-draw-right-title = the vigil · times in UTC
+screen-draw-right-title = log · times in UTC

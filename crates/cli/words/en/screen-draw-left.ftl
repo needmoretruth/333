@@ -64,7 +64,8 @@ screen-draw-left-heard-not-noted = not noted
 
 screen-draw-left-unseen = UNSEEN
 screen-draw-left-unseen-why =
-    nothing has been signed about
-    this node in any epoch. being
-    reached is what is counted.
-    `: tor on` needs no router.
+    no node has reached this one
+    yet, and being reached is
+    what is counted. if the
+    router is the problem, type
+    `: tor on`.

@@ -5,7 +5,7 @@ screen-draw-keys-title = keys
 screen-draw-keys-close = any key closes this
 screen-draw-keys-typed-after = typed after :
 
-screen-draw-keys-leave = leave; the node stops
+screen-draw-keys-leave = stop the node and close the screen
 screen-draw-keys-say = say one of the 333
 screen-draw-keys-order = type an order
 screen-draw-keys-these = these keys

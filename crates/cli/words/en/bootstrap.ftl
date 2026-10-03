@@ -3,8 +3,8 @@
 bootstrap-name = { $name }
     .keyword = name
 
-bootstrap-vigil = run `333 serve` to answer.
-    .keyword = vigil
+bootstrap-vigil = `333 start` runs it, so that it answers.
+    .keyword = node
 
 bootstrap-already-has-it = this node already has the file. There is nothing to begin.
 

@@ -287,6 +287,11 @@ impl Node {
         Counts::of(&state.sources, held.iter().map(String::as_str))
     }
 
+    /// Where this node lately signed that it can be reached, the latest first.
+    pub(crate) async fn lately_said(&self) -> Vec<String> {
+        self.state.lock().await.sources.lately_said()
+    }
+
     /// Every statement under this node's key, within the window, that it did not make.
     pub(crate) async fn copies(&self) -> Vec<Sighting> {
         self.state.lock().await.sources.sightings().to_vec()

@@ -166,6 +166,8 @@ pub(crate) fn install(vigil: &Vigil) -> anyhow::Result<Receipt> {
         tasks: Vec::new(),
         log: None,
         linger_turned_on: linger_on()?,
+        stopped: false,
+        serve: Vec::new(),
     })
 }
 
@@ -201,6 +203,50 @@ fn linger_on() -> anyhow::Result<bool> {
 /// Whether install wrote this file.
 fn ours(path: &Path) -> bool {
     std::fs::read_to_string(path).is_ok_and(|text| text.starts_with(HEADER))
+}
+
+/// Whether the node's unit is running now.
+#[must_use]
+pub(crate) fn active() -> bool {
+    outcome("systemctl", &["--user", "is-active", "--quiet", UNIT]).is_ok()
+}
+
+/// Run the node now and at every boot from now on, and the hourly check with it.
+///
+/// # Errors
+/// Fails if systemd will not enable or start them.
+pub(crate) fn resume() -> anyhow::Result<()> {
+    run_aloud("systemctl", &["--user", "enable", "--now", UNIT, TIMER])?;
+    Ok(())
+}
+
+/// Stop the node and the hourly check, and keep both from starting at boot.
+///
+/// The files install wrote stay where they are, so running it again writes nothing.
+///
+/// # Errors
+/// Fails if systemd will not stop or disable them.
+pub(crate) fn pause() -> anyhow::Result<()> {
+    run_aloud("systemctl", &["--user", "disable", "--now", TIMER, UNIT])?;
+    Ok(())
+}
+
+/// Show what the node says as it says it, until interrupted. systemd keeps every line,
+/// so there is something to follow.
+#[must_use]
+pub(crate) fn follow() -> Option<anyhow::Result<()>> {
+    let args = [
+        "--user",
+        "-u",
+        UNIT,
+        "-f",
+        "-n",
+        "20",
+        "--no-pager",
+        "-o",
+        "short-iso",
+    ];
+    Some(super::programs::handed_over("journalctl", &args))
 }
 
 /// Stop the vigil and the check, remove what install wrote, and put linger back.
@@ -339,17 +385,17 @@ mod tests {
                 ),
                 (
                     words!("service-systemd-linger-already", user = "a"),
-                    "linger   already on for a. It is what keeps the vigil running after you log\n\
-                     \x20        out, and starts it at boot with nobody logged in.",
-                ),
-                (
-                    words!("service-systemd-linger-on", user = "a"),
-                    "linger   on for a. It is what keeps the vigil running after you log out,\n\
+                    "linger   already on for a. It keeps the node running after you log out,\n\
                      \x20        and starts it at boot with nobody logged in.",
                 ),
                 (
+                    words!("service-systemd-linger-on", user = "a"),
+                    "linger   on for a. It keeps the node running after you log out, and\n\
+                     \x20        starts it at boot with nobody logged in.",
+                ),
+                (
                     words!("service-systemd-linger-not-on", why = "denied", user = "a"),
-                    "linger   not on: denied. Without it the vigil stops when you log out and waits\n\
+                    "linger   not on: denied. Without it the node stops when you log out and waits\n\
                      \x20        for you to log in again after a reboot. `sudo loginctl enable-linger\n\
                      \x20        a` turns it on.",
                 ),

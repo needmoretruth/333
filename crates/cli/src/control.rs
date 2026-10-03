@@ -277,7 +277,7 @@ mod tests {
         });
         assert_eq!(
             said,
-            "the vigil stopped answering before it said whether that was done"
+            "the running node stopped answering before it said whether that was done"
         );
     }
 

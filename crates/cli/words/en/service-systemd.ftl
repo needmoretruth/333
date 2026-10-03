@@ -14,15 +14,15 @@ service-systemd-no-session = systemd is not keeping a session for this user here
 service-systemd-wrote-over = { $path }, in place of the one there
     .keyword = wrote
 
-service-systemd-linger-already = already on for { $user }. It is what keeps the vigil running after you log
-    out, and starts it at boot with nobody logged in.
-    .keyword = linger
-
-service-systemd-linger-on = on for { $user }. It is what keeps the vigil running after you log out,
+service-systemd-linger-already = already on for { $user }. It keeps the node running after you log out,
     and starts it at boot with nobody logged in.
     .keyword = linger
 
-service-systemd-linger-not-on = not on: { $why }. Without it the vigil stops when you log out and waits
+service-systemd-linger-on = on for { $user }. It keeps the node running after you log out, and
+    starts it at boot with nobody logged in.
+    .keyword = linger
+
+service-systemd-linger-not-on = not on: { $why }. Without it the node stops when you log out and waits
     for you to log in again after a reboot. `sudo loginctl enable-linger
     { $user }` turns it on.
     .keyword = linger

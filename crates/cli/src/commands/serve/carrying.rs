@@ -63,6 +63,8 @@ pub(super) struct Carrier {
     /// Held so that it can be stopped again: a person who turned it on wants to be able
     /// to turn it off, and a task nobody holds is a task nobody can stop.
     pub(super) unseen: Mutex<Option<JoinHandle<anyhow::Result<()>>>>,
+    /// Told when somebody at another terminal asks the node to stop.
+    pub(super) ending: Arc<tokio::sync::Notify>,
 }
 
 /// One order, ready to be carried out.
@@ -123,7 +125,7 @@ impl Carrier {
             Order::TorOff => Box::pin(async move { self.tor_off() }),
             Order::Bridge(line) => Box::pin(async move { self.bridge(line) }),
             Order::Helper(program) => Box::pin(async move { self.helper(program) }),
-            Order::Leave => Box::pin(async { leave() }),
+            Order::Leave => Box::pin(async move { leave(&self.ending) }),
         }
     }
 
@@ -331,14 +333,16 @@ fn readable(typed: &str) -> Option<PeerAddress> {
         .ok()
 }
 
-/// Leaving is the screen's, and it never sends it here. Anybody else is refused.
-fn leave() -> bool {
-    if cfg!(feature = "screen") {
-        aloud_in!("serve-carrying-cannot-end");
-    } else {
-        aloud_in!("serve-carrying-cannot-end-light");
-    }
-    false
+/// Stop the node, as `333 stop` asks from another terminal.
+///
+/// The screen's own `quit` never comes here: it ends the screen, and the node with it.
+/// What comes here is somebody at another terminal of the same user, who could end it
+/// with a signal anyway; asking is the way that gives back what was asked of the router
+/// and says the last line.
+fn leave(ending: &tokio::sync::Notify) -> bool {
+    aloud_in!("serve-carrying-stopping");
+    ending.notify_one();
+    true
 }
 
 /// Wait until the vigil has an onion address to hand out.
@@ -354,6 +358,23 @@ async fn onion_published(raised: &mut watch::Receiver<Option<PeerAddress>>) {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn asked_to_quit_from_another_terminal_the_node_is_told_to_end_and_it_was_done() {
+        let ending = tokio::sync::Notify::new();
+        let done = crate::words::speaking("en", crate::words::count::Base::Ten, || {
+            super::leave(&ending)
+        });
+        assert!(done);
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_time()
+            .build()
+            .unwrap();
+        let told = runtime.block_on(async {
+            tokio::time::timeout(std::time::Duration::from_secs(1), ending.notified()).await
+        });
+        assert!(told.is_ok(), "the node was not told to end");
+    }
+
     #[test]
     fn in_english_every_moved_line_says_exactly_what_it_said_before() {
         let pairs = crate::words::speaking("en", crate::words::count::Base::Ten, || {
@@ -432,9 +453,8 @@ mod tests {
                     "unread   x is not an address: no port",
                 ),
                 (
-                    words!("serve-carrying-cannot-end"),
-                    "refused  another terminal cannot end this vigil. It ends where it was started:\n\
-                     \x20        `q` in its screen, Ctrl-C, or the service manager that keeps it.",
+                    words!("serve-carrying-stopping"),
+                    "stopping asked from another terminal.",
                 ),
             ]
         });

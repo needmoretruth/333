@@ -5,9 +5,10 @@ use super::Command;
 impl Command {
     /// Does this command read a node that has to be there already?
     ///
-    /// `id` shows the name and makes one the first time; `serve`, `ping`, `join` and
-    /// `bootstrap` speak for a node, and a node is a name; `unpack` puts one in place;
-    /// `tell`, `languages` and `service` do not open one. The rest read a node or act
+    /// `name` shows the name and makes one the first time; `run`, `ping`, `join` and
+    /// `begin` speak for a node, and a node is a name; `unpack` puts one in place;
+    /// `tell`, `language`, `service`, `start`, `stop`, `restart`, `logs` and `invite` do
+    /// not open one, and say for themselves what is missing. The rest read a node or act
     /// on one, and run where there is none they would make a name with nothing behind
     /// it and report on that — which is what a mistyped `--data-dir` looked like.
     pub(crate) const fn reads_a_node(&self) -> bool {
@@ -20,8 +21,13 @@ impl Command {
             | Self::Bootstrap { .. }
             | Self::Unpack { .. }
             | Self::Tell { .. }
-            | Self::Languages
-            | Self::Service { .. } => false,
+            | Self::Languages { .. }
+            | Self::Service { .. }
+            | Self::Start { .. }
+            | Self::Stop
+            | Self::Restart { .. }
+            | Self::Logs { .. }
+            | Self::Invite => false,
         }
     }
 

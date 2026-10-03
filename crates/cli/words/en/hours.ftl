@@ -1,6 +1,6 @@
-### `333 serve`: keeping the hours, at every epoch boundary.
+### `333 run`: keeping the hours, at every epoch boundary.
 
-hours-failed-marking = marking this epoch as kept: { $why }
+hours-failed-marking = recording this epoch: { $why }
     .keyword = failed
 
 hours-failed-sources = writing down where addresses came from: { $why }

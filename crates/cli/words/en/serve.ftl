@@ -1,4 +1,4 @@
-### `333 serve`.
+### `333 run`.
 
 serve-nothing-listening = nothing would be listening: --no-direct needs --tor
 
@@ -43,9 +43,9 @@ serve-farewell = ended in epoch { $epoch }. Whoever is drawn to ask for you whil
     is not running signs that they asked and heard nothing, and
     that is what your window reads. It is { $window } epochs long, and it
     moves.
-    .keyword = vigil
+    .keyword = node
 
 serve-farewell-on-no-roll = ended in epoch { $epoch }. You are on nobody's roll, so nobody goes out
     to ask for you, and nothing is signed about you while this is not
     running.
-    .keyword = vigil
+    .keyword = node

@@ -5,25 +5,25 @@
 
 service-systemd-no-configuration = 이 시스템에는 이 사용자의 설정 디렉터리가 없습니다
 
-service-systemd-no-session = 여기서 systemd가 이 사용자의 세션을 지키고 있지 않습니다 {
-    ""}({ $why }). 이 사용자가 콘솔이나 ssh로 로그인하면 세션이 시작되고, su나 {
-    ""}sudo로는 시작되지 않습니다. 이 사용자로 로그인해서 다시 실행하십시오.
+service-systemd-no-session = 여기서는 systemd가 이 사용자의 세션을 관리하지 않습니다 {
+    ""}({ $why }). 콘솔이나 ssh로 이 사용자로 로그인하면 세션이 생기고, {
+    ""}su나 sudo로는 생기지 않습니다. 이 사용자로 로그인해 다시 {
+    ""}실행하십시오.
 
 service-systemd-wrote-over = { $path }, 원래 있던 것 대신
     .keyword = 작성
 
-service-systemd-linger-already = { $user }에게 이미 켜져 있습니다. 로그아웃한 뒤에도 철야를
-    돌게 하고, 아무도 로그인하지 않아도 부팅할 때 철야를 시작하는 것이
-    이것입니다.
+service-systemd-linger-already = { $user }에게 이미 켜져 있습니다. 로그아웃한 뒤에도 노드가 돌고,
+    아무도 로그인하지 않아도 부팅할 때 노드를 켭니다.
     .keyword = linger
 
-service-systemd-linger-on = { $user }에게 켰습니다. 로그아웃한 뒤에도 철야를 돌게 하고,
-    아무도 로그인하지 않아도 부팅할 때 철야를 시작하는 것이 이것입니다.
+service-systemd-linger-on = { $user }에게 켰습니다. 로그아웃한 뒤에도 노드가 돌고, 아무도
+    로그인하지 않아도 부팅할 때 노드를 켭니다.
     .keyword = linger
 
-service-systemd-linger-not-on = 켜지 못했습니다: { $why }. 이것이 없으면 철야는 로그아웃할 때
-    멈추고, 재부팅한 뒤 다시 로그인할 때까지 기다립니다.
-    `sudo loginctl enable-linger { $user }`로 켭니다.
+service-systemd-linger-not-on = 켜지 못했습니다: { $why }. 이것이 없으면 로그아웃할 때 노드가 꺼지고,
+    재부팅 뒤에는 로그인할 때까지 기다립니다. 켜려면
+    `sudo loginctl enable-linger { $user }`.
     .keyword = linger
 
 service-systemd-linger-off = 설치 전처럼 다시 껐습니다.

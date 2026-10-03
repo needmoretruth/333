@@ -4,10 +4,10 @@ service-schtasks-cannot-pass = `{ $word }`에 " 또는 %가 있어서, cmd.exe�
 service-schtasks-no-user = Windows가 이 사용자가 누구인지 말하지 않았습니다 {
     ""}(%USERDOMAIN%, %USERNAME%)
 
-service-schtasks-logon = Windows는 로그온한 동안, 로그온하는 순간부터 철야를 지킵니다.
-    부팅부터 지키는 서비스는 자기 계정으로 돌 텐데, 노드는 당신의
-    디렉터리에 살고 그 계정은 그곳에 볼일이 없습니다.
-    철야가 하는 말은 { $log }에 있습니다.
+service-schtasks-logon = Windows는 로그온한 동안 노드를 돌립니다. 부팅부터 도는 서비스는 {
+    ""}별도 계정이
+    필요한데, 노드는 이 계정의 디렉터리에 있기 때문입니다.
+    기록은 { $log }에 있습니다.
     .keyword = 로그온
 
 service-schtasks-ready = 멈췄고, 333초 안에 다시 시작합니다

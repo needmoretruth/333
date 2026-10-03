@@ -266,7 +266,7 @@ fn the_file_passes_from_a_node_keeping_the_vigil_to_one_that_asks() {
     );
     vigil.wait_for(&format!("gave     the file to {asker_name}"));
 
-    let status = run(&asker.0, &["status"]);
+    let status = run(&asker.0, &["status", "--all"]);
     assert!(
         status.contains("roll       1"),
         "the roll counts it:\n{status}"
@@ -280,6 +280,6 @@ fn the_file_passes_from_a_node_keeping_the_vigil_to_one_that_asks() {
             ended.success(),
             "the vigil ended cleanly ({ended}):\n{said}"
         );
-        assert!(said.contains("vigil    ended in epoch"), "{said}");
+        assert!(said.contains("node     ended in epoch"), "{said}");
     }
 }

@@ -395,7 +395,7 @@ mod tests {
                 (
                     words!("screen-keyboard-gone", why = "no terminal"),
                     "the keyboard could not be read (no terminal), so the screen has closed and\n\
-                     the vigil with it. `333 serve --plain` keeps a vigil with no keyboard.",
+                     the node with it. `333 run --plain` runs the node with no keyboard.",
                 ),
                 (stamp(7 * 3600 + 5 * 60), "07:05:00"),
             ]

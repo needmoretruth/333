@@ -18,6 +18,7 @@
 
 mod json;
 mod known;
+mod short;
 mod yourself;
 
 use std::collections::BTreeSet;
@@ -33,10 +34,13 @@ use crate::commands::Common;
 use crate::node::Node;
 use crate::words::Arg;
 
-/// Which of the three ways of saying it.
+/// Which of the four ways of saying it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Show {
-    /// Everything, in words.
+    /// Whether it is running, where it can be reached, and the count: what a person
+    /// who typed `333 status` wanted to know, and nothing explained.
+    Short,
+    /// Everything, in words, with what each part means.
     Everything,
     /// Every address held and where each came from.
     Sources,
@@ -45,15 +49,17 @@ pub(crate) enum Show {
 }
 
 impl Show {
-    /// The way asked for by `--sources` and `--json`, which clap keeps apart.
+    /// The way asked for by `--all`, `--sources` and `--json`, which clap keeps apart.
     #[must_use]
-    pub(crate) const fn of(sources: bool, json: bool) -> Self {
+    pub(crate) const fn of(all: bool, sources: bool, json: bool) -> Self {
         if json {
             Self::Json
         } else if sources {
             Self::Sources
-        } else {
+        } else if all {
             Self::Everything
+        } else {
+            Self::Short
         }
     }
 
@@ -61,7 +67,8 @@ impl Show {
     #[must_use]
     pub(crate) const fn word(self) -> &'static str {
         match self {
-            Self::Everything => "",
+            Self::Short => "",
+            Self::Everything => "--all",
             Self::Sources => "--sources",
             Self::Json => "--json",
         }
@@ -84,6 +91,9 @@ pub(crate) async fn run(common: &Common, show: Show) -> anyhow::Result<()> {
         // Nothing but the JSON on standard output, so that it can be piped straight
         // into whatever reads it.
         return json::write(out, &node, now).await;
+    }
+    if show == Show::Short {
+        return short::write(out, &node, now).await;
     }
 
     name_and_epoch(out, &node, now)?;
@@ -132,8 +142,10 @@ pub(crate) async fn whole(
     now: Epoch,
     show: Show,
 ) -> anyhow::Result<()> {
-    if show == Show::Json {
-        return json::write(out, node, now).await;
+    match show {
+        Show::Json => return json::write(out, node, now).await,
+        Show::Short => return short::write(out, node, now).await,
+        Show::Everything | Show::Sources => {}
     }
     name_and_epoch(out, node, now)?;
     writeln!(out)?;
@@ -172,16 +184,7 @@ async fn the_count(
     let roll = node.roll().await;
     let members = u64::try_from(roll.len()).unwrap_or(u64::MAX);
     let active = u64::try_from(answering.len()).unwrap_or(u64::MAX);
-    let census = Census::of(active, 0, members.saturating_sub(active));
-
-    // The counts stand in column eleven, where they always have: ANSWERING is nine
-    // columns wide and has two spaces after it. Labels are padded by the columns
-    // they cover, so a label in wider letters lines up the same.
-    let row = |label: String, count: u64| format!("{}{}", padded(&label, 11), counted(count));
-    writeln!(out, "{}", row(words!("status-answering"), census.active()))?;
-    writeln!(out, "{}", row(words!("status-silent"), census.inactive()))?;
-    writeln!(out, "{}─────", padded("", 11))?;
-    writeln!(out, "{}", row(words!("status-roll"), census.roll()))?;
+    table(out, &Census::of(active, 0, members.saturating_sub(active)))?;
     writeln!(out)?;
     let before = now.0.saturating_sub(1);
     writeln!(
@@ -197,6 +200,19 @@ async fn the_count(
     // attack here, it is a thousand subscriptions.
     writeln!(out, "\n{}", words!("status-how-many-people"))?;
     Ok(())
+}
+
+/// The count itself: answering, silent, and the roll they add up to.
+///
+/// The counts stand in column eleven, where they always have: ANSWERING is nine
+/// columns wide and has two spaces after it. Labels are padded by the columns they
+/// cover, so a label in wider letters lines up the same.
+fn table(out: &mut impl std::io::Write, census: &Census) -> std::io::Result<()> {
+    let row = |label: String, count: u64| format!("{}{}", padded(&label, 11), counted(count));
+    writeln!(out, "{}", row(words!("status-answering"), census.active()))?;
+    writeln!(out, "{}", row(words!("status-silent"), census.inactive()))?;
+    writeln!(out, "{}─────", padded("", 11))?;
+    writeln!(out, "{}", row(words!("status-roll"), census.roll()))
 }
 
 /// The hands this node's copy came through.
@@ -588,6 +604,25 @@ mod tests {
     }
 
     #[test]
+    fn in_english_the_short_page_is_the_name_the_reach_the_epoch_and_the_count() {
+        let text = with_fixture("short", true, |node| {
+            shown(node, Show::Short, "en", Base::Ten)
+        });
+        let lines: Vec<&str> = text.lines().collect();
+        assert_eq!(lines[0], "name     NAME", "{text}");
+        assert!(lines[1].starts_with("address  none yet."), "{text}");
+        assert!(lines[2].starts_with("epoch    100000, ends "), "{text}");
+        assert!(text.contains("\nANOTHER COPY OF THIS NAME\n"), "{text}");
+        assert!(
+            text.ends_with("ANSWERING  1\nsilent     1\n           ─────\nroll       2\n"),
+            "{text}"
+        );
+        for explained in ["How many people", "GIVEN BY", "Your record", "No winner"] {
+            assert!(!text.contains(explained), "{explained}: {text}");
+        }
+    }
+
+    #[test]
     fn in_english_the_sources_say_what_they_said_before_but_where_to_find_them() {
         let text = with_fixture("sources", true, |node| {
             shown(node, Show::Sources, "en", Base::Ten)
@@ -647,7 +682,7 @@ mod tests {
                 (
                     words!("status-known-nowhere"),
                     "KNOWN    nowhere to knock yet. An invitation given to `333 ping` or\n\
-                     \x20        `333 join` is kept, and the vigil knocks there from then on."
+                     \x20        `333 join` is kept, and the node knocks there from then on."
                         .to_owned(),
                 ),
                 (
@@ -700,7 +735,7 @@ mod tests {
     }
 
     /// The end, as it was said before its words moved.
-    const THE_END: &str = "NOBODY IS KEEPING 333\n\
+    const THE_END: &str = "NOBODY IS ANSWERING\n\
          \n\
          You are the only one here. Nobody has answered this node through 333 epochs of\n\
          unbroken watching — seventy-seven days — and the last of us stopped in\n\

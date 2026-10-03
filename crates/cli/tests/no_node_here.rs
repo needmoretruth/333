@@ -40,7 +40,7 @@ fn a_command_that_reads_a_node_makes_nothing_where_there_is_none() {
             said.starts_with(&format!("failed   there is no node in {}", typo.display())),
             "{words:?}: {said}"
         );
-        assert!(said.contains("`333 id` makes one there."), "{said}");
+        assert!(said.contains("`333 name` makes one there."), "{said}");
         assert!(out.stdout.is_empty(), "{words:?}");
         assert!(!parent.exists(), "{words:?} made {}", parent.display());
     }
@@ -48,7 +48,7 @@ fn a_command_that_reads_a_node_makes_nothing_where_there_is_none() {
     let told = run(&typo, &["tell", "tor", "on"]);
     assert!(!told.status.success());
     assert!(
-        String::from_utf8_lossy(&told.stdout).starts_with("unheard  nobody is keeping"),
+        String::from_utf8_lossy(&told.stdout).starts_with("unheard  no node is running"),
         "{told:?}"
     );
     assert!(!parent.exists(), "tell made {}", parent.display());

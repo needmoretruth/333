@@ -71,6 +71,28 @@ pub(crate) fn outcome(program: &str, args: &[&str]) -> Result<String, String> {
     }
 }
 
+/// Run a program with this terminal as its own, for as long as it runs.
+///
+/// # Errors
+/// Fails if it could not be started or did not succeed.
+pub(crate) fn handed_over(program: &str, args: &[&str]) -> anyhow::Result<()> {
+    match Command::new(program).args(args).status() {
+        Ok(status) if status.success() => Ok(()),
+        Ok(status) => bail!(words!(
+            "service-programs-ended-with",
+            status = status.to_string()
+        )),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            bail!(words!("service-programs-no-such", program = program))
+        }
+        Err(e) => bail!(words!(
+            "service-programs-not-started",
+            program = program,
+            why = e.to_string()
+        )),
+    }
+}
+
 /// A command as a person would type it, quoting only what needs quoting.
 #[must_use]
 pub(crate) fn typed(program: &str, args: &[&str]) -> String {

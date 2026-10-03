@@ -212,8 +212,8 @@ mod tests {
                  \x20        333 and 666 minutes, depending on where in this epoch you arrived.\n\
                  \x20        Until then, answer everything that is asked of you. What is witnessed\n\
                  \x20        in that time is the whole of the proof that you were ever here at all.",
-                "vigil    run `333 serve` and stay awake. Nothing can be witnessed of a node\n\
-                 \x20        nobody can reach, and this stretch is witnessed once or never.",
+                "node     `333 start` keeps it running from now on. Nothing can be witnessed of\n\
+                 \x20        a node nobody can reach, and this stretch is witnessed once or never.",
             ]
         );
         for (now, before) in phrases {

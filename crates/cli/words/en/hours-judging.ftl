@@ -1,4 +1,4 @@
-### `333 serve`: reaching a verdict about one of this node's own epochs, once.
+### `333 run`: reaching a verdict about one of this node's own epochs, once.
 
 hours-judging-failed-reading = reading this node's own record: { $why }
     .keyword = failed

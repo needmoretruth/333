@@ -30,7 +30,7 @@ fn in_english_every_page_of_help_says_exactly_what_it_said_before() {
         .split("==== ")
         .filter(|one| !one.is_empty())
         .collect();
-    assert_eq!(pages.len(), 37);
+    assert_eq!(pages.len(), 47);
     for one in pages {
         let (typed, before) = one.split_once('\n').unwrap();
         assert_eq!(page("en", typed), before.trim_end(), "333 {typed}");
@@ -42,7 +42,7 @@ fn in_korean_no_page_of_help_has_an_english_heading_left() {
     for typed in [
         "--help",
         "-h",
-        "serve --help",
+        "run --help",
         "say -h",
         "service --help",
         "help help",
@@ -65,17 +65,17 @@ fn in_korean_no_page_of_help_has_an_english_heading_left() {
 
 #[test]
 fn in_korean_what_clap_adds_after_a_flag_is_said_and_the_alias_still_works() {
-    let page = page("ko", "serve -h");
+    let page = page("ko", "run -h");
     assert!(page.contains("[기본값: 0.0.0.0:3333]"), "{page}");
     assert!(page.contains("[별칭: --no-upnp]"), "{page}");
     let args = ["333", "serve", "--no-upnp"].map(OsString::from).to_vec();
     let read = crate::words::speaking("ko", Base::Ten, || crate::typed::parse_from(args));
     assert!(matches!(
         read.map(|cli| cli.command),
-        Ok(crate::typed::Command::Serve {
+        Ok(Some(crate::typed::Command::Serve {
             no_router: true,
             ..
-        })
+        }))
     ));
 }
 
@@ -87,7 +87,7 @@ fn in_korean_a_refused_command_line_says_so_with_what_clap_hands_over() {
         "{said}"
     );
     assert!(
-        said.contains("\n\n사용법: 333 [OPTIONS] <COMMAND>"),
+        said.contains("\n\n사용법: 333 [OPTIONS] [COMMAND]"),
         "{said}"
     );
     assert!(
@@ -149,5 +149,107 @@ fn an_edition_without_the_screen_is_told_nothing_about_one() {
                 assert!(!said.contains(about), "{tag} {without}: {said}");
             }
         }
+    }
+}
+
+/// The lines of one section of a page: everything after its heading, up to the next
+/// line that is not indented, blank lines left out.
+fn section<'a>(page: &'a str, heading: &str) -> Vec<&'a str> {
+    page.lines()
+        .skip_while(|line| *line != heading)
+        .skip(1)
+        .take_while(|line| line.is_empty() || line.starts_with(' '))
+        .filter(|line| !line.is_empty())
+        .collect()
+}
+
+#[test]
+fn the_first_page_lists_the_everyday_commands_first_and_the_rest_apart() {
+    for typed in ["-h", "--help"] {
+        let page = page("en", typed);
+        let everyday: Vec<&str> = section(&page, "Commands:")
+            .iter()
+            .filter_map(|line| line.split_whitespace().next())
+            .collect();
+        assert!(
+            page.find("More commands:") < page.find("Options:"),
+            "{page}"
+        );
+        assert_eq!(everyday, super::listing::EVERYDAY, "{page}");
+        let more = section(&page, "More commands:");
+        assert!(
+            more.iter().any(|line| line.starts_with("  service ")),
+            "{page}"
+        );
+        assert!(
+            !more.iter().any(|line| line.starts_with("  start ")),
+            "{page}"
+        );
+        assert!(page.contains("Usage: 333 [OPTIONS] [COMMAND]"), "{page}");
+        let options = section(&page, "Options:").join("\n");
+        assert!(options.contains("--language"), "{page}");
+        assert!(!options.contains("--timeout"), "{page}");
+        let advanced = section(&page, "Advanced:").join("\n");
+        for flag in [
+            "--timeout",
+            "--dangerously-trust-directory-permissions",
+            "--keep-everything",
+            "--bridge",
+            "--bridge-helper",
+            "--count-in",
+            "--data-dir",
+        ] {
+            assert!(advanced.contains(flag), "{flag}: {page}");
+        }
+    }
+}
+
+#[test]
+fn a_command_s_page_leaves_the_advanced_flags_and_their_essays_to_the_first_page() {
+    let page = page("en", "status --help");
+    for absent in [
+        "--timeout",
+        "--data-dir",
+        "--bridge",
+        "A ceiling rather than a delay",
+    ] {
+        assert!(!page.contains(absent), "{absent}: {page}");
+    }
+    assert!(page.contains("--language"), "{page}");
+    assert!(!page.contains("THE333_LANGUAGE"), "{page}");
+    assert!(page.lines().count() < 25, "{page}");
+    // Still read where they are typed.
+    let args = ["333", "status", "--data-dir", "/x", "--timeout", "9"]
+        .map(OsString::from)
+        .to_vec();
+    let read = crate::words::speaking("en", Base::Ten, || crate::typed::parse_from(args));
+    assert!(read.is_ok_and(|cli| cli.timeout == 9));
+}
+
+#[test]
+fn every_command_shows_one_example_of_itself() {
+    let command = crate::words::speaking("en", Base::Ten, || {
+        super::spoken(<crate::typed::Cli as clap::CommandFactory>::command())
+    });
+    let mut each: Vec<(String, &clap::Command)> = command
+        .get_subcommands()
+        .map(|sub| (sub.get_name().to_owned(), sub))
+        .collect();
+    while let Some((path, sub)) = each.pop() {
+        if sub.get_name() == "help" {
+            continue;
+        }
+        let example = sub.get_after_help().map(ToString::to_string);
+        let wanted = format!("Example: 333 {path}");
+        assert!(
+            example
+                .as_deref()
+                .is_some_and(|text| text.starts_with(&wanted)),
+            "{path}: {example:?}"
+        );
+        each.extend(
+            sub.get_subcommands()
+                .map(|inner| (format!("{path} {}", inner.get_name()), inner)),
+        );
     }
 }

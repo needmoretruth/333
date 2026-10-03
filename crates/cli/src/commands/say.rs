@@ -128,8 +128,8 @@ mod tests {
             lines,
             [
                 "there are 333 of them, numbered 0 to 332. There is no 400.",
-                "nobody has handed you the file, so there is nobody to say it to and\n\
-                 nobody who would count it. `333 join` is the whole of it.",
+                "nobody has handed you the file yet, so nothing you say is\n\
+                 counted. Get it first: `333 join <invitation>`.",
                 "you hold the file, and nobody handed it to you, so you are on nobody's\n\
                  roll and nobody would count what you say. Only a node somebody handed\n\
                  the file to may speak: hand it on, and whoever you hand it to can.",

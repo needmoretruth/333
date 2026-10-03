@@ -272,7 +272,7 @@ mod tests {
             [
                 (
                     words!("serve-told-not-here"),
-                    "orders   on this system they reach this vigil through its screen and nowhere\n\
+                    "orders   on this system they reach this node through its screen and nowhere\n\
                      \x20        else. A second 333 started beside it is refused.",
                 ),
                 (
@@ -286,8 +286,8 @@ mod tests {
                 (
                     words!("serve-told-taking"),
                     "orders   from any terminal on this machine, in the screen's words:\n\
-                     \x20        `333 say 7`, `333 join <invitation>`, `333 tell 'tor on'`.\n\
-                     \x20        This vigil carries them out and answers there.",
+                     \x20        `333 say 7`, `333 join <invitation>`, `333 tell 'tor on'`, `333 stop`.\n\
+                     \x20        This node carries them out and answers there.",
                 ),
                 (
                     words!("serve-told-old-socket", why = "busy"),
@@ -296,7 +296,7 @@ mod tests {
                 (
                     words!("serve-told-not-a-socket", path = "/n/333.sock"),
                     "orders   /n/333.sock is there and is not a socket, so it is left alone, and\n\
-                     \x20        nothing can be handed to this vigil from another terminal until\n\
+                     \x20        nothing can be handed to this node from another terminal until\n\
                      \x20        it is moved.",
                 ),
                 (
@@ -313,8 +313,8 @@ mod tests {
                 ),
                 (
                     words!("serve-told-other-version", ours = "333/1", theirs = "333/2"),
-                    "refused  this vigil speaks 333/1 and was asked in 333/2. The 333 that asked\n\
-                     \x20        is a different version from the one keeping the vigil; run that one.",
+                    "refused  this node speaks 333/1 and was asked in 333/2. The 333 that asked\n\
+                     \x20        is a different version from the one running; run that one.",
                 ),
                 (
                     words!("serve-told-unread", why = "nothing to say"),

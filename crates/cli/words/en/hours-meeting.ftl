@@ -1,4 +1,4 @@
-### `333 serve`: leaving this node's address at a meeting point, and reading everyone else's.
+### `333 run`: leaving this node's address at a meeting point, and reading everyone else's.
 
 hours-meeting-unreadable = { $place } could not be read: { $why }
     .keyword = meet

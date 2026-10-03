@@ -38,7 +38,7 @@ commands-unseen = nothing has been signed about this node, in any epoch. Reachin
     works and being reached does not, and only the second one is counted:
     whoever is drawn to ask has to arrive. Two things do this. A router
     that does not send port 3333 to this machine, and an address nobody
-    was given. `serve --tor` needs neither — an onion address is reachable
+    was given. `run --tor` needs neither — an onion address is reachable
     from behind any router, and this client already carries Tor.
     .keyword = unseen
 

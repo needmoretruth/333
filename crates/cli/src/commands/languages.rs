@@ -1,4 +1,5 @@
-//! `333 languages` — the languages there are words for, and how much of each.
+//! `333 language` — the languages there are words for and how much of each, and the
+//! one every command speaks from now on, saved with `333 language <TAG>`.
 //!
 //! How much is counted against English: the share of English's messages a language
 //! can say in its own words. A message counts only when the language has it in the
@@ -10,20 +11,62 @@
 
 use std::path::Path;
 
+use anyhow::Context as _;
 use unicode_width::UnicodeWidthStr as _;
 
 use crate::commands::Common;
 use crate::words::Arg;
 use crate::words::catalog::{self, Bundle};
 
+/// Save `tag` for every later command, or without one list the languages.
+///
+/// # Errors
+/// Fails if there are no words for `tag`, the choice cannot be written, or standard
+/// output is closed.
+pub(crate) fn run(common: &Common, tag: Option<&str>) -> anyhow::Result<()> {
+    match tag {
+        Some(tag) => save(common, tag),
+        None => list(common),
+    }
+}
+
+/// Save the language every command at this node speaks from now on.
+///
+/// The folder that answers it is what is saved, so `ko-KR` is saved as `ko`, and
+/// English is saved as nothing at all: it is what is spoken when nothing is asked for.
+/// The directory is made private first, as it is for the node's name, because it is
+/// the node's directory.
+fn save(common: &Common, tag: &str) -> anyhow::Result<()> {
+    let root = common.paths.root();
+    let beside = catalog::beside(root);
+    let Some(found) = crate::words::choose::matching(tag, &catalog::tags(Some(&beside))) else {
+        anyhow::bail!(words!("languages-unknown", tag = tag));
+    };
+    let home = crate::identity_file::secure(&common.mistrust(), root)?;
+    let file = crate::words::saved::FILE;
+    let path = root.join(file).display().to_string();
+    if found.eq_ignore_ascii_case(catalog::ENGLISH) {
+        match home.remove_file(file) {
+            Ok(()) | Err(fs_mistrust::Error::NotFound(_)) => {}
+            Err(e) => return Err(e).with_context(|| words!("languages-saving", path = path)),
+        }
+        aloud_in!("languages-english");
+        return Ok(());
+    }
+    home.write_and_replace(file, format!("{found}\n"))
+        .with_context(|| words!("languages-saving", path = path))?;
+    aloud_in!("languages-saved", tag = found);
+    Ok(())
+}
+
 /// Print one line per language, then which one is being spoken.
 ///
 /// Through one locked handle rather than `println!`, so that a reader who walked away
-/// (`333 languages | head -1`) ends this quietly instead of panicking inside the macro.
+/// (`333 language | head -1`) ends this quietly instead of panicking inside the macro.
 ///
 /// # Errors
 /// Fails if standard output is closed.
-pub(crate) fn run(common: &Common) -> anyhow::Result<()> {
+fn list(common: &Common) -> anyhow::Result<()> {
     use std::io::Write as _;
     let beside = catalog::beside(common.paths.root());
     let mut out = std::io::stdout().lock();
@@ -134,8 +177,30 @@ mod tests {
         );
         assert_eq!(
             lines.last().unwrap(),
-            "speaking en. `--language <TAG>` or THE333_LANGUAGE chooses another."
+            "speaking en. `333 language <TAG>` saves another for every command."
         );
+    }
+
+    #[test]
+    fn a_saved_language_is_the_folder_that_answers_it_and_english_is_saved_as_none() {
+        let root = std::env::temp_dir().join(format!("333-language-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let common = crate::commands::Common {
+            paths: crate::paths::NodePaths::at(root.clone()),
+            timeout: std::time::Duration::from_secs(1),
+            keeping: crate::node::Keeping::TheWindow,
+            bridges: std::sync::Arc::new(std::sync::Mutex::new(n333_net::bridges::Bridges::none())),
+            trust_directory_permissions: true,
+        };
+        crate::words::speaking("en", Base::Ten, || {
+            run(&common, Some("ko-KR")).unwrap();
+            assert_eq!(crate::words::saved::read(&root).as_deref(), Some("ko"));
+            assert!(run(&common, Some("xx-nowhere")).is_err());
+            assert_eq!(crate::words::saved::read(&root).as_deref(), Some("ko"));
+            run(&common, Some("en")).unwrap();
+            assert_eq!(crate::words::saved::read(&root), None);
+        });
+        std::fs::remove_dir_all(&root).unwrap();
     }
 
     #[test]

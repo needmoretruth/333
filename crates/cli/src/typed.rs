@@ -4,6 +4,11 @@
 //! is done with them is another. `service install` reads its flags through [`Cli`] as
 //! well, so a flag `serve` takes is one `service` carries without a copy of it.
 //!
+//! OLD NAMES STAY. `serve`, `bootstrap`, `id` and `languages` were the names before
+//! `run`, `begin`, `name` and `language`, and are kept as aliases nobody is shown:
+//! every service installed before the rename runs `333 serve`, and every note a person
+//! wrote down says the old one.
+//!
 //! READ TWICE WHEN IT IS REFUSED. The words a person reads are chosen from what the
 //! command line asks for, so they cannot be chosen before it is read. A line that
 //! reads is read once and the words chosen from it. A line clap refuses, `--help`
@@ -14,29 +19,37 @@
 use std::ffi::OsString;
 use std::net::SocketAddr;
 use std::path::PathBuf;
-use std::sync::OnceLock;
 
 use clap::{CommandFactory as _, FromArgMatches as _, Parser, Subcommand};
 
 use crate::commands;
-use crate::commands::elsewhere::Wanted;
 use crate::paths::NodePaths;
 use crate::words;
-use crate::words::count::Base;
 use n333_net::PeerAddress;
 
 pub(crate) mod address;
+mod asked;
 mod node;
+mod wanted;
+
+use asked::Asked;
 
 // What each command and flag is for is not written here: clap would show it in
 // English whoever asked. It is in the catalogs, `help-<command>-<flag>` in
-// `words/<tag>/help.ftl`, and put in once the words are chosen (`crate::help`).
+// `words/<tag>/help.ftl`, and put in once the words are chosen (`crate::help`). The
+// one example each command shows is `help-<command>-example`.
 
-// The command line, as clap reads it.
+// The command line, as clap reads it. With no command, `333` says how this node is.
 #[derive(Debug, Parser)]
 #[command(name = "333", version, about = "help-about")]
 pub(crate) struct Cli {
-    #[arg(long, global = true, value_name = "DIR", help = "help-data-dir")]
+    #[arg(
+        long,
+        global = true,
+        value_name = "DIR",
+        help = "help-data-dir",
+        help_heading = "help-frame-advanced"
+    )]
     pub(crate) data_dir: Option<PathBuf>,
 
     #[arg(
@@ -45,7 +58,8 @@ pub(crate) struct Cli {
         default_value_t = 300,
         value_name = "SECONDS",
         help = "help-timeout",
-        long_help = "help-timeout-long"
+        long_help = "help-timeout-long",
+        help_heading = "help-frame-advanced"
     )]
     pub(crate) timeout: u64,
 
@@ -53,7 +67,8 @@ pub(crate) struct Cli {
         long,
         global = true,
         help = "help-dangerously-trust-directory-permissions",
-        long_help = "help-dangerously-trust-directory-permissions-long"
+        long_help = "help-dangerously-trust-directory-permissions-long",
+        help_heading = "help-frame-advanced"
     )]
     pub(crate) dangerously_trust_directory_permissions: bool,
 
@@ -61,7 +76,8 @@ pub(crate) struct Cli {
         long,
         global = true,
         help = "help-keep-everything",
-        long_help = "help-keep-everything-long"
+        long_help = "help-keep-everything-long",
+        help_heading = "help-frame-advanced"
     )]
     pub(crate) keep_everything: bool,
 
@@ -70,7 +86,8 @@ pub(crate) struct Cli {
         global = true,
         value_name = "LINE",
         help = "help-bridges",
-        long_help = "help-bridges-long"
+        long_help = "help-bridges-long",
+        help_heading = "help-frame-advanced"
     )]
     pub(crate) bridges: Vec<String>,
 
@@ -79,7 +96,8 @@ pub(crate) struct Cli {
         global = true,
         value_name = "PROGRAM",
         help = "help-bridge-helper",
-        long_help = "help-bridge-helper-long"
+        long_help = "help-bridge-helper-long",
+        help_heading = "help-frame-advanced"
     )]
     pub(crate) bridge_helper: Option<String>,
 
@@ -92,19 +110,71 @@ pub(crate) struct Cli {
     )]
     pub(crate) language: Option<String>,
 
-    #[arg(long, global = true, value_name = "BASE", value_parser = words::count::Base::named, help = "help-count-in", long_help = "help-count-in-long")]
+    #[arg(long, global = true, value_name = "BASE", value_parser = words::count::Base::named, help = "help-count-in", long_help = "help-count-in-long", help_heading = "help-frame-advanced")]
     pub(crate) count_in: Option<words::count::Base>,
 
     #[command(subcommand)]
-    pub(crate) command: Command,
+    pub(crate) command: Option<Command>,
 }
 
-// The commands, as clap reads them.
+// The commands, as clap reads them. Which of them `333 --help` lists first is in
+// `crate::help::listing`.
 #[derive(Debug, Subcommand)]
 pub(crate) enum Command {
-    #[command(about = "help-id")]
+    #[command(about = "help-start", after_help = "help-start-example")]
+    Start {
+        // The flags for `run`, as `service install` takes them.
+        #[arg(
+            trailing_var_arg = true,
+            allow_hyphen_values = true,
+            value_name = "RUN FLAGS",
+            help = "help-start-flags"
+        )]
+        flags: Vec<String>,
+    },
+    #[command(about = "help-stop", after_help = "help-stop-example")]
+    Stop,
+    #[command(about = "help-restart", after_help = "help-restart-example")]
+    Restart {
+        // The flags for `run`, as `start` takes them.
+        #[arg(
+            trailing_var_arg = true,
+            allow_hyphen_values = true,
+            value_name = "RUN FLAGS",
+            help = "help-start-flags"
+        )]
+        flags: Vec<String>,
+    },
+    #[command(about = "help-status", after_help = "help-status-example")]
+    Status {
+        #[arg(long, help = "help-status-all")]
+        all: bool,
+        #[arg(long, conflicts_with = "all", help = "help-status-sources")]
+        sources: bool,
+        #[arg(long, conflicts_with_all = ["sources", "all"], help = "help-status-json")]
+        json: bool,
+    },
+    #[command(about = "help-logs", after_help = "help-logs-example")]
+    Logs {
+        #[arg(short, long, help = "help-logs-follow")]
+        follow: bool,
+    },
+    #[command(
+        name = "name",
+        alias = "id",
+        about = "help-id",
+        after_help = "help-id-example"
+    )]
     Id,
-    #[command(about = "help-bootstrap", long_about = "help-bootstrap-long")]
+    #[command(about = "help-invite", after_help = "help-invite-example")]
+    Invite,
+    #[command(
+        name = "begin",
+        alias = "bootstrap",
+        about = "help-bootstrap",
+        long_about = "help-bootstrap-long",
+        after_help = "help-bootstrap-example"
+    )]
     Bootstrap {
         #[arg(long, default_value = n333_net::meeting::THE_PLACE, value_name = "HOST", help = "help-bootstrap-meet")]
         meet: String,
@@ -113,7 +183,13 @@ pub(crate) enum Command {
         anyway: bool,
     },
 
-    #[command(about = "help-serve", long_about = "help-serve-long")]
+    #[command(
+        name = "run",
+        alias = "serve",
+        about = "help-serve",
+        long_about = "help-serve-long",
+        after_help = "help-serve-example"
+    )]
     Serve {
         #[arg(long, default_value_t = default_bind(), value_name = "ADDR:PORT", value_parser = address::bind, help = "help-serve-bind")]
         bind: SocketAddr,
@@ -161,31 +237,36 @@ pub(crate) enum Command {
         #[arg(long, help = "help-serve-plain", long_help = "help-serve-plain-long")]
         plain: bool,
     },
-    #[command(about = "help-say")]
+    #[command(about = "help-say", after_help = "help-say-example")]
     Say {
         #[arg(value_name = "INDEX", help = "help-say-index")]
         index: String,
     },
-    #[command(about = "help-status")]
-    Status {
-        #[arg(long, help = "help-status-sources")]
-        sources: bool,
-        #[arg(long, conflicts_with = "sources", help = "help-status-json")]
-        json: bool,
-    },
-    #[command(about = "help-join")]
+    #[command(about = "help-join", after_help = "help-join-example")]
     Join {
         #[arg(value_parser = address::typed, help = "help-join-address")]
         address: PeerAddress,
     },
-    #[command(about = "help-languages")]
-    Languages,
-    #[command(about = "help-ping")]
+    #[command(
+        name = "language",
+        alias = "languages",
+        about = "help-languages",
+        after_help = "help-languages-example"
+    )]
+    Languages {
+        #[arg(value_name = "TAG", help = "help-languages-tag")]
+        tag: Option<String>,
+    },
+    #[command(about = "help-ping", after_help = "help-ping-example")]
     Ping {
         #[arg(value_parser = address::typed, help = "help-ping-address")]
         address: PeerAddress,
     },
-    #[command(about = "help-pack", long_about = "help-pack-long")]
+    #[command(
+        about = "help-pack",
+        long_about = "help-pack-long",
+        after_help = "help-pack-example"
+    )]
     Pack {
         #[arg(
             value_name = "FILE",
@@ -202,14 +283,26 @@ pub(crate) enum Command {
         )]
         undo: bool,
     },
-    #[command(about = "help-unpack", long_about = "help-unpack-long")]
+    #[command(
+        about = "help-unpack",
+        long_about = "help-unpack-long",
+        after_help = "help-unpack-example"
+    )]
     Unpack {
         #[arg(value_name = "FILE", help = "help-unpack-file")]
         file: PathBuf,
     },
-    #[command(about = "help-moved", long_about = "help-moved-long")]
+    #[command(
+        about = "help-moved",
+        long_about = "help-moved-long",
+        after_help = "help-moved-example"
+    )]
     Moved,
-    #[command(about = "help-tell", long_about = "help-tell-long")]
+    #[command(
+        about = "help-tell",
+        long_about = "help-tell-long",
+        after_help = "help-tell-example"
+    )]
     Tell {
         #[arg(
             required = true,
@@ -219,65 +312,15 @@ pub(crate) enum Command {
         )]
         order: Vec<String>,
     },
-    #[command(about = "help-service", long_about = "help-service-long")]
+    #[command(
+        about = "help-service",
+        long_about = "help-service-long",
+        after_help = "help-service-example"
+    )]
     Service {
         #[command(subcommand)]
         order: commands::service::Order,
     },
-}
-
-impl Command {
-    /// What this command wants, put the way a running vigil could be asked for it.
-    pub(crate) fn wanted(&self) -> Wanted {
-        match self {
-            Self::Id => Wanted::Name,
-            Self::Serve { .. } => Wanted::Vigil,
-            Self::Bootstrap { meet, .. } if meet != n333_net::meeting::THE_PLACE => {
-                static WHY: OnceLock<String> = OnceLock::new();
-                kept(&WHY, || words!("typed-kept-meet"))
-            }
-            Self::Bootstrap { anyway: true, .. } => Wanted::Order("bootstrap anyway".to_owned()),
-            Self::Bootstrap { anyway: false, .. } => Wanted::Order("bootstrap".to_owned()),
-            Self::Say { index } => Wanted::Order(format!("say {index}")),
-            Self::Status { sources, json } => {
-                let show = commands::status::Show::of(*sources, *json);
-                Wanted::Page(format!("status {}", show.word()))
-            }
-            Self::Join { address } => Wanted::Order(format!("join {address}")),
-            Self::Ping { address } => Wanted::Order(format!("ping {address}")),
-            Self::Tell { order } => Wanted::Order(order.join(" ")),
-            Self::Pack { .. } => {
-                static WHY: OnceLock<String> = OnceLock::new();
-                kept(&WHY, || words!("typed-kept-pack"))
-            }
-            Self::Moved => {
-                static WHY: OnceLock<String> = OnceLock::new();
-                kept(&WHY, || words!("typed-kept-moved"))
-            }
-            // Never asked: `unpack` takes the directory itself, and refuses on its own.
-            Self::Unpack { .. } => Wanted::Kept(commands::unpack::KEPT),
-            // Never asked: `languages` reads the catalogs, not the node, and is dispatched
-            // before the directory is taken.
-            Self::Languages => {
-                static WHY: OnceLock<String> = OnceLock::new();
-                kept(&WHY, || words!("typed-kept-languages"))
-            }
-            // Never asked: `service` is dispatched before the directory is taken, because
-            // it asks the service manager and reads the awake stamp and nothing else.
-            Self::Service { .. } => {
-                static WHY: OnceLock<String> = OnceLock::new();
-                kept(&WHY, || words!("typed-kept-service"))
-            }
-        }
-    }
-}
-
-/// Why a command cannot be handed to a running vigil.
-///
-/// Said once, in the words this process speaks, and kept for the life of the process,
-/// which is as long as the reason is ever read.
-fn kept(cell: &'static OnceLock<String>, why: impl FnOnce() -> String) -> Wanted {
-    Wanted::Kept(cell.get_or_init(why))
 }
 
 /// Read this process's command line, or say why it cannot be read — or the help or the
@@ -343,48 +386,6 @@ impl Refusal {
     }
 }
 
-/// What a command line asks to be read in and where its node is, picked out by hand
-/// from one clap refused.
-#[derive(Debug, Default, PartialEq, Eq)]
-struct Asked {
-    /// `--language`.
-    language: Option<String>,
-    /// `--count-in`, if it names a base.
-    count_in: Option<Base>,
-    /// `--data-dir`, where a folder of catalogs beside the node may be.
-    data_dir: Option<PathBuf>,
-}
-
-impl Asked {
-    /// Every `--language`, `--count-in` and `--data-dir` before a `--`, the last of
-    /// each winning, as clap would have it; given as `--flag value` or `--flag=value`.
-    fn from(args: &[OsString]) -> Self {
-        let mut asked = Self::default();
-        let mut words = args.iter().skip(1).map(|arg| arg.to_string_lossy());
-        while let Some(word) = words.next() {
-            if word == "--" {
-                break;
-            }
-            let (flag, given) = match word.split_once('=') {
-                Some((flag, value)) => (flag.to_owned(), Some(value.to_owned())),
-                None => (word.into_owned(), None),
-            };
-            if !["--language", "--count-in", "--data-dir"].contains(&flag.as_str()) {
-                continue;
-            }
-            let Some(value) = given.or_else(|| words.next().map(|value| value.into_owned())) else {
-                break;
-            };
-            match flag.as_str() {
-                "--language" => asked.language = Some(value),
-                "--count-in" => asked.count_in = Base::named(&value).ok(),
-                _ => asked.data_dir = Some(PathBuf::from(value)),
-            }
-        }
-        asked
-    }
-}
-
 /// Listen on every interface, on the port peers expect.
 pub(crate) fn default_bind() -> SocketAddr {
     SocketAddr::from(([0, 0, 0, 0], n333_net::DEFAULT_PORT))
@@ -393,6 +394,7 @@ pub(crate) fn default_bind() -> SocketAddr {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::words::count::Base;
     use crate::words::layout::{COLUMN, line, where_the_words_begin};
 
     fn reason(tag: &str, key: &str) -> String {
@@ -408,38 +410,38 @@ mod tests {
     #[test]
     fn in_english_every_reason_a_vigil_is_not_handed_a_command_is_what_it_was() {
         // The column is the line's to give: each is said after a keyword and "is
-        // keeping the vigil here, and", and its second line lines up under the first.
+        // running here, and", and its second line lines up under the first.
         for (key, before) in [
             (
                 "typed-kept-meet",
-                "it looks for people only where it always does.\n\
+                "it looks for nodes only where it always does.\n\
                  \x20        Leave --meet out, or run this when it has stopped.",
             ),
             (
                 "typed-kept-pack",
-                "a node is packed only while nothing is keeping it. Nothing was\n\
-                 \x20        written. Stop the vigil, then pack it.",
+                "a node is packed only while it is not running. Nothing was\n\
+                 \x20        written. `333 stop`, then pack it.",
             ),
             (
                 "typed-kept-moved",
-                "where a node lives is said while nothing is keeping it. Stop the\n\
-                 \x20        vigil, then run this again.",
+                "where a node lives is recorded only while it is not running.\n\
+                 \x20        `333 stop`, then run this again.",
             ),
             (
                 "typed-kept-languages",
-                "it reads the catalogs, not the vigil.",
+                "it reads the catalogs, not the running node.",
             ),
             (
                 "typed-kept-service",
-                "it asks the service manager, not the vigil.",
+                "it asks the service manager, not the running node.",
             ),
         ] {
             let now = reason("en", key);
             assert_eq!(now, before.replace("\n\x20        ", "\n"), "{key}");
-            let said = line("busy", &format!("x is keeping the vigil here, and\n{now}"));
+            let said = line("busy", &format!("x is running here, and\n{now}"));
             assert_eq!(
                 said,
-                format!("busy     x is keeping the vigil here, and\n\x20        {before}")
+                format!("busy     x is running here, and\n\x20        {before}")
             );
         }
     }
@@ -463,22 +465,63 @@ mod tests {
     }
 
     #[test]
-    fn a_refused_line_is_read_for_its_language_base_and_directory_by_hand() {
-        let args = |line: &str| -> Vec<OsString> { line.split(' ').map(OsString::from).collect() };
-        let asked = Asked::from(&args(
-            "333 --bogus --language=ko serve --count-in twelve --data-dir /tmp/n --language es",
+    fn no_command_is_read_and_every_old_name_reads_as_the_command_it_was() {
+        let read = |line: &str| {
+            let args = line.split(' ').map(OsString::from).collect();
+            words::speaking("en", Base::Ten, || parse_from(args)).map(|cli| cli.command)
+        };
+        assert!(matches!(read("333"), Ok(None)));
+        assert!(matches!(
+            read("333 serve --plain"),
+            Ok(Some(Command::Serve { plain: true, .. }))
         ));
-        assert_eq!(
-            asked,
-            Asked {
-                language: Some("es".to_owned()),
-                count_in: Some(Base::Twelve),
-                data_dir: Some(PathBuf::from("/tmp/n")),
-            }
-        );
-        let after_the_end = Asked::from(&args("333 tell -- --language ko"));
-        assert_eq!(after_the_end, Asked::default());
-        let unfinished = Asked::from(&args("333 --count-in nine --language"));
-        assert_eq!(unfinished, Asked::default());
+        assert!(matches!(read("333 run"), Ok(Some(Command::Serve { .. }))));
+        assert!(matches!(
+            read("333 bootstrap"),
+            Ok(Some(Command::Bootstrap { .. }))
+        ));
+        assert!(matches!(
+            read("333 begin"),
+            Ok(Some(Command::Bootstrap { .. }))
+        ));
+        assert!(matches!(read("333 id"), Ok(Some(Command::Id))));
+        assert!(matches!(read("333 name"), Ok(Some(Command::Id))));
+        assert!(matches!(
+            read("333 languages"),
+            Ok(Some(Command::Languages { tag: None }))
+        ));
+        assert!(matches!(
+            read("333 language ko"),
+            Ok(Some(Command::Languages { tag: Some(_) }))
+        ));
+        assert!(matches!(
+            read("333 logs -f"),
+            Ok(Some(Command::Logs { follow: true }))
+        ));
+    }
+
+    #[test]
+    fn start_and_restart_take_the_flags_run_takes_as_they_were_typed() {
+        let read = |line: &str| {
+            let args = line.split(' ').map(OsString::from).collect();
+            words::speaking("en", Base::Ten, || parse_from(args)).map(|cli| cli.command)
+        };
+        let typed = ["--tor", "--bind", "0.0.0.0:4444", "--no-meet"].map(str::to_owned);
+        let Ok(Some(Command::Start { flags })) =
+            read("333 start --tor --bind 0.0.0.0:4444 --no-meet")
+        else {
+            panic!("start with flags");
+        };
+        assert_eq!(flags, typed);
+        let Ok(Some(Command::Restart { flags })) =
+            read("333 --data-dir /n restart --tor --bind 0.0.0.0:4444 --no-meet")
+        else {
+            panic!("restart with flags");
+        };
+        assert_eq!(flags, typed);
+        assert!(matches!(
+            read("333 start"),
+            Ok(Some(Command::Start { flags })) if flags.is_empty()
+        ));
     }
 }

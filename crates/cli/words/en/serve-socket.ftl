@@ -1,4 +1,4 @@
-### `333 serve`: the socket listener.
+### `333 run`: the socket listener.
 
 serve-socket-port-taken = Something on this machine already listens on port { $port }: another
     node, or another program. Stop it, or pass --bind with another port.

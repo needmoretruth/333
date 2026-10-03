@@ -3,7 +3,7 @@
 service-launchd-no-home = this system names no home directory for this user
 service-launchd-asking-who = asking `id -u` which user this is
 
-service-launchd-login = launchd keeps the vigil from the moment you log in until you log out,
+service-launchd-login = launchd runs the node from the moment you log in until you log out,
     and after a restart it begins again when you log in. What it says is in
     { $log }.
     .keyword = login

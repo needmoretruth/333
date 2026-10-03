@@ -9,3 +9,7 @@ help-frame-default = 기본값
 help-frame-alias = { $aliases ->
        *[other] 별칭
     }
+
+help-frame-advanced = 고급 옵션
+
+help-frame-more-commands = 그 밖의 명령

@@ -141,18 +141,7 @@ pub(crate) fn install(vigil: &Vigil) -> anyhow::Result<Receipt> {
         std::fs::write(&path, text)
             .with_context(|| words!("service-writing", path = path.display().to_string()))?;
         say(&words!("service-wrote", path = path.display().to_string()))?;
-        // An earlier install of the same agent is still loaded, and launchd refuses to
-        // load a label twice. Quietly, because there is usually nothing to unload.
-        let _ = outcome("launchctl", &["bootout", &format!("gui/{uid}/{label}")]);
-        run_aloud("launchctl", &["enable", &format!("gui/{uid}/{label}")])?;
-        run_aloud(
-            "launchctl",
-            &[
-                "bootstrap",
-                &format!("gui/{uid}"),
-                &path.display().to_string(),
-            ],
-        )?;
+        load(&uid, label, &path)?;
         wrote.push(path);
     }
     say(&words!(
@@ -165,7 +154,78 @@ pub(crate) fn install(vigil: &Vigil) -> anyhow::Result<Receipt> {
         tasks: Vec::new(),
         log: Some(log),
         linger_turned_on: false,
+        stopped: false,
+        serve: Vec::new(),
     })
+}
+
+/// Start one agent in this user's session, and have it start at every login.
+///
+/// # Errors
+/// Fails if launchd will not take it.
+fn load(uid: &str, label: &str, path: &Path) -> anyhow::Result<()> {
+    // An earlier load of the same agent may still be there, and launchd refuses to load
+    // a label twice. Quietly, because there is usually nothing to unload.
+    let _ = outcome("launchctl", &["bootout", &format!("gui/{uid}/{label}")]);
+    run_aloud("launchctl", &["enable", &format!("gui/{uid}/{label}")])?;
+    run_aloud(
+        "launchctl",
+        &[
+            "bootstrap",
+            &format!("gui/{uid}"),
+            &path.display().to_string(),
+        ],
+    )?;
+    Ok(())
+}
+
+/// Where install wrote one agent.
+fn agent_path(home: &Path, label: &str) -> PathBuf {
+    home.join("Library")
+        .join("LaunchAgents")
+        .join(format!("{label}.plist"))
+}
+
+/// Whether launchd says the node's agent is running now.
+#[must_use]
+pub(crate) fn active() -> bool {
+    home_and_uid()
+        .ok()
+        .and_then(|(_, uid)| ask("launchctl", &["print", &format!("gui/{uid}/{LABEL}")]))
+        .is_some_and(|printed| printed.lines().any(|line| line.trim() == "state = running"))
+}
+
+/// Run both agents now and at every login from now on.
+///
+/// # Errors
+/// Fails if launchd will not take one.
+pub(crate) fn resume() -> anyhow::Result<()> {
+    let (home, uid) = home_and_uid()?;
+    for label in [LABEL, CHECK_LABEL] {
+        load(&uid, label, &agent_path(&home, label))?;
+    }
+    Ok(())
+}
+
+/// Stop both agents and keep them from starting at login. The files stay.
+///
+/// # Errors
+/// Fails if launchd will not disable one.
+pub(crate) fn pause() -> anyhow::Result<()> {
+    let (_, uid) = home_and_uid()?;
+    for label in [CHECK_LABEL, LABEL] {
+        let target = format!("gui/{uid}/{label}");
+        // Not loaded is already stopped, and says nothing.
+        let _ = run_aloud("launchctl", &["bootout", &target]);
+        run_aloud("launchctl", &["disable", &target])?;
+    }
+    Ok(())
+}
+
+/// Nothing to follow: launchd keeps no lines of its own, only the log file.
+#[must_use]
+pub(crate) const fn follow() -> Option<anyhow::Result<()>> {
+    None
 }
 
 /// Stop both agents and remove what install wrote.
@@ -175,10 +235,7 @@ pub(crate) fn install(vigil: &Vigil) -> anyhow::Result<Receipt> {
 pub(crate) fn uninstall(_receipt: Option<&Receipt>) -> anyhow::Result<()> {
     let (home, uid) = home_and_uid()?;
     for label in [CHECK_LABEL, LABEL] {
-        let path = home
-            .join("Library")
-            .join("LaunchAgents")
-            .join(format!("{label}.plist"));
+        let path = agent_path(&home, label);
         if !path.exists() {
             continue;
         }
@@ -257,7 +314,7 @@ mod tests {
                         "service-launchd-login",
                         log = "/Users/a/Library/Logs/333.log"
                     ),
-                    "login    launchd keeps the vigil from the moment you log in until you log out,\n\
+                    "login    launchd runs the node from the moment you log in until you log out,\n\
                      \x20        and after a restart it begins again when you log in. What it says is in\n\
                      \x20        /Users/a/Library/Logs/333.log.",
                 ),

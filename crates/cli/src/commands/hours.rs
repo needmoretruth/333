@@ -246,7 +246,7 @@ mod tests {
             [
                 (
                     words!("hours-failed-marking", why = "disk full"),
-                    "failed   marking this epoch as kept: disk full".to_owned(),
+                    "failed   recording this epoch: disk full".to_owned(),
                 ),
                 (
                     words!("hours-failed-sources", why = "disk full"),

@@ -188,13 +188,13 @@ mod tests {
             [
                 (
                     words!("service-awake-failed", root = "/n", why = "disk full"),
-                    "failed   writing that the vigil is awake, in /n: disk full. Nothing on this\n\
-                     \x20        machine can tell that it is being kept until that works again.",
+                    "failed   writing that the node is awake, in /n: disk full. Nothing on this\n\
+                     \x20        machine can tell that it is running until that works again.",
                 ),
                 (
                     not_kept(None, true, 1_790_046_600).unwrap(),
-                    "vigil    not kept. The service is installed and has never said it was awake.\n\
-                     \x20        `333 service status` says why.",
+                    "node     not running. The service is installed and the node has never said it\n\
+                     \x20        was awake. `333 service status` says why.",
                 ),
             ]
         });
@@ -257,8 +257,7 @@ mod tests {
         let line = not_kept(Some(last), true, last + 12 * EPOCH_SECONDS + 5).unwrap();
         assert_eq!(
             line,
-            "vigil    not kept since 2026-09-22T03:10:00Z, 12 epochs ago. \
-             `333 service status` says why."
+            "node     not running since 2026-09-22T03:10:00Z, 12 epochs ago. `333 service status` says why."
         );
     }
 

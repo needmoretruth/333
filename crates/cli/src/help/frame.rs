@@ -38,11 +38,12 @@ pub(super) fn usage() -> String {
 }
 
 /// One flag or argument, in words: its heading, and what clap would add after it.
+/// A flag that already has a heading of its own keeps it.
 pub(super) fn arg(arg: Arg, styles: &Styles) -> Arg {
-    let heading = if arg.is_positional() {
-        said("help-frame-arguments")
-    } else {
-        said("help-frame-options")
+    let heading = match arg.get_help_heading() {
+        Some(own) => own.to_owned(),
+        None if arg.is_positional() => said("help-frame-arguments"),
+        None => said("help-frame-options"),
     };
     let specs = specs(&arg, styles);
     let arg = arg.help_heading(heading);

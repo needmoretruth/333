@@ -28,6 +28,13 @@ pub(crate) struct Receipt {
     pub(crate) log: Option<PathBuf>,
     /// Whether install turned systemd's linger on for this user.
     pub(crate) linger_turned_on: bool,
+    /// Whether `333 stop` stopped it on purpose, so that nothing says it is not running
+    /// as though that were news.
+    pub(crate) stopped: bool,
+    /// What the service runs after the program's name, one argument a line, so that
+    /// `333 start` with flags can tell whether they are what is already installed.
+    /// Empty for a receipt written before it was kept, which is never what was asked.
+    pub(crate) serve: Vec<String>,
 }
 
 /// Where the receipt lives for this user, if the system has a configuration directory.
@@ -57,6 +64,28 @@ pub(crate) fn keeps(root: &Path) -> bool {
     read().is_some_and(|receipt| same_directory(&receipt.node, root))
 }
 
+/// Whether a service keeps this node directory and is meant to be running: installed,
+/// and not stopped on purpose.
+#[must_use]
+pub(crate) fn expects(root: &Path) -> bool {
+    read().is_some_and(|receipt| same_directory(&receipt.node, root) && !receipt.stopped)
+}
+
+/// Write this user's receipt.
+///
+/// # Errors
+/// Fails if the system names no configuration directory, or the file cannot be written.
+pub(crate) fn write(receipt: &Receipt) -> anyhow::Result<PathBuf> {
+    let Some(path) = path() else {
+        anyhow::bail!(words!("service-no-receipt-directory"));
+    };
+    if let Some(dir) = path.parent() {
+        std::fs::create_dir_all(dir)?;
+    }
+    std::fs::write(&path, receipt.to_text())?;
+    Ok(path)
+}
+
 /// Two ways of naming a directory, compared as the directory they name.
 fn same_directory(one: &Path, other: &Path) -> bool {
     let absolute = |path: &Path| std::path::absolute(path).unwrap_or_else(|_| path.to_path_buf());
@@ -83,6 +112,12 @@ impl Receipt {
         if self.linger_turned_on {
             text.push_str("linger turned on\n");
         }
+        if self.stopped {
+            text.push_str("stopped on purpose\n");
+        }
+        for arg in &self.serve {
+            text.push_str(&format!("serve {arg}\n"));
+        }
         text
     }
 
@@ -104,6 +139,8 @@ impl Receipt {
                 "task" => receipt.tasks.push(value.to_owned()),
                 "log" => receipt.log = Some(PathBuf::from(value)),
                 "linger" => receipt.linger_turned_on = value == "turned on",
+                "stopped" => receipt.stopped = value == "on purpose",
+                "serve" => receipt.serve.push(value.to_owned()),
                 _ => {}
             }
         }
@@ -126,8 +163,24 @@ mod tests {
             tasks: vec!["333 vigil".to_owned(), "333 check".to_owned()],
             log: Some(PathBuf::from("/home/someone/Library/Logs/333.log")),
             linger_turned_on: true,
+            stopped: true,
+            serve: vec![
+                "--data-dir".to_owned(),
+                "/home/some one/333".to_owned(),
+                "--bridge".to_owned(),
+                "obfs4 192.0.2.1:443 cert=x".to_owned(),
+                "serve".to_owned(),
+                "--plain".to_owned(),
+            ],
         };
         assert_eq!(Receipt::from_text(&receipt.to_text()), Some(receipt));
+    }
+
+    #[test]
+    fn a_service_stopped_on_purpose_reads_back_as_stopped_and_an_old_receipt_as_not() {
+        let stopped = Receipt::from_text("node /x\nstopped on purpose\n").unwrap();
+        assert!(stopped.stopped);
+        assert!(!Receipt::from_text("node /x\n").unwrap().stopped);
     }
 
     #[test]

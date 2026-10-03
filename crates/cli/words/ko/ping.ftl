@@ -4,9 +4,9 @@ ping-name = { $name }
     .keyword = 이름
 
 ping-knocking = { $address }
-    .keyword = 노크
+    .keyword = 연결
 
-ping-writing-who-answered = 답한 이 기록
-ping-knocking-on = { $address }에 노크
-ping-unfinished = { $address } 쪽이 연결을 받고도 { $seconds }초 안에 교환을 끝내지 않았습니다
+ping-writing-who-answered = 답한 노드 기록
+ping-knocking-on = { $address }에 연결
+ping-unfinished = { $address }이(가) 연결을 받고 { $seconds }초 안에 교환을 끝내지 않았습니다
 ping-exchanging = 하트비트 교환

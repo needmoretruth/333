@@ -1,15 +1,15 @@
 ### 말과 진법을 고르면서, 시작할 때 한 번 하는 말.
 
-words-broken = { $file }의 일부를 읽지 못했습니다({ $line }번째 줄). 그 부분은
-    영어로 말합니다.
+words-broken = { $file }의 { $line }번째 줄을 읽지 못했습니다. 그 부분은 영어로
+    나옵니다.
     .keyword = 말
 
-words-unreadable = { $file }을(를) 읽지 못했습니다: { $why }. 그 파일의 말은
-    영어로 합니다.
+words-unreadable = { $file }을(를) 읽지 못했습니다: { $why }. 그 파일의 문구는
+    영어로 나옵니다.
     .keyword = 말
 
-words-no-catalog = { $tag }로 된 말이 여기 없어서 전부 영어로 말합니다.
-    `333 languages`가 있는 언어를 보여 줍니다.
+words-no-catalog = { $tag } 문구가 없어서 영어로 나옵니다. 있는 언어는
+    `333 language`가 보여 줍니다.
     .keyword = 언어
 
 words-counting-in-twelve = 십이진법으로 셉니다. 열은 { $ten }, 열하나는 { $eleven }, 열둘은 10으로 씁니다.

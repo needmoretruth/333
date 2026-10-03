@@ -8,7 +8,7 @@ words-unreadable = { $file } could not be read: { $why }. What it says is said i
     .keyword = words
 
 words-no-catalog = there are no words for { $tag } here, so everything is said in English.
-    `333 languages` lists the languages there are.
+    `333 language` lists the languages there are.
     .keyword = language
 
 words-counting-in-twelve = in twelve. { $ten } is ten, { $eleven } is eleven, and 10 is twelve.

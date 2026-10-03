@@ -3,6 +3,6 @@
 serve-neighbours-found = { $address }에 우리 중 하나가 있습니다
     .keyword = 이웃
 
-serve-neighbours-join = `333 join 333:{ $address }`로 그들에게 파일을 청합니다.
-    여기서 대신 해 주는 것은 없습니다.
+serve-neighbours-join = 그 노드에게 파일을 받으려면 `333 join 333:{ $address }`를
+    실행하십시오. 저절로 받지는 않습니다.
     .keyword = {""}

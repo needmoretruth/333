@@ -2,5 +2,5 @@
 ### 붙은 이름이라 옮기지 않습니다.
 
 version-long = { $version } ({ $edition }, { $tor }, { $target })
-version-tor = 토르 있음
-version-no-tor = 토르 없음
+version-tor = Tor 포함
+version-no-tor = Tor 없음

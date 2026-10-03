@@ -218,7 +218,7 @@ fn a_second_vigil_on_one_directory_is_refused_and_touches_nothing() {
     assert!(!started, "{out}");
     assert!(
         out.contains(&format!(
-            "(process {}) is already keeping the vigil here",
+            "(process {}) is already running here",
             vigil.child.id()
         )),
         "{out}"
@@ -232,7 +232,7 @@ fn telling_a_directory_nobody_is_keeping_is_refused() {
     let (told, out) = client(&home, &["tell", "tor", "on"]);
     assert!(!told);
     assert!(
-        out.starts_with("unheard  nobody is keeping the vigil"),
+        out.starts_with("unheard  no node is running in this directory"),
         "{out}"
     );
     let _ = std::fs::remove_dir_all(&home);
@@ -260,7 +260,7 @@ fn status_takes_its_flags_beside_a_vigil_and_pack_is_refused_there() {
     let file = std::env::temp_dir().join(format!("n333-told-packed-{}.333", std::process::id()));
     let (packed, out) = client(&vigil.home, &["pack", file.to_str().expect("a path")]);
     assert!(!packed, "{out}");
-    assert!(out.contains("is keeping the vigil here"), "{out}");
+    assert!(out.contains("is running here"), "{out}");
     assert!(!file.exists(), "nothing was written");
     assert!(
         !vigil.home.join("packed").exists(),

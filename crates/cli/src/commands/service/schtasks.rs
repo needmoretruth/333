@@ -257,6 +257,8 @@ pub(crate) fn install(vigil: &Vigil) -> anyhow::Result<Receipt> {
         tasks: tasks.iter().map(|(name, _)| (*name).to_owned()).collect(),
         log: Some(log),
         linger_turned_on: false,
+        stopped: false,
+        serve: Vec::new(),
     })
 }
 
@@ -278,14 +280,56 @@ pub(crate) fn uninstall(_receipt: Option<&Receipt>) -> anyhow::Result<()> {
     Ok(())
 }
 
+/// The node's task's state, as Task Scheduler names it, if there is such a task.
+fn task_state() -> Option<String> {
+    let asked = format!("(Get-ScheduledTask -TaskName '{VIGIL_TASK}' -ErrorAction Stop).State");
+    ask(
+        "powershell",
+        &["-NoProfile", "-NonInteractive", "-Command", &asked],
+    )
+}
+
+/// Whether the node's task is running now.
+#[must_use]
+pub(crate) fn active() -> bool {
+    task_state().is_some_and(|state| state.trim() == "Running")
+}
+
+/// Run the node's task now and at every logon from now on, and the check with it.
+///
+/// # Errors
+/// Fails if Task Scheduler will not enable or run them.
+pub(crate) fn resume() -> anyhow::Result<()> {
+    for name in [VIGIL_TASK, CHECK_TASK] {
+        run_aloud("schtasks", &["/Change", "/TN", name, "/ENABLE"])?;
+    }
+    run_aloud("schtasks", &["/Run", "/TN", VIGIL_TASK])?;
+    Ok(())
+}
+
+/// End the node's task and keep both tasks from starting at logon. The tasks stay.
+///
+/// # Errors
+/// Fails if Task Scheduler will not disable one.
+pub(crate) fn pause() -> anyhow::Result<()> {
+    // A task that is not running is already ended, and says nothing.
+    let _ = run_aloud("schtasks", &["/End", "/TN", VIGIL_TASK]);
+    for name in [CHECK_TASK, VIGIL_TASK] {
+        run_aloud("schtasks", &["/Change", "/TN", name, "/DISABLE"])?;
+    }
+    Ok(())
+}
+
+/// Nothing to follow: Task Scheduler keeps no lines of its own, only the log file.
+#[must_use]
+pub(crate) const fn follow() -> Option<anyhow::Result<()>> {
+    None
+}
+
 /// What Task Scheduler says of the vigil, and the last lines of its log.
 #[must_use]
 pub(crate) fn status(receipt: Option<&Receipt>) -> Seen {
-    let asked = format!("(Get-ScheduledTask -TaskName '{VIGIL_TASK}' -ErrorAction Stop).State");
-    let state = ask(
-        "powershell",
-        &["-NoProfile", "-NonInteractive", "-Command", &asked],
-    );
+    let state = task_state();
     Seen {
         state: state.map_or_else(
             || words!("service-not-installed"),
@@ -327,9 +371,9 @@ mod tests {
                 ),
                 (
                     words!("service-schtasks-logon", log = r"C:\node\vigil.log"),
-                    "logon    Windows keeps the vigil while you are logged in, from the moment you log\n\
-                     \x20        in. A service kept from boot would run as an account of its own, and a\n\
-                     \x20        node lives in your own directory, where that account has no business.\n\
+                    "logon    Windows runs the node while you are logged in, from the moment you log\n\
+                     \x20        in. A service run from boot would need an account of its own, and a\n\
+                     \x20        node lives in your own directory.\n\
                      \x20        What it says is in C:\\node\\vigil.log.",
                 ),
                 (in_words("Running"), "running"),

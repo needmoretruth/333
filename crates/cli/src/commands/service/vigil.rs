@@ -91,7 +91,7 @@ pub(crate) fn write(cli: crate::Cli, exe: PathBuf) -> anyhow::Result<Vigil> {
         count_in,
         command,
     } = cli;
-    let crate::Command::Serve {
+    let Some(crate::Command::Serve {
         bind,
         tor,
         no_direct,
@@ -101,7 +101,7 @@ pub(crate) fn write(cli: crate::Cli, exe: PathBuf) -> anyhow::Result<Vigil> {
         meet,
         no_meet,
         plain: _,
-    } = command
+    }) = command
     else {
         bail!(words!("service-vigil-only-serve-flags"));
     };
@@ -114,7 +114,7 @@ pub(crate) fn write(cli: crate::Cli, exe: PathBuf) -> anyhow::Result<Vigil> {
     if trust {
         shared.push("--dangerously-trust-directory-permissions".to_owned());
     }
-    shared.extend(spoken(language, count_in));
+    shared.extend(spoken(language, count_in, crate::words::saved::read(&node)));
     let mut check = shared.clone();
     check.extend(["service", "check"].map(str::to_owned));
 
@@ -170,15 +170,18 @@ pub(crate) fn write(cli: crate::Cli, exe: PathBuf) -> anyhow::Result<Vigil> {
 /// The language and the base the service speaks in: the ones given after `install`,
 /// or else the ones this run speaks in, however it came to them.
 ///
-/// Written out as flags, because a service manager starts the vigil without the
-/// installing shell's environment or locale, and it would otherwise speak English in
-/// ten to a person who reads neither. Nothing is written for English, or for ten.
-fn spoken(language: Option<String>, count_in: Option<Base>) -> Vec<String> {
+/// Written out as flags, because a service manager starts the node without the
+/// installing shell's environment, and it would otherwise speak English in ten to a
+/// person who reads neither. Nothing is written for English, or for ten, or for the
+/// language `saved` for the node: the node reads that itself, and a flag would go on
+/// speaking it after `333 language` changed it.
+fn spoken(language: Option<String>, count_in: Option<Base>, saved: Option<String>) -> Vec<String> {
     let now = crate::words::current();
     let language = language.unwrap_or_else(|| now.tag().to_owned());
     let base = count_in.unwrap_or_else(|| now.base());
     let mut flags = Vec::new();
-    if !language.eq_ignore_ascii_case(crate::words::catalog::ENGLISH) {
+    let read_by_the_node = saved.is_some_and(|saved| saved.eq_ignore_ascii_case(&language));
+    if !language.eq_ignore_ascii_case(crate::words::catalog::ENGLISH) && !read_by_the_node {
         flags.extend(["--language".to_owned(), language]);
     }
     if base != Base::Ten {
@@ -202,7 +205,7 @@ mod tests {
             [
                 (
                     words!("service-vigil-only-serve-flags"),
-                    "only the flags `serve` takes can be given to `service install`",
+                    "only the flags `run` takes can be given to `service install` or `start`",
                 ),
                 (
                     words!("service-vigil-line-break"),
@@ -294,7 +297,7 @@ mod tests {
 
     #[test]
     fn a_service_speaks_the_language_and_the_base_it_was_installed_in() {
-        // What this run speaks, by the flag, the variable or the locale, is written out:
+        // What this run speaks, by the flag or the variable, is written out:
         // the service manager starts the vigil with none of them.
         let installed =
             crate::words::speaking("ko", Base::Twelve, || vigil(&common("/srv/node", &[]), &[]));
@@ -319,6 +322,18 @@ mod tests {
             given.serve[..4],
             ["--data-dir", &srv(), "--count-in", "twelve-ascii"]
         );
+    }
+
+    #[test]
+    fn a_language_saved_for_the_node_is_left_for_the_node_to_read() {
+        let flags = crate::words::speaking("ko", Base::Ten, || {
+            [
+                spoken(None, None, Some("ko".to_owned())),
+                spoken(None, None, Some("es".to_owned())),
+            ]
+        });
+        assert!(flags[0].is_empty(), "{flags:?}");
+        assert_eq!(flags[1], ["--language", "ko"]);
     }
 
     #[test]

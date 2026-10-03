@@ -180,7 +180,7 @@ mod tests {
             said,
             [
                 "name     333abc".to_owned(),
-                "vigil    run `333 serve` to answer.".to_owned(),
+                "node     `333 start` runs it, so that it answers.".to_owned(),
                 stop("1 of us is"),
                 stop("4 of us are"),
                 "begun    the file is in this node's directory and this node is the start of its\n\

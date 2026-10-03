@@ -47,7 +47,7 @@ pack-carrying = this node, into { $file }.
     It is readable by you alone, as this directory is.
     .keyword = carrying
 
-pack-packed = { $bytes } bytes: the files as they are, and half a kilobyte for each.
+pack-packed = { $bytes } bytes.
     nothing in { $root } will act as this node again.
     .keyword = packed
 

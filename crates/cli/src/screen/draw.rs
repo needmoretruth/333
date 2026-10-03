@@ -268,14 +268,10 @@ mod tests {
             watching[0]
         );
         assert!(watching[0].ends_with(" to the boundary"), "{}", watching[0]);
-        assert_eq!(
-            watching[18],
-            " no one has ever answered this node, which is what a node looks like before it has been anywhere"
-        );
+        assert_eq!(watching[18], " no one has answered this node yet");
         assert_eq!(
             watching[19],
-            " q  leave the vigil    s  say one of the 333    :  everything else    ?  \
-             all the keys   this node has not been given the file"
+            " q  stop the node    s  say one of the 333    :  everything else    ?  all the keys   this node has not been given the file"
         );
         assert_eq!(
             rows(Saying::Which(typed("4", None)))[19],
@@ -338,9 +334,9 @@ mod tests {
         assert!(at(130).ends_with("given the file"), "{}", at(130));
         assert_eq!(
             at(100),
-            " q  leave the vigil    s  say one of the 333    :  everything else    ?  all the keys"
+            " q  stop the node    s  say one of the 333    :  everything else    ?  all the keys"
         );
-        assert_eq!(at(48), " q  leave   s  say   :  more   ?  keys");
+        assert_eq!(at(48), " q  stop   s  say   :  more   ?  keys");
         assert_eq!(at(20), " q   s   :   ?");
     }
 
@@ -464,7 +460,7 @@ mod tests {
         assert!(rows[0].ends_with("to the boundary"), "{}", rows[0]);
         assert_eq!(rows[1], " ANSWERING 3   silent 2   roll 5");
         assert_eq!(rows[2], " on nobody's roll.");
-        assert!(rows[3].contains("the vigil"), "{}", rows[3]);
+        assert!(rows[3].contains("log · times in UTC"), "{}", rows[3]);
     }
 
     #[test]

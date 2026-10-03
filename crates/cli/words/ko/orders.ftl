@@ -11,4 +11,4 @@ orders-wants-signal = 333 가운데 몇 번
 orders-wants-on-or-off = on 또는 off
 orders-wants-bridge-line = 브리지 줄
 orders-wants-program = 프로그램 이름이나 경로
-orders-wants-status-word = 없음, --sources, --json 가운데 하나
+orders-wants-status-word = 없음, --all, --sources, --json 가운데 하나

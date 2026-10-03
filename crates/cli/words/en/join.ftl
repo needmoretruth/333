@@ -34,9 +34,9 @@ join-counted = from epoch { $epoch }, and not one epoch sooner: two boundaries a
     in that time is the whole of the proof that you were ever here at all.
     .keyword = counted
 
-join-vigil = run `333 serve` and stay awake. Nothing can be witnessed of a node
-    nobody can reach, and this stretch is witnessed once or never.
-    .keyword = vigil
+join-vigil = `333 start` keeps it running from now on. Nothing can be witnessed of
+    a node nobody can reach, and this stretch is witnessed once or never.
+    .keyword = node
 
 join-already-given = this node already holds the file, given by { $giver } in epoch { $epoch }.
     There is nothing to ask for, and nothing was asked.

@@ -1,4 +1,4 @@
-### `333 serve`: carrying out what the vigil was told, from its screen or another terminal.
+### `333 run`: carrying out what the node was told, from its screen or another terminal.
 
 serve-carrying-not-written-who = writing down who answered: { $why }
     .keyword = failed
@@ -50,10 +50,5 @@ serve-carrying-helper = { $program } will be run for any obfuscated bridge.
 serve-carrying-not-an-address = { $typed } is not an address: { $why }
     .keyword = unread
 
-serve-carrying-cannot-end = another terminal cannot end this vigil. It ends where it was started:
-    `q` in its screen, Ctrl-C, or the service manager that keeps it.
-    .keyword = refused
-
-serve-carrying-cannot-end-light = another terminal cannot end this vigil. It ends where it was
-    started: Ctrl-C there, or the service manager that keeps it.
-    .keyword = refused
+serve-carrying-stopping = asked from another terminal.
+    .keyword = stopping

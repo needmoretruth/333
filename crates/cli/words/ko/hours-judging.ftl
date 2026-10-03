@@ -13,11 +13,11 @@ hours-judging-record = { $answered }
     .keyword = 기록
 
 hours-judging-present = 출석. 다시 판정하지 않습니다.
-hours-judging-absent = 결석. 당신에게 묻도록 뽑힌 모두가 아무 답도 없었다고
-    맹세했습니다. 다시 판정하지 않습니다.
-hours-judging-none-drawn = 셈 밖. 당신에게 묻도록 뽑힌 이가 없었고, 당신에게 아무것도
-    묻지 않은 에포크는 당신에게서 아무것도 가져가지 않습니다.
-hours-judging-receipt-withdrew = 셈 밖. 당신은 질문과 그에 준 답을 간직했고, 그것은
-    출석을 얻지는 않지만 고발을 거둡니다.
-hours-judging-not-all-spoke = 셈 밖. 뽑힌 이 중 일부가 아무 말도 하지 않았고, 침묵은
-    동의가 아닙니다.
+hours-judging-absent = 결석. 이 노드에게 물은 모두가 답이 없었다고 서명했습니다.
+    다시 판정하지 않습니다.
+hours-judging-none-drawn = 셈 밖. 이 노드에게 묻도록 뽑힌 노드가 없었습니다. 묻지 않은
+    에포크는 출석에도 결석에도 들지 않습니다.
+hours-judging-receipt-withdrew = 셈 밖. 이 노드가 받은 질문과 보낸 답을 가지고 있어서 결석은
+    아닙니다. 출석으로도 세지 않습니다.
+hours-judging-not-all-spoke = 셈 밖. 뽑힌 노드 중 일부가 아무 말도 하지 않았습니다. 말하지
+    않은 노드는 결석에 동의한 것이 아닙니다.

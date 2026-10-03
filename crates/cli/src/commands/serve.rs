@@ -1,4 +1,4 @@
-//! `333 serve` — keep the vigil: answer heartbeats and challenges until interrupted.
+//! `333 run` (once `333 serve`) — answer heartbeats and challenges until stopped.
 //!
 //! By default this opens a socket and nothing else: no Tor, no bootstrap, no wait.
 //! A socket only answers strangers if the router in front of it was told to send the
@@ -209,6 +209,7 @@ pub(crate) async fn run(common: &Common, how: Vigil) -> anyhow::Result<()> {
     // not end with it.
     let (tell, told) = tokio::sync::mpsc::unbounded_channel();
     let _taking_orders = told::listen(common.paths.root(), tell);
+    let asked_to_stop = Arc::new(tokio::sync::Notify::new());
     tokio::spawn(carrying::until_nobody_asks(
         orders,
         told,
@@ -218,6 +219,7 @@ pub(crate) async fn run(common: &Common, how: Vigil) -> anyhow::Result<()> {
             dialer: order_dialer,
             found_address,
             unseen: std::sync::Mutex::new(None),
+            ending: Arc::clone(&asked_to_stop),
         },
     ));
 
@@ -241,6 +243,8 @@ pub(crate) async fn run(common: &Common, how: Vigil) -> anyhow::Result<()> {
         // Ctrl-C, a service manager stopping it, a terminal closing under it: one
         // ending, however it was asked for.
         () = ending::asked() => true,
+        // `333 stop` from another terminal, through the socket.
+        () = asked_to_stop.notified() => true,
     };
     // A screen still drawing when the vigil was asked to end from outside is stopped
     // first and the terminal given back, so that what follows is printed on a terminal
@@ -611,7 +615,7 @@ mod tests {
         });
         assert_eq!(
             said,
-            "vigil    ended in epoch 89612. Whoever is drawn to ask for you while this\n\
+            "node     ended in epoch 89612. Whoever is drawn to ask for you while this\n\
              \x20        is not running signs that they asked and heard nothing, and\n\
              \x20        that is what your window reads. It is 333 epochs long, and it\n\
              \x20        moves."
@@ -627,7 +631,7 @@ mod tests {
         });
         assert_eq!(
             said,
-            "vigil    ended in epoch 89612. You are on nobody's roll, so nobody goes out\n\
+            "node     ended in epoch 89612. You are on nobody's roll, so nobody goes out\n\
              \x20        to ask for you, and nothing is signed about you while this is not\n\
              \x20        running."
         );

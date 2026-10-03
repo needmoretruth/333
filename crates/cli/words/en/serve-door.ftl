@@ -1,4 +1,4 @@
-### `333 serve`: the door, who gets in and who is turned away.
+### `333 run`: the door, who gets in and who is turned away.
 
 serve-door-over-tor = over tor
 

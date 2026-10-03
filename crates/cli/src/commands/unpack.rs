@@ -99,6 +99,11 @@ pub(crate) async fn run(common: &Common, file: &Path) -> anyhow::Result<ExitCode
     Ok(ExitCode::SUCCESS)
 }
 
+/// What may be in an empty destination without making it somebody's node: the lock
+/// this process takes on it, and the language `333 language` saved there, which is
+/// carried into the unpacked node rather than left behind.
+const NOT_A_NODE: [&str; 2] = [claim::LOCK_FILE, crate::words::saved::FILE];
+
 /// Refuse, naming what would be lost, if a node already lives in `target`.
 fn refuse_if_occupied(common: &Common, target: &Path, file: &Path) -> anyhow::Result<()> {
     let elsewhere = words!("unpack-elsewhere", file = file.display().to_string());
@@ -130,10 +135,11 @@ fn refuse_if_occupied(common: &Common, target: &Path, file: &Path) -> anyhow::Re
             elsewhere = &elsewhere
         ));
     }
-    // The lock this process took on it is not something somebody else left there.
+    // The lock this process took on it is not something somebody else left there, and
+    // a language saved before there was a node is not a node.
     let holds_anything = std::fs::read_dir(target).is_ok_and(|dir| {
         dir.flatten()
-            .any(|entry| entry.file_name() != claim::LOCK_FILE)
+            .any(|entry| !NOT_A_NODE.iter().any(|file| entry.file_name() == *file))
     });
     if holds_anything {
         bail!(words!(
@@ -212,8 +218,16 @@ impl Staging {
     /// Rename it into place, in one step.
     fn put_in_place(mut self) -> anyhow::Result<()> {
         // Only ever an empty directory by now, but for the lock this process took on
-        // it: `refuse_if_occupied` said so, and `remove_dir` removes nothing that is not.
+        // it and a saved language: `refuse_if_occupied` said so, and `remove_dir`
+        // removes nothing that is not. The language goes with the node; the lock goes.
         if self.target.exists() {
+            let language = crate::words::saved::FILE;
+            match std::fs::rename(self.target.join(language), self.path.join(language)) {
+                Err(e) if e.kind() != std::io::ErrorKind::NotFound => {
+                    return Err(e).with_context(|| self.making_room());
+                }
+                _ => {}
+            }
             match std::fs::remove_file(self.target.join(claim::LOCK_FILE)) {
                 Err(e) if e.kind() != std::io::ErrorKind::NotFound => {
                     return Err(e).with_context(|| self.making_room());
@@ -538,6 +552,30 @@ mod tests {
         .expect("the source refuses")
         .to_string();
         assert!(refused.contains("packed for moving"), "{refused}");
+        for dir in [&from, &to] {
+            let _ = std::fs::remove_dir_all(dir);
+        }
+        let _ = std::fs::remove_file(&file);
+    }
+
+    #[tokio::test]
+    async fn a_language_saved_where_no_node_lives_yet_is_kept_and_does_not_refuse_it() {
+        let (from, to, file) = (
+            scratch("lang-from"),
+            scratch("lang-to"),
+            scratch("lang.333"),
+        );
+        let (name, _) = a_node_with_a_record(&from).await;
+        crate::commands::pack::run(&common(&from), Some(&file), false).expect("packs");
+        std::fs::create_dir_all(&to).expect("makes");
+        std::fs::write(to.join(crate::words::saved::FILE), "ko\n").expect("saves");
+
+        run(&common(&to), &file).await.expect("unpacks");
+        let identity = crate::identity_file::load(&common(&to).mistrust(), &to)
+            .expect("reads")
+            .expect("is there");
+        assert_eq!(identity.node_id().to_string(), name);
+        assert_eq!(crate::words::saved::read(&to).as_deref(), Some("ko"));
         for dir in [&from, &to] {
             let _ = std::fs::remove_dir_all(dir);
         }

@@ -10,3 +10,7 @@ help-frame-alias = { $aliases ->
         [one] alias
        *[other] aliases
     }
+
+help-frame-advanced = Advanced
+
+help-frame-more-commands = More commands

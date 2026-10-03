@@ -1,9 +1,12 @@
 //! Which language to speak and which base to count in, chosen once at the start.
 //!
-//! The language: `--language`, then `THE333_LANGUAGE`, then the system's own locale
-//! (`LC_ALL`, `LC_MESSAGES`, `LANG`, the order POSIX gives them), then English. The
-//! first two are a person asking by name; the locale is the system guessing for them,
-//! and a guess that finds no words is not worth a line every time the client starts.
+//! The language: `--language`, then `THE333_LANGUAGE`, then the one saved with
+//! `333 language <TAG>` in the node's directory, then English. Each of the first three
+//! is a person asking by name. The system's locale is not asked: a machine set up in
+//! one language is often used by somebody who reads another, and a client that changed
+//! its words because of a setting nobody made for it was the wrong default. The locale
+//! is still read for the one thing it does describe, whether the terminal can show
+//! more than ASCII.
 //!
 //! A tag is matched the way RFC 4647 looks one up: `ko-KR` is tried as itself, then as
 //! `ko`. Any tag can be asked for. The ones that exist are whatever folders there are.
@@ -15,47 +18,27 @@ use super::count::Base;
 pub(crate) struct Asked {
     /// The tag, as asked for.
     pub(crate) tag: String,
-    /// Whether a person named it, rather than the system's locale.
+    /// Whether a person named it, rather than English being taken for want of one.
     pub(crate) by_name: bool,
 }
 
 /// What the environment says, one variable at a time. Empty is not set.
 pub(crate) type Environment<'a> = &'a dyn Fn(&str) -> Option<String>;
 
-/// The language asked for, by the flag, the variable or the locale.
+/// The language asked for, by the flag, the variable or the saved choice.
 #[must_use]
-pub(crate) fn asked(flag: Option<&str>, env: Environment<'_>) -> Asked {
-    let named = flag
-        .map(str::to_owned)
-        .filter(|tag| !tag.trim().is_empty())
-        .or_else(|| env("THE333_LANGUAGE"));
-    if let Some(tag) = named {
-        return Asked {
-            tag: tag.trim().to_owned(),
-            by_name: true,
-        };
-    }
-    let tag = ["LC_ALL", "LC_MESSAGES", "LANG"]
+pub(crate) fn asked(flag: Option<&str>, env: Environment<'_>, saved: Option<String>) -> Asked {
+    let named = [flag.map(str::to_owned), env("THE333_LANGUAGE"), saved]
         .into_iter()
-        .find_map(env)
-        .and_then(|locale| from_locale(&locale))
-        .unwrap_or_else(|| super::catalog::ENGLISH.to_owned());
-    Asked {
-        tag,
-        by_name: false,
-    }
-}
-
-/// A POSIX locale name as a language tag: `ko_KR.UTF-8` is `ko-KR`.
-///
-/// `C` and `POSIX` are the locale that means no locale, which is English.
-#[must_use]
-pub(crate) fn from_locale(locale: &str) -> Option<String> {
-    let bare = locale.split(['.', '@']).next().unwrap_or_default().trim();
-    match bare {
-        "" => None,
-        "C" | "POSIX" => Some(super::catalog::ENGLISH.to_owned()),
-        tag => Some(tag.replace('_', "-")),
+        .flatten()
+        .map(|tag| tag.trim().to_owned())
+        .find(|tag| !tag.is_empty());
+    match named {
+        Some(tag) => Asked { tag, by_name: true },
+        None => Asked {
+            tag: super::catalog::ENGLISH.to_owned(),
+            by_name: false,
+        },
     }
 }
 
@@ -118,28 +101,25 @@ mod tests {
     }
 
     #[test]
-    fn the_flag_comes_before_the_variable_and_the_variable_before_the_locale() {
-        let env = with(&[("THE333_LANGUAGE", "es"), ("LANG", "ko_KR.UTF-8")]);
-        assert_eq!(asked(Some("jbo"), &env).tag, "jbo");
-        assert_eq!(asked(None, &env).tag, "es");
-        let env = with(&[("LANG", "ko_KR.UTF-8")]);
-        let from_the_system = asked(None, &env);
-        assert_eq!(from_the_system.tag, "ko-KR");
-        assert!(!from_the_system.by_name);
+    fn the_flag_comes_before_the_variable_and_the_variable_before_the_saved_choice() {
+        let env = with(&[("THE333_LANGUAGE", "es")]);
+        let saved = || Some("ko".to_owned());
+        assert_eq!(asked(Some("jbo"), &env, saved()).tag, "jbo");
+        assert_eq!(asked(None, &env, saved()).tag, "es");
+        let from_the_file = asked(None, &with(&[]), saved());
+        assert_eq!(from_the_file.tag, "ko");
+        assert!(from_the_file.by_name);
+        assert_eq!(asked(Some(" "), &with(&[]), None).tag, "en");
     }
 
     #[test]
-    fn lc_all_wins_over_lang_even_when_it_says_c() {
-        let env = with(&[("LC_ALL", "C"), ("LANG", "ko_KR.UTF-8")]);
-        assert_eq!(asked(None, &env).tag, "en");
-        assert_eq!(asked(None, &with(&[])).tag, "en");
-    }
-
-    #[test]
-    fn a_locale_name_becomes_a_tag() {
-        assert_eq!(from_locale("ko_KR.UTF-8").as_deref(), Some("ko-KR"));
-        assert_eq!(from_locale("sr_RS@latin").as_deref(), Some("sr-RS"));
-        assert_eq!(from_locale("POSIX").as_deref(), Some("en"));
+    fn the_system_locale_never_chooses_the_language() {
+        for locale in ["LC_ALL", "LC_MESSAGES", "LANG"] {
+            let env = |name: &str| (name == locale).then(|| "ko_KR.UTF-8".to_owned());
+            let asked = asked(None, &env, None);
+            assert_eq!(asked.tag, "en", "{locale}");
+            assert!(!asked.by_name, "{locale}");
+        }
     }
 
     #[test]

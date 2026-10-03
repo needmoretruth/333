@@ -69,7 +69,7 @@ fn stopped_by(signal: &str) -> (std::process::ExitStatus, String, bool) {
 fn sigterm_ends_the_vigil_as_ctrl_c_does() {
     let (ended, said, left) = stopped_by("TERM");
     assert!(ended.success(), "{ended}:\n{said}");
-    assert!(said.contains("vigil    ended in epoch"), "{said}");
+    assert!(said.contains("node     ended in epoch"), "{said}");
     assert!(!left, "control.sock was left behind");
 }
 
@@ -77,6 +77,6 @@ fn sigterm_ends_the_vigil_as_ctrl_c_does() {
 fn sighup_ends_the_vigil_as_ctrl_c_does() {
     let (ended, said, left) = stopped_by("HUP");
     assert!(ended.success(), "{ended}:\n{said}");
-    assert!(said.contains("vigil    ended in epoch"), "{said}");
+    assert!(said.contains("node     ended in epoch"), "{said}");
     assert!(!left, "control.sock was left behind");
 }

@@ -1,4 +1,4 @@
-### `333 serve`: greeting the nodes this one finds on its own network.
+### `333 run`: greeting the nodes this one finds on its own network.
 
 serve-neighbours-found = one of us at { $address }
     .keyword = nearby

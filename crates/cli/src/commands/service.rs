@@ -48,7 +48,8 @@ pub(crate) enum Order {
     // Keep this node's vigil through logouts and reboots.
     #[command(
         about = "help-service-install",
-        long_about = "help-service-install-long"
+        long_about = "help-service-install-long",
+        after_help = "help-service-install-example"
     )]
     Install {
         // The flags for `serve`, as they would be typed after it.
@@ -61,13 +62,22 @@ pub(crate) enum Order {
         flags: Vec<String>,
     },
     // Stop the vigil's service, and remove everything install wrote.
-    #[command(about = "help-service-uninstall")]
+    #[command(
+        about = "help-service-uninstall",
+        after_help = "help-service-uninstall-example"
+    )]
     Uninstall,
     // What the service manager says of the vigil.
-    #[command(about = "help-service-status")]
+    #[command(
+        about = "help-service-status",
+        after_help = "help-service-status-example"
+    )]
     Status,
     // Say so on this machine if the vigil is not being kept.
-    #[command(about = "help-service-check")]
+    #[command(
+        about = "help-service-check",
+        after_help = "help-service-check-example"
+    )]
     Check,
 }
 
@@ -103,7 +113,7 @@ pub(crate) async fn run(common: &Common, order: Order) -> anyhow::Result<()> {
 /// type anything at all. `aside` puts it on standard error instead, for a command whose
 /// standard output is read by a program.
 pub(crate) fn say_if_not_kept(root: &Path, aside: bool) {
-    let installed = receipt::keeps(root);
+    let installed = receipt::expects(root);
     if let Some(line) = awake::not_kept(awake::read(root), installed, unix_now_seconds()) {
         let _ = if aside {
             writeln!(std::io::stderr().lock(), "{line}")
@@ -139,8 +149,114 @@ pub(crate) fn last_lines(path: &Path) -> Vec<String> {
         .collect()
 }
 
+/// Who the service installed for this user runs, as `333 start` and `333 stop` need it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum Keeper {
+    /// No service is installed.
+    Nobody,
+    /// It runs this node, and whether it was stopped on purpose.
+    Here {
+        /// Stopped with `333 stop`.
+        stopped: bool,
+    },
+    /// It runs the node in another directory.
+    Elsewhere(std::path::PathBuf),
+}
+
+/// Who the service installed for this user runs, seen from the node at `root`.
+#[must_use]
+pub(crate) fn keeper(root: &Path) -> Keeper {
+    match receipt::read() {
+        None => Keeper::Nobody,
+        Some(receipt) if receipt::keeps(root) => Keeper::Here {
+            stopped: receipt.stopped,
+        },
+        Some(receipt) => Keeper::Elsewhere(receipt.node),
+    }
+}
+
+/// Whether the service manager says the node's service is running now.
+#[must_use]
+pub(crate) fn active() -> bool {
+    manager::active()
+}
+
+/// Run the installed service now and after every reboot, and say so in the receipt.
+///
+/// # Errors
+/// Fails if the service manager refuses, or the receipt cannot be written.
+pub(crate) fn resume() -> anyhow::Result<()> {
+    manager::resume()?;
+    stopped_on_purpose(false)
+}
+
+/// Stop the installed service and keep it stopped after a reboot, and say so in the
+/// receipt. Nothing install wrote is removed.
+///
+/// # Errors
+/// Fails if the service manager refuses, or the receipt cannot be written.
+pub(crate) fn pause() -> anyhow::Result<()> {
+    manager::pause()?;
+    stopped_on_purpose(true)
+}
+
+/// Write down that the service is not stopped on purpose, asking the service manager
+/// nothing: for when it is running after all, however it came to be.
+pub(crate) fn running_after_all() {
+    // Nothing is lost if this cannot be written but a line said a little too often.
+    let _ = stopped_on_purpose(false);
+}
+
+/// Write down whether the service was stopped on purpose.
+fn stopped_on_purpose(stopped: bool) -> anyhow::Result<()> {
+    match receipt::read() {
+        Some(receipt) if receipt.stopped != stopped => {
+            receipt::write(&receipt::Receipt { stopped, ..receipt }).map(|_| ())
+        }
+        _ => Ok(()),
+    }
+}
+
+/// The last lines the service said, oldest first, or `None` if none is installed.
+#[must_use]
+pub(crate) fn last_said() -> Option<Vec<String>> {
+    let receipt = receipt::read()?;
+    Some(manager::status(Some(&receipt)).log)
+}
+
+/// Show what the service says as it says it, where the service manager keeps every
+/// line. `None` where it does not, and there is only the log file to read.
+#[must_use]
+pub(crate) fn follow() -> Option<anyhow::Result<()>> {
+    manager::follow()
+}
+
+/// What the service would run after the program's name for these `run` flags, as
+/// `service install` would write it; refused the way `run` refuses them.
+///
+/// # Errors
+/// Fails on flags a service definition cannot carry.
+pub(crate) fn would_run(common: &Common, flags: &[String]) -> anyhow::Result<Vec<String>> {
+    let cli = vigil::read(common, flags).unwrap_or_else(|refused| refused.exit());
+    // The program is not part of what is compared, so it is not looked for.
+    Ok(vigil::write(cli, std::path::PathBuf::new())?.serve)
+}
+
+/// What the installed service runs after the program's name, as its receipt recorded
+/// it: empty when none is installed or the receipt is older than the record.
+#[must_use]
+pub(crate) fn installed_run() -> Vec<String> {
+    receipt::read()
+        .map(|receipt| receipt.serve)
+        .unwrap_or_default()
+}
+
 /// Write the service, start it, and write down what was done.
-fn install(common: &Common, flags: &[String]) -> anyhow::Result<()> {
+///
+/// # Errors
+/// Fails if the service manager refuses, a file cannot be written, or the flags are
+/// ones `serve` would refuse.
+pub(crate) fn install(common: &Common, flags: &[String]) -> anyhow::Result<()> {
     let cli = vigil::read(common, flags).unwrap_or_else(|refused| refused.exit());
     let vigil = vigil::write(cli, exe::lasting()?)?;
     if exe::fleeting(&vigil.node) {
@@ -152,20 +268,19 @@ fn install(common: &Common, flags: &[String]) -> anyhow::Result<()> {
     let args: Vec<&str> = vigil.serve.iter().map(String::as_str).collect();
     let command = programs::typed(&vigil.exe.display().to_string(), &args);
     say(&words!("service-runs", command = command))?;
-    let receipt = match manager::install(&vigil) {
+    // Read before it is replaced: installing again over an install that turned linger
+    // on must not forget that it did, or uninstalling would leave it on.
+    let before = receipt::read();
+    let mut receipt = match manager::install(&vigil) {
         Ok(receipt) => receipt,
         Err(e) => {
             say(&words!("service-undo-partial"))?;
             return Err(e);
         }
     };
-    let Some(path) = receipt::path() else {
-        anyhow::bail!(words!("service-no-receipt-directory"));
-    };
-    if let Some(dir) = path.parent() {
-        std::fs::create_dir_all(dir)?;
-    }
-    std::fs::write(&path, receipt.to_text())?;
+    receipt.linger_turned_on |= before.is_some_and(|before| before.linger_turned_on);
+    receipt.serve = vigil.serve.clone();
+    let path = receipt::write(&receipt)?;
     say(&words!(
         "service-wrote-receipt",
         path = path.display().to_string()
@@ -251,6 +366,22 @@ mod manager {
             log: Vec::new(),
         }
     }
+
+    pub(crate) const fn active() -> bool {
+        false
+    }
+
+    pub(crate) fn resume() -> anyhow::Result<()> {
+        anyhow::bail!(words!("service-no-manager"))
+    }
+
+    pub(crate) fn pause() -> anyhow::Result<()> {
+        anyhow::bail!(words!("service-no-manager"))
+    }
+
+    pub(crate) const fn follow() -> Option<anyhow::Result<()>> {
+        None
+    }
 }
 
 #[cfg(test)]
@@ -264,11 +395,11 @@ mod tests {
                 (
                     words!("service-mind", node = "/tmp/333-node"),
                     "mind     /tmp/333-node is somewhere this system empties, and this node's name is kept\n\
-                     \x20        nowhere else. The service keeps the vigil there until it is emptied.",
+                     \x20        nowhere else. The service runs it there until it is emptied.",
                 ),
                 (
                     words!("service-runs", command = "/usr/bin/333 serve --plain"),
-                    "vigil    /usr/bin/333 serve --plain",
+                    "node     /usr/bin/333 serve --plain",
                 ),
                 (
                     words!("service-undo-partial"),
@@ -285,7 +416,7 @@ mod tests {
                         words!("service-undo")
                     ),
                     "wrote    /c/333/receipt, which is how `333 service uninstall` knows what to undo.\n\
-                     undo     `333 service uninstall` stops the vigil and undoes all of the above.\n\
+                     undo     `333 service uninstall` stops the node and undoes all of the above.\n\
                      \x20        The node's own directory is not touched by either.",
                 ),
                 (
@@ -294,9 +425,8 @@ mod tests {
                 ),
                 (
                     words!("service-uninstalled", node = "/tmp/333-node"),
-                    "vigil    no longer kept by a service. /tmp/333-node is left as the vigil left it:\n\
-                     \x20        `333 serve` keeps the vigil by hand, and `333 service install` sets\n\
-                     \x20        the service up again.",
+                    "node     no longer run by a service. /tmp/333-node is left as the node left it:\n\
+                     \x20        `333 run` runs it by hand, and `333 start` sets the service up again.",
                 ),
                 (
                     words!("service-none-installed"),
@@ -332,9 +462,7 @@ mod tests {
                 ),
                 (
                     words!("service-no-manager"),
-                    "this system has no service manager `333 service` knows how to ask. \
-                     `333 serve --plain` keeps the vigil under whatever keeps programs \
-                     running here.",
+                    "this system has no service manager `333 service` knows how to ask. `333 run --plain` runs the node under whatever keeps programs running here.",
                 ),
                 (
                     words!("service-not-installed-here"),
