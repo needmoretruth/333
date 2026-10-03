@@ -90,6 +90,7 @@ pub(crate) fn run(args: &Args) -> anyhow::Result<()> {
     )?;
     let running = release::deployed(&args.releases);
     if running.as_deref() == Some(target.as_str()) {
+        date_if_undated(args, &target);
         tracing::info!("{target} is already running");
         return Ok(());
     }
@@ -119,6 +120,30 @@ pub(crate) fn run(args: &Args) -> anyhow::Result<()> {
         tracing::info!("deleted {}", gone.display());
     }
     Ok(())
+}
+
+/// Date the running release's pages if it has no dates, then restart it to serve them
+/// and tell search engines.
+///
+/// The binary that deploys is the one already running, so a release that brings a new
+/// deploy step is staged by the release before it, without that step. The release that
+/// first dated pages was deployed that way, and the next run fills the gap.
+fn date_if_undated(args: &Args, target: &str) {
+    let site_copy = args.releases.join(target).join("site");
+    if site_copy.join(crate::site::LASTMOD_FILE).exists() {
+        return;
+    }
+    lastmod::write(&args.repo, &site_copy);
+    if !site_copy.join(crate::site::LASTMOD_FILE).exists() {
+        return;
+    }
+    match restart(&args.unit).and_then(|()| guard::serving(args.listen)) {
+        Ok(()) => {
+            tracing::info!("dated the running release's pages");
+            indexnow::notify(None, &site_copy);
+        }
+        Err(error) => tracing::error!("dated the running release's pages: {error:#}"),
+    }
 }
 
 /// Build the site binary, holding the heavy-work lock, and give up on `commit` once it
