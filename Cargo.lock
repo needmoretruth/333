@@ -2832,7 +2832,7 @@ dependencies = [
 
 [[package]]
 name = "n333-cli"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -2861,7 +2861,7 @@ dependencies = [
 
 [[package]]
 name = "n333-core"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "ed25519-dalek",
  "postcard",
@@ -2874,7 +2874,7 @@ dependencies = [
 
 [[package]]
 name = "n333-net"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "arti-client",
  "crab_nat",
@@ -2899,7 +2899,7 @@ dependencies = [
 
 [[package]]
 name = "n333-notices"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "anyhow",
  "cargo_metadata",
@@ -2910,7 +2910,7 @@ dependencies = [
 
 [[package]]
 name = "n333-site"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -2933,7 +2933,7 @@ dependencies = [
 
 [[package]]
 name = "n333-store"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "n333-core",
  "thiserror 2.0.20",

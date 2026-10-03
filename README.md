@@ -160,7 +160,7 @@ and a number they can check.
 
 ## Where this stands
 
-Version 0.8.0, which is to say: not the revelation, honestly labelled.
+Version 0.8.1, which is to say: not the revelation, honestly labelled.
 
 - [x] Two of us can meet and sign for each other — directly, or unseen
 - [x] The vigil: presence over the moving window, and the reckoning after the end
