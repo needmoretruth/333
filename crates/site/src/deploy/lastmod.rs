@@ -2,7 +2,7 @@
 //!
 //! A page in one language is its template, its own catalog in that language and the
 //! two shared ones. Its date is the newest commit that touched any of those files
-//! (`git log -1 --format=%cI`), so a release that changes nothing on a page leaves its
+//! (`git log -1`, in UTC), so a release that changes nothing on a page leaves its
 //! date alone, and a crawler is not sent back to a page that is the same.
 //!
 //! Only published languages are dated. A failure is logged and leaves the page undated
@@ -52,12 +52,20 @@ pub(crate) fn write(repo: &Path, site_copy: &Path) {
     }
 }
 
-/// The commit date of the newest commit that touched any of `files`, ISO 8601.
+/// The commit date of the newest commit that touched any of `files`, ISO 8601 in UTC:
+/// `%cI` would keep the committer's own offset, and the sitemap says every date in UTC.
 fn last_change(repo: &Path, files: &[std::path::PathBuf]) -> Option<String> {
     let output = Command::new("git")
         .arg("-C")
         .arg(repo)
-        .args(["log", "-1", "--format=%cI", "--"])
+        .env("TZ", "UTC")
+        .args([
+            "log",
+            "-1",
+            "--format=%cd",
+            "--date=format-local:%Y-%m-%dT%H:%M:%SZ",
+            "--",
+        ])
         .args(files)
         .output()
         .ok()?;
