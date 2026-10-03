@@ -2,7 +2,7 @@
 
 languages-name = 한국어
 
-languages-one = { $tag }  { $name }  영어에 있는 메시지의 { $percent }%
+languages-one = { $tag }  { $name }  번역 { $percent }%
     .keyword = 언어
 
 languages-speaking = { $tag }. 다른 언어를 저장하려면 `333 language <태그>`.

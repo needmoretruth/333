@@ -1,9 +1,9 @@
 ### `333 stop`: stopping this node, and keeping it stopped after a reboot.
 
-stop-stopped = stopped. It stays stopped after a reboot. `333 start` runs it again.
+stop-stopped = now and after every reboot. `333 start` runs it again.
     .keyword = stopped
 
-stop-stopped-in-a-terminal = stopped the node that was running in a terminal.
+stop-stopped-in-a-terminal = the node that was running in a terminal.
     .keyword = stopped
 
 stop-not-running = no, so there was nothing to stop.

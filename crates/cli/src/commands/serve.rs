@@ -517,8 +517,8 @@ mod tests {
                 ),
                 (
                     words!("serve-hand"),
-                    "hand     an invitation names a place, not a person. it swears to nothing;\n\
-                     \x20        whoever answers there proves themselves by holding a key.",
+                    "trust    an invitation names a place, not a person. Whoever answers there\n\
+                     \x20        proves who they are by holding their key.",
                 ),
                 (
                     words!("serve-invite", invitation = "333:192.0.2.7:3333"),

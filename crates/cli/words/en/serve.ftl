@@ -13,9 +13,9 @@ serve-waiting-for-the-file = this node has not been given the file, so nothing i
     meantime costs nothing and is how people find you.
     .keyword = waiting
 
-serve-hand = an invitation names a place, not a person. it swears to nothing;
-    whoever answers there proves themselves by holding a key.
-    .keyword = hand
+serve-hand = an invitation names a place, not a person. Whoever answers there
+    proves who they are by holding their key.
+    .keyword = trust
 
 serve-invite = { $invitation }
     .keyword = invite

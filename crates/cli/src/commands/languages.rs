@@ -167,7 +167,7 @@ mod tests {
     fn every_built_in_language_is_listed_by_its_own_name() {
         let lines = crate::words::speaking("en", Base::Ten, || said(None));
         assert!(
-            lines.contains(&"language en  English  100% of the messages English has".to_owned()),
+            lines.contains(&"language en  English  100% translated".to_owned()),
             "{lines:?}"
         );
         assert!(
@@ -208,7 +208,7 @@ mod tests {
         let lines = crate::words::speaking("ko", Base::Twelve, || said(None));
         let columns: Vec<usize> = lines
             .iter()
-            .filter_map(|line| line.find("영어에").map(|at| line[..at].width()))
+            .filter_map(|line| line.find("번역").map(|at| line[..at].width()))
             .collect();
         assert_eq!(columns.len(), 2, "{lines:?}");
         assert_eq!(columns[0], columns[1], "{lines:?}");

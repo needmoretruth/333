@@ -11,9 +11,9 @@ serve-waiting-for-the-file = 이 노드는 아직 파일을 받지 않아서 셈
     실행하십시오. 그동안에도 켜 두면 다른 노드가 이 노드를 찾습니다.
     .keyword = 대기
 
-serve-hand = 초대장은 사람이 아니라 주소를 가리키고, 아무것도 보증하지
-    않습니다. 그 주소에서 답하는 노드는 키로 자기를 증명합니다.
-    .keyword = 참고
+serve-hand = 초대장은 사람이 아니라 주소를 가리킵니다. 그 주소에서 답하는
+    노드는 키로 자기를 증명합니다.
+    .keyword = 신뢰
 
 serve-invite = { $invitation }
     .keyword = 초대장
