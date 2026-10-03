@@ -18,9 +18,13 @@ pub(crate) const NO_STORE: &str = "no-store";
 pub(crate) const IMMUTABLE: &str = "public, max-age=31536000, immutable";
 
 /// What a browser may do with a page from here: load from here, frame nothing.
+///
+/// The one outside script is Cloudflare's visit counter, which the edge adds to every
+/// page; it sets no cookie, and the site counted visits that way before it moved here.
 const POLICY: &str = "default-src 'self'; img-src 'self' data:; style-src 'self'; \
-script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; \
-form-action 'self'";
+script-src 'self' https://static.cloudflareinsights.com; \
+connect-src 'self' https://cloudflareinsights.com; frame-ancestors 'none'; \
+base-uri 'none'; form-action 'self'";
 
 /// An answer with a body, a type and a caching rule.
 pub(crate) fn with(
