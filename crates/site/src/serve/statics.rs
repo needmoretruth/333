@@ -1,7 +1,7 @@
 //! The files under `--site`: which one a path means, and how it is sent.
 //!
 //! Clean URLs, as the static host before this did them: `/` is `index.html`, `/network`
-//! is `network.html`, and `/map/` is `map/index.html`. A path that would leave the site
+//! is `network.html`, and `/map/` is `map/index.html` or else `map.html`. A path that would leave the site
 //! directory is answered as missing: any `..` or `.` segment, a backslash, a NUL, a
 //! hidden name other than `.well-known`, and — checked last, on the real path — a
 //! symbolic link that points outside.
@@ -30,8 +30,12 @@ fn allowed(segment: &str) -> bool {
 
 /// The files a path could mean, in the order they are tried.
 fn candidates(relative: &str) -> Vec<String> {
-    if relative.is_empty() || relative.ends_with('/') {
-        return vec![format!("{relative}index.html")];
+    if relative.is_empty() {
+        return vec!["index.html".to_owned()];
+    }
+    // The old pages linked `/map/` and `/network/`; both forms of a page are the page.
+    if let Some(trimmed) = relative.strip_suffix('/') {
+        return vec![format!("{trimmed}/index.html"), format!("{trimmed}.html")];
     }
     vec![
         relative.to_owned(),
@@ -103,6 +107,7 @@ mod tests {
 
         assert_eq!(resolve(&root, "/network"), Some(root.join("network.html")));
         assert_eq!(resolve(&root, "/map/"), Some(root.join("map/index.html")));
+        assert_eq!(resolve(&root, "/network/"), Some(root.join("network.html")));
         for climbing in [
             "/../secret.html",
             "/../secret",
