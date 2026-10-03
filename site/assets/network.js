@@ -264,7 +264,10 @@ function draw() {
       ctx.font = `${n === focus || n.founder ? 600 : 500} 12px "JetBrains Mono", monospace`;
       ctx.textAlign = "center";
       ctx.textBaseline = "top";
-      ctx.fillText(n.id === mine ? `${short(n.id)} · yours` : short(n.id), x, y + radiusOf(n) * Math.max(0.7, Math.min(1.4, view.k)) + 6);
+      // Below the founder's halo or the selection ring, whichever reaches further.
+      const r = radiusOf(n) * Math.max(0.7, Math.min(1.4, view.k));
+      const below = Math.max(n.founder ? r * 2.1 : r, n.id === mine || n === selected ? r + 7 : r) + 6;
+      ctx.fillText(n.id === mine ? `${short(n.id)} · yours` : short(n.id), x, y + below);
     }
   }
   ctx.globalAlpha = 1;
