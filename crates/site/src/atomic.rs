@@ -84,11 +84,11 @@ fn sync_directory(_dir: &Path) -> io::Result<()> {
     Ok(())
 }
 
-#[cfg(test)]
+// The one test checks file modes, which only Unix has.
+#[cfg(all(test, unix))]
 mod tests {
     use super::*;
 
-    #[cfg(unix)]
     #[test]
     fn a_written_file_has_its_bytes_its_mode_and_no_leftover_beside_it() {
         use std::os::unix::fs::PermissionsExt as _;

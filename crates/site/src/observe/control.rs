@@ -6,20 +6,25 @@
 //! open the node's key, and never reads anything the node would not say to its owner.
 
 use std::path::Path;
+#[cfg(unix)]
 use std::time::Duration;
 
 use serde_json::value::RawValue;
 
 /// The socket's name inside the node's directory.
+#[cfg(unix)]
 const SOCKET_FILE: &str = "control.sock";
 
 /// The request: version, then the order as the screen reads it.
+#[cfg(unix)]
 const ASK: &[u8] = b"333/1 status --json\n";
 
 /// How long the node may take to answer. A node that is up answers in milliseconds.
+#[cfg(unix)]
 const PATIENCE: Duration = Duration::from_secs(10);
 
 /// The most of an answer that is read. `status --json` is a few kilobytes.
+#[cfg(unix)]
 const LONGEST: u64 = 1 << 20;
 
 /// What asking found.
@@ -28,6 +33,13 @@ pub(crate) enum Asked {
     /// Nothing answered on the socket: the node is not running.
     Down,
     /// The node answered. Its status, if it gave one that is JSON.
+    #[cfg_attr(
+        not(unix),
+        expect(
+            dead_code,
+            reason = "only a Unix node has a control socket to answer on"
+        )
+    )]
     Answered(Option<Box<RawValue>>),
 }
 
