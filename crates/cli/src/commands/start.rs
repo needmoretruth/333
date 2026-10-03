@@ -191,7 +191,12 @@ mod tests {
         let flags = ["--tor", "--bind", "127.0.0.1:4444"].map(str::to_owned);
         let run = crate::words::speaking("en", Base::Ten, || service::would_run(&common, &flags))
             .unwrap();
-        assert_eq!(run[..2], ["--data-dir", "/srv/node"]);
+        // Written as the system spells an absolute path: `D:\srv\node` on Windows.
+        let home = std::path::absolute("/srv/node").unwrap();
+        assert_eq!(
+            run[..2],
+            ["--data-dir".to_owned(), home.display().to_string()]
+        );
         let after = run.iter().position(|arg| arg == "serve").unwrap();
         assert_eq!(
             run[after..],
