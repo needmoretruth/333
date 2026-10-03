@@ -51,7 +51,7 @@ struct Schedule<'a> {
 #[must_use]
 pub(crate) fn vigil_task(user: &str, arguments: &str, directory: &str) -> String {
     let schedule = Schedule {
-        description: "Keeps the 333 vigil while you are logged in. `333 service uninstall` removes it.",
+        description: "Runs the 333 node while you are logged in. `333 stop` stops it; `333 service uninstall` removes it.",
         delay: "PT0S",
         every: "PT5M33S",
         limit: "PT0S",
@@ -67,7 +67,7 @@ pub(crate) fn vigil_task(user: &str, arguments: &str, directory: &str) -> String
 #[must_use]
 pub(crate) fn check_task(user: &str, arguments: &str, directory: &str) -> String {
     let schedule = Schedule {
-        description: "Asks every hour whether the 333 vigil is being kept. `333 service uninstall` removes it.",
+        description: "Asks every hour whether the 333 node is running. `333 service uninstall` removes it.",
         delay: "PT1H",
         every: "PT1H",
         limit: "PT10M",

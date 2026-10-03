@@ -1,19 +1,18 @@
-# Keeping the vigil across logouts and reboots, as the package installs it.
+# Running the node in the background, as the package installs it.
 #
-# Installing the package put this file here and started nothing. To begin, as the
-# user whose node it is:
+# Installing the package put this file here and started nothing. To start the node,
+# as the user whose node it is:
 #
-#   systemctl --user enable --now 333
-#   loginctl enable-linger "$USER"
+#   333 start
 #
-# That last line is what keeps the vigil running after you log out, and starts it at
-# boot with nobody logged in. `333 service install` does both, carries the flags you
-# give it into the unit, and adds an hourly check that says so on this machine when
-# the vigil has stopped.
+# That writes a copy of this unit with the flags you give it, keeps the node running
+# after you log out and starts it at boot, and adds an hourly check. `333 stop` stops
+# it and keeps it stopped, and `333 status` says whether it runs. Enabling this file
+# with systemctl directly also runs the node, but `333 status` then reports it as
+# running in a terminal and `333 stop` cannot keep it stopped.
 #
 #   systemctl --user status 333.service   what it is doing
 #   journalctl --user -u 333 -f           what it is saying
-#   systemctl --user disable --now 333    end the vigil
 #
 # `status` wants the .service: given a bare number, systemctl reads it as a process id.
 
@@ -32,7 +31,7 @@ ExecStart=/usr/bin/333 serve --plain
 Restart=always
 RestartSec=333
 NoNewPrivileges=yes
-# No PrivateTmp and no ProtectSystem. In a user unit either one runs the vigil inside a
+# No PrivateTmp and no ProtectSystem. In a user unit either one runs the node inside a
 # namespace of its own, where / belongs to nobody, and a node that checks that its
 # directory is private all the way up finds that it is not and refuses to start.
 RestrictSUIDSGID=yes

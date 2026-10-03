@@ -1,13 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Keeping the vigil across logouts and reboots, on macOS.
+  Running the node in the background on macOS, by hand. `333 start` does this for you,
+  and `333 status` and `333 stop` work only on the agent it installs.
 
     mkdir -p ~/bin ~/Library/LaunchAgents ~/Library/Logs
     cp 333 ~/bin/
     sed "s|USERNAME|$USER|g" packaging/dev.the333.vigil.plist > ~/Library/LaunchAgents/dev.the333.vigil.plist
     launchctl load -w ~/Library/LaunchAgents/dev.the333.vigil.plist
 
-  What it is saying is in ~/Library/Logs/333.log. To end the vigil:
+  What it is saying is in ~/Library/Logs/333.log. To stop it:
 
     launchctl unload -w ~/Library/LaunchAgents/dev.the333.vigil.plist
 -->

@@ -1,23 +1,18 @@
-# Keeping the vigil across logouts and reboots, on anything with systemd.
+# Running the node in the background, on anything with systemd.
+#
+# `333 start` writes this unit to ~/.config/systemd/user/ with the flags you give it,
+# keeps the node running after you log out and starts it at boot, and adds an hourly
+# check. `333 stop` stops it and keeps it stopped, and `333 status` says whether it
+# runs. A copy of this file enabled by hand also runs the node, but `333 status` then
+# reports it as running in a terminal and `333 stop` cannot keep it stopped.
 #
 # A user service rather than a system one, because a node lives in one person's home
 # directory and the client refuses to start on a directory other people can enter.
 # Running it as root would mean either loosening that or keeping the node somewhere it
 # does not belong.
 #
-#   mkdir -p ~/.local/bin ~/.config/systemd/user
-#   cp 333 ~/.local/bin/
-#   cp packaging/333.service ~/.config/systemd/user/
-#   systemctl --user daemon-reload
-#   systemctl --user enable --now 333
-#   loginctl enable-linger "$USER"
-#
-# That last line is the one people miss. Without it the vigil stops when you log out,
-# which on a machine you reach over ssh means it stops when you close the laptop.
-#
 #   systemctl --user status 333.service   what it is doing
 #   journalctl --user -u 333 -f           what it is saying
-#   systemctl --user stop 333             end the vigil
 #
 # `status` wants the .service: given a bare number, systemctl reads it as a process id.
 
@@ -36,7 +31,7 @@ ExecStart=%h/.local/bin/333 serve --plain
 Restart=always
 RestartSec=333
 NoNewPrivileges=yes
-# No PrivateTmp and no ProtectSystem. In a user unit either one runs the vigil inside a
+# No PrivateTmp and no ProtectSystem. In a user unit either one runs the node inside a
 # namespace of its own, where / belongs to nobody, and a node that checks that its
 # directory is private all the way up finds that it is not and refuses to start.
 RestrictSUIDSGID=yes
